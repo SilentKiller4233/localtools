@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Turborepo
+.turbo/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Environment — never commit real secrets (.env.example is tracked, .env is not)
+.env
+.env.*
+!.env.example
+
+# Editor / OS noise
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Vite / dev caches
+.vite/
+
+# Rust / Tauri build artifacts (Phase 10+)
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+
+# Native tool caches used at runtime (never part of the repo)
+.cache/

@@ -1,0 +1,19 @@
+# Optional edge proxy for the caddy compose profile.
+# TLS termination for real deployments is configured by the operator here.
+:80 {
+	encode gzip
+
+	handle_path /engine/* {
+		reverse_proxy engine:8787
+	}
+
+	handle {
+		reverse_proxy client:8080
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+}

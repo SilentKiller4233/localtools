@@ -1,0 +1,17 @@
+/* Phase 0 minimal styles. The real design-token layer lands in Phase 1,
+   generated from the Stitch MCP direction pass — do not add styling decisions
+   here beyond neutral readability defaults. */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  line-height: 1.5;
+}

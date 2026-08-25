@@ -1,0 +1,25 @@
+{
+  "name": "@localtools/devtext-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "echo 'no tests yet' && exit 0"
+  },
+  "devDependencies": {
+    "@localtools/eslint-config": "workspace:*",
+    "eslint": "^9.15.0",
+    "typescript": "^5.6.3"
+  }
+}

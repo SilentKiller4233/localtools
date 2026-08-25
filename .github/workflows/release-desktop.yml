@@ -1,0 +1,22 @@
+# Desktop release pipeline — PLACEHOLDER, intentionally disabled.
+#
+# The real three-OS Tauri build/sign matrix lands with Phase 10
+# (PROJECT_SPEC Section 15). Guarded with `if: false` so an early tag cannot
+# produce a red run or a broken artifact; see DECISIONS.md D-005.
+#
+# To enable in Phase 10: remove the job-level `if`, wire tauri-action with
+# signing secrets, and target windows-latest / macos-latest / ubuntu-latest.
+
+name: Release (desktop)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  placeholder:
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Desktop release pipeline arrives with Phase 10."

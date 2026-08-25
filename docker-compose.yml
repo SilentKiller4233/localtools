@@ -1,0 +1,63 @@
+services:
+  # Layer 1 — static client behind nginx (unprivileged, non-root).
+  client:
+    build:
+      context: .
+      dockerfile: docker/client.Dockerfile
+    ports:
+      - '5173:8080'
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+
+  # Layer 2 — Fastify engine. Loopback-only exposure by default (Section 5.1);
+  # set LOCALTOOLS_EXPOSE=true + a strong LOCALTOOLS_AUTH_TOKEN in .env to bind
+  # beyond localhost — the engine refuses to start otherwise.
+  engine:
+    build:
+      context: .
+      dockerfile: docker/engine.Dockerfile
+    environment:
+      LOCALTOOLS_EXPOSE: ${LOCALTOOLS_EXPOSE:-false}
+      LOCALTOOLS_AUTH_TOKEN: ${LOCALTOOLS_AUTH_TOKEN:-}
+      LOCALTOOLS_CLIENT_ORIGIN: ${LOCALTOOLS_CLIENT_ORIGIN:-http://localhost:5173}
+      LOCALTOOLS_MAX_FILE_SIZE: ${LOCALTOOLS_MAX_FILE_SIZE:-524288000}
+      LOCALTOOLS_FILE_TIMEOUT_SECONDS: ${LOCALTOOLS_FILE_TIMEOUT_SECONDS:-60}
+      LOCALTOOLS_DOWNLOAD_TIMEOUT_SECONDS: ${LOCALTOOLS_DOWNLOAD_TIMEOUT_SECONDS:-600}
+      LOCALTOOLS_MAX_DOWNLOAD_SIZE: ${LOCALTOOLS_MAX_DOWNLOAD_SIZE:-4294967296}
+    ports:
+      - '127.0.0.1:8787:8787'
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Optional edge proxy (power users exposing beyond localhost).
+  caddy:
+    profiles: ['caddy']
+    image: caddy:2-alpine
+    ports:
+      - '80:80'
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    depends_on:
+      - client
+      - engine
+
+volumes:
+  caddy_data:
+  caddy_config:
