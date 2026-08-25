@@ -55,7 +55,7 @@ All detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-bounda
 
 - Engine has zero Section 5 controls yet (by design at this phase; see D-002) — must never be exposed past localhost until Phases 4/7/8 land those controls.
 - `apps/desktop` contains no code yet; directory exists only as README placeholder.
-- GitHub remote not yet attached (Composio connection status checked at end of Phase 0; result recorded in HANDOFF.md).
+- GitHub remote attached ([SilentKiller4233/localtools](https://github.com/SilentKiller4233/localtools), created via Composio) but commit `436f583` **not yet pushed** — local credentials lack write access (fine-grained PAT allowlist); see HANDOFF.md Blockers for the human fix.
 - CI workflow is untested against a real remote until the repo is pushed.
 
 ## How to run the project right now

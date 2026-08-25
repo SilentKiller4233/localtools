@@ -6,14 +6,14 @@ manual items are logged here as they are performed, never assumed done.
 
 ## Status: Phase 0
 
-| Check                                                | Kind              | Result             | Notes                                   |
-| ---------------------------------------------------- | ----------------- | ------------------ | --------------------------------------- |
-| `pnpm install && pnpm build` succeeds with stub apps | automated (local) | PASS               | Acceptance criterion for Phase 0        |
-| Prettier format check                                | automated (local) | PASS               | Part of `pnpm verify`                   |
-| ESLint (strictTypeChecked) across workspaces         | automated (local) | PASS               | Part of `pnpm verify`                   |
-| TypeScript strict typecheck (all workspaces) | automated (local) | PASS | `noUncheckedIndexedAccess` etc. enabled |
-| Engine `/healthz` runtime smoke test | manual (local, one-off) | PASS | HTTP 200 `{"ok":true,"data":{"status":"ok"}}`; netstat confirmed listener bound to `127.0.0.1:8787` only |
-| CI workflow syntax valid | automated (push) | pending first push | ci.yml runs verify on ubuntu+windows |
+| Check                                                | Kind                    | Result             | Notes                                                                                                    |
+| ---------------------------------------------------- | ----------------------- | ------------------ | -------------------------------------------------------------------------------------------------------- |
+| `pnpm install && pnpm build` succeeds with stub apps | automated (local)       | PASS               | Acceptance criterion for Phase 0                                                                         |
+| Prettier format check                                | automated (local)       | PASS               | Part of `pnpm verify`                                                                                    |
+| ESLint (strictTypeChecked) across workspaces         | automated (local)       | PASS               | Part of `pnpm verify`                                                                                    |
+| TypeScript strict typecheck (all workspaces)         | automated (local)       | PASS               | `noUncheckedIndexedAccess` etc. enabled                                                                  |
+| Engine `/healthz` runtime smoke test                 | manual (local, one-off) | PASS               | HTTP 200 `{"ok":true,"data":{"status":"ok"}}`; netstat confirmed listener bound to `127.0.0.1:8787` only |
+| CI workflow syntax valid                             | automated (push)        | pending first push | ci.yml runs verify on ubuntu+windows                                                                     |
 
 ## Pending (scheduled by later phases)
 
