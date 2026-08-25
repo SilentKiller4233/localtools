@@ -86,3 +86,19 @@ Turborepo's own kitchen-sink uses.
 `verify = format:check → lint → typecheck → build`. Test runners join this
 chain from Phase 3 onward as suites gain real tests (Section 14 wiring happens
 progressively; full automation finalizes in Phase 13).
+
+### D-010 — Repository is PRIVATE during the build (user decision)
+
+The spec's Definition of Done assumes a public repo at v1.0.0 ("The repo is
+public", Section 0.3), and the repo was created public accordingly. The user
+then directed it be made private for now (2026-08-25); visibility will be
+flipped back to public as part of Phase 15 (tag/release step). Consequences:
+
+- Supply-chain scanning does not depend on visibility: Trivy/Grype in CI (Sections 5.4/5.5) remains the control; Dependabot security updates were left disabled either way.
+- No code may assume public artifacts (no external CDN/raw-file links — consistent with Section 5.7 regardless).
+- Flip back to public is part of Phase 15's release checklist.
+
+Operational note discovered while applying: Composio's repository-update call
+resets unset fields to API defaults — e.g. `delete_branch_on_merge` reverted
+to `false` after being set `true` at creation, and `has_projects` flipped to
+`true`. Re-apply desired settings explicitly after any future update call.

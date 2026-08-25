@@ -26,7 +26,7 @@ None, working tree is clean (`git status` empty). All Phase 0 work is in commit 
 ## Blockers / open decisions needing human input
 
 - **Push credentials (needs human action).** The gh CLI token is a fine-grained PAT whose repository allowlist doesn't include repos created after it was issued; Credential Manager holds another insufficient credential; no SSH key exists. Repo creation itself worked via Composio (its GitHub App connection has admin rights there), but Composio's `GITHUB_COMMIT_MULTIPLE_FILES` would create divergent history — do NOT use it to work around this. Local commits continue to be safe meanwhile.
-- Deferred (recorded in DECISIONS.md, not blocking): @imgly/background-removal license re-check (Phase 5, D-001); ffmpeg build variant (Phase 7, D-001); SECURITY.md contact address (D-006).
+- Deferred (recorded in DECISIONS.md, not blocking): @imgly/background-removal license re-check (Phase 5, D-001); ffmpeg build variant (Phase 7, D-001); SECURITY.md contact address (D-006); flip repo back to **public** during Phase 15 release per spec §0.3 (D-010).
 
 ## Environment / local state notes
 
