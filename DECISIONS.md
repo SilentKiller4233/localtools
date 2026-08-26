@@ -102,3 +102,37 @@ Operational note discovered while applying: Composio's repository-update call
 resets unset fields to API defaults — e.g. `delete_branch_on_merge` reverted
 to `false` after being set `true` at creation, and `has_projects` flipped to
 `true`. Re-apply desired settings explicitly after any future update call.
+
+---
+
+## Phase 1 — Design direction
+
+### D-011 — Stitch direction translated to tokens; delivery details
+
+The Phase 1 visual direction was generated via Stitch MCP **before** any
+component code (Section 9 mandate): one design system (`assets/5698721899487494889`)
+and six screens (home suite-nav + tool grid, Merge PDF, Universal Downloader,
+Image Converter, JSON Formatter, drop-zone component sheet). The generated
+HTML is archived verbatim under `packages/ui/stitch-reference/` as the design
+source of truth (excluded from Prettier).
+
+Implementation decisions on top of it:
+
+- **Token namespace:** every custom property is prefixed `--lt-*` and defined
+  once in `packages/ui/src/tokens.css` (light canonical, dark override via
+  `[data-theme='dark']`). Stitch generated light-only output; the dark theme
+  is hand-derived per Section 8 with a contrast-adjusted accent (`#1f6feb`)
+  to hold WCAG AA against white text.
+- **Fonts not yet vendored:** Inter + JetBrains Mono are named in the token
+  stacks with system-font fallbacks; self-hosting is tracked in
+  `packages/ui/fonts/README.md` and must land before release (Section 7,
+  no third-party CDNs). No CDN reference exists anywhere today.
+- **CSS delivery:** component TSX imports no CSS. tsc-compiled `dist/` cannot
+  resolve relative `.css` imports (they are emitted verbatim), so the package
+  exposes a single stylesheet entry consumed as
+  `import '@localtools/ui/styles.css'`, which Vite resolves at app build time.
+- **Icons:** Lucide is the chosen set (Section 7) but is wired in Phase 2
+  alongside real routing; Phase 1 components accept inline glyph nodes.
+- **Theme contract verified end-to-end** on the production build:
+  `prefers-color-scheme` bootstrap → manual toggle writes `data-theme` +
+  localStorage → restore across reload, both directions.

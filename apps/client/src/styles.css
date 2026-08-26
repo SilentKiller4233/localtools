@@ -1,17 +1,92 @@
-/* Phase 0 minimal styles. The real design-token layer lands in Phase 1,
-   generated from the Stitch MCP direction pass — do not add styling decisions
-   here beyond neutral readability defaults. */
-* {
-  box-sizing: border-box;
+@import '@localtools/ui/styles.css';
+
+/* ---- App-shell styles (Phase 1) ------------------------------------ */
+
+.app-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--lt-space-8) var(--lt-space-6);
 }
 
-body {
+.app-dev-link {
+  font-size: var(--lt-font-size-caption);
+  color: var(--lt-text-muted);
+}
+
+/* ---- /dev/ui-preview page ------------------------------------------ */
+
+.preview-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--lt-space-8) var(--lt-space-6) var(--lt-space-16, 64px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lt-space-8);
+}
+
+.preview-overline {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  line-height: 1.5;
+  font-size: var(--lt-font-size-micro);
+  line-height: var(--lt-line-height-micro);
+  letter-spacing: var(--lt-letter-spacing-micro);
+  text-transform: uppercase;
+  color: var(--lt-text-muted);
+}
+
+.preview-main h1 {
+  margin: 0;
+  font-size: var(--lt-font-size-display);
+  line-height: var(--lt-line-height-display);
+  font-weight: var(--lt-weight-display);
+}
+
+.preview-lede {
+  margin: calc(-1 * var(--lt-space-4)) 0 0;
+  color: var(--lt-text-muted);
+}
+
+.preview-main section h2 {
+  margin: 0 0 var(--lt-space-3);
+  font-size: var(--lt-font-size-heading);
+  line-height: var(--lt-line-height-heading);
+  font-weight: 600;
+}
+
+.preview-block {
+  padding: var(--lt-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lt-space-3);
+}
+
+.preview-row {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.preview-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lt-space-3);
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--lt-space-3);
+}
+
+.preview-forms {
+  max-width: 420px;
+}
+
+.preview-note {
+  margin: 0;
+  font-size: var(--lt-font-size-caption);
+  color: var(--lt-text-muted);
+}
+
+.lt-mono {
+  font-family: var(--lt-font-mono);
 }

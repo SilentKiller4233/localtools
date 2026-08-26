@@ -1,0 +1,63 @@
+/*
+ * Global element defaults for apps consuming @localtools/ui.
+ * Import tokens.css first, then global.css, then component CSS.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--lt-bg);
+  color: var(--lt-text);
+  font-family: var(--lt-font-ui);
+  font-size: var(--lt-font-size-body);
+  line-height: var(--lt-line-height-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle motion only — disabled entirely under prefers-reduced-motion. */
+.lt-transition,
+.lt-transition::before,
+.lt-transition::after {
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-timing-function: var(--lt-ease);
+  transition-duration: var(--lt-dur-base);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--lt-accent);
+  outline-offset: 2px;
+}
+
+/* Thin scrollbars that follow the theme. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--lt-border-strong);
+  border-radius: 4px;
+}

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Convert Images - LocalTools</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#FAFAFA',
+                        surface: '#FFFFFF',
+                        border: '#E5E7EB',
+                        text: {
+                            main: '#111827',
+                            muted: '#6B7280'
+                        },
+                        accent: {
+                            DEFAULT: '#0F62FE',
+                            hover: '#0053e6',
+                            subtle: '#e5f0ff'
+                        },
+                        status: {
+                            success: '#10B981',
+                            warning: '#F59E0B',
+                            error: '#EF4444',
+                            info: '#3B82F6'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    borderRadius: {
+                        DEFAULT: '4px',
+                        sm: '4px',
+                        md: '6px',
+                        lg: '8px',
+                        full: '9999px'
+                    },
+                    boxShadow: {
+                        sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        ambient: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: theme('colors.background');
+            color: theme('colors.text.main');
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9CA3AF;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<!-- Top Navigation (Generated from Component JSON) -->
+<header class="bg-white dark:bg-[#121212] font-['Inter'] text-sm leading-5 w-full h-14 border-b border-gray-200 dark:border-gray-800 border-b border-gray-200 dark:border-gray-800 flat no shadows flex justify-between items-center px-6 max-w-full">
+<div class="font-['Inter'] font-semibold text-xl text-[#0F62FE] flex items-center gap-2">
+            LocalTools
+        </div>
+<nav class="hidden md:flex items-center space-x-6">
+<a class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-150 transition-all duration-150 ease-out" href="#">
+                PDF
+            </a>
+<a class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-150 transition-all duration-150 ease-out" href="#">
+                Media
+            </a>
+<a class="text-[#0F62FE] border-b-2 border-[#0F62FE] pb-4 -mb-4 font-semibold transition-all duration-150 ease-out" href="#">
+                Image
+            </a>
+<a class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-150 transition-all duration-150 ease-out" href="#">
+                Text &amp; Dev
+            </a>
+</nav>
+<div class="flex items-center space-x-4">
+<button class="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors duration-150 flex items-center justify-center w-8 h-8 rounded hover:bg-gray-50 dark:hover:bg-gray-900">
+<span class="material-symbols-outlined text-[20px]">build</span>
+</button>
+<button class="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors duration-150 flex items-center justify-center w-8 h-8 rounded hover:bg-gray-50 dark:hover:bg-gray-900">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</button>
+</div>
+</header>
+<main class="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 flex flex-col gap-6">
+<!-- Header -->
+<div>
+<h1 class="text-title font-semibold text-text-main">Convert Images</h1>
+<p class="text-body text-text-muted mt-1">Change format, quality, and size — batch friendly, fully offline</p>
+</div>
+<div class="flex flex-col lg:flex-row gap-6">
+<!-- Main Column -->
+<div class="flex-1 flex flex-col gap-6 min-w-0">
+<!-- Drop Zone -->
+<div class="h-[120px] rounded-lg border border-dashed border-border bg-surface flex flex-col items-center justify-center gap-2 hover:border-accent hover:bg-accent-subtle transition-all duration-150 cursor-pointer group">
+<div class="flex items-center gap-2 text-text-main group-hover:text-accent">
+<span class="material-symbols-outlined text-[24px]">upload_file</span>
+<span class="text-body font-medium">Drop images here or click to browse</span>
+</div>
+<span class="font-mono text-caption text-text-muted">.png .jpg .webp .avif .bmp .gif .tiff</span>
+</div>
+<!-- File List -->
+<div class="bg-surface border border-border rounded-lg overflow-hidden flex flex-col">
+<!-- File Row 1 -->
+<div class="flex items-center gap-4 p-3 border-b border-border last:border-b-0 hover:bg-gray-50 transition-colors duration-150 group">
+<div class="w-10 h-10 rounded border border-border overflow-hidden bg-gray-100 flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A clean, minimalist abstract composition featuring soft geometric shapes in a bright, modern light-mode setting. Subtle pastel colors blend seamlessly, embodying a precise and calm utilitarian aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxPZwpw_gkUUeLuNIwp3DF_Th1d4UCUgxr2no_63W-NxiiHfhezEEGCAkYtYoSCbP-4f3M1RiOMoEC44mgI8TUldfmDpHYI35-BWrkumeHKo6YVbAR5qEF69aCknFFEQlxg3WZAP1nkonMe-B_dVe6N2mO82N6a48EmZoD69lYtDe06OEYM-xi5xoF3AWrjsW0xhAWZ8ATmujyae5JQKF0WxL6SCOyYIJeyvNQZhrp6SGG8Hp2nW4G5jBQcOcrVzji8RSvhjUHwxjF"/>
+</div>
+<div class="flex-1 min-w-0 flex items-center gap-4">
+<span class="font-mono text-body text-text-main truncate">photo-01.png</span>
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200">
+<span class="text-micro font-medium uppercase tracking-wider text-text-muted">PNG</span>
+<span class="material-symbols-outlined text-[12px] text-text-muted">arrow_forward</span>
+<span class="text-micro font-medium uppercase tracking-wider text-accent">WEBP</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-caption text-text-muted">
+<span>2.4 MB</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+<span class="text-status-success">412 KB</span>
+</div>
+<button class="text-text-muted hover:text-status-error opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+</div>
+<!-- File Row 2 -->
+<div class="flex items-center gap-4 p-3 border-b border-border last:border-b-0 hover:bg-gray-50 transition-colors duration-150 group">
+<div class="w-10 h-10 rounded border border-border overflow-hidden bg-gray-100 flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A clean, minimalist abstract composition featuring soft geometric shapes in a bright, modern light-mode setting. Subtle pastel colors blend seamlessly, embodying a precise and calm utilitarian aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXnHlW0v2aI0yuw8naiPrYWylkbQSxvjdQX4nMs0CXYqKlnvFTS2LdgQy-3SLwFgVa_2uQTfxV5UGWUj_KLDg72Z-9A0DeMG7TMwkJMZFRx-dAERrOXn0nUKVsAeyTgGj6qxLfpY5opDXM8JDo7ZG3cezwL9CBow-V-runMlOCX7ikrLcO3XimYkwGhxJz8YeHewrndN1-aFHK8R8EuzGaUjGxaeGiDBjve_IFrDETK_6xEOlEcCZvdz2CjUoNU5I4Q5p5ffF8sQae"/>
+</div>
+<div class="flex-1 min-w-0 flex items-center gap-4">
+<span class="font-mono text-body text-text-main truncate">screenshot.webp</span>
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200">
+<span class="text-micro font-medium uppercase tracking-wider text-text-muted">WEBP</span>
+<span class="material-symbols-outlined text-[12px] text-text-muted">arrow_forward</span>
+<span class="text-micro font-medium uppercase tracking-wider text-accent">WEBP</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-caption text-text-muted">
+<span>1.1 MB</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+<span class="text-status-success">320 KB</span>
+</div>
+<button class="text-text-muted hover:text-status-error opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+</div>
+<!-- File Row 3 -->
+<div class="flex items-center gap-4 p-3 border-b border-border last:border-b-0 hover:bg-gray-50 transition-colors duration-150 group">
+<div class="w-10 h-10 rounded border border-border overflow-hidden bg-gray-100 flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A clean, minimalist abstract composition featuring soft geometric shapes in a bright, modern light-mode setting. Subtle pastel colors blend seamlessly, embodying a precise and calm utilitarian aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOK16XjPAKuTWkzFpflubnsiPZ5vrDtyZJeSl6-TlD5JLF1O2z8ezXkdM1xcIQgciEUZv6pcuKOurHdIFsvprrIs6fkGQxONJbbL-M6BwhpzD9u0BptTi0b8YFv72M7FwnWnDPAEG9WwF0zKT6qQpaNYHNAd-7hm2IwEBkXU5oHGwA7S5grToUn64mPdZP6YrQ6_uazrq2kB52tK3Mlb67EuOZHar5mfbDlpjC_vB9i4OerQ5_3jWgK3-dy2IuH4qp-tPxOAEP26dI"/>
+</div>
+<div class="flex-1 min-w-0 flex items-center gap-4">
+<span class="font-mono text-body text-text-main truncate">scan.tiff</span>
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200">
+<span class="text-micro font-medium uppercase tracking-wider text-text-muted">TIFF</span>
+<span class="material-symbols-outlined text-[12px] text-text-muted">arrow_forward</span>
+<span class="text-micro font-medium uppercase tracking-wider text-accent">WEBP</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-caption text-text-muted">
+<span>18.5 MB</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+<span class="text-status-success">1.2 MB</span>
+</div>
+<button class="text-text-muted hover:text-status-error opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Live Preview -->
+<div class="bg-surface border border-border rounded-lg p-4 flex flex-col gap-4">
+<h3 class="text-body font-semibold text-text-main flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">compare</span> Live Preview
+                    </h3>
+<div class="flex gap-4 h-48">
+<div class="flex-1 rounded border border-border overflow-hidden relative bg-gray-100">
+<img class="w-full h-full object-cover" data-alt="A detailed, sharp photograph of a geometric architectural structure in bright daylight. The image exemplifies high clarity and precise utilitarian design, matching the modern light-mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbkx9j4TxM5NBjpWTSQ6Cznem9uqgsi-snHRpfKCmVunaHpd4ecGjlQ80_bWKEHrkDKMztqnfDjbOyGUHmzFB92KHU1ZY28qcIbJ0EjsANA0JN7WFX_SYYrGcwSAnXjDGa1tGg5MrNNH0rB192ApMALVbshlKw5pkQHzJWp6Ai6HtWw0D706mSPHztjtlG70e6aWV17qHPbo5BHMrhCPAJ1xpfcWI2m8mdEqY5mkoPri7pFRmjqOvp4Ci_ne7fM6Hrzgu-jDM-IHSN"/>
+<div class="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded shadow-sm text-caption font-medium border border-gray-200">Original</div>
+</div>
+<div class="flex-1 rounded border border-accent overflow-hidden relative bg-gray-100">
+<img class="w-full h-full object-cover filter blur-[0.5px]" data-alt="A detailed, sharp photograph of a geometric architectural structure in bright daylight. The image exemplifies high clarity and precise utilitarian design, matching the modern light-mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuChbRhNnVi8gcvUSSaugPWDmvY98ad_IKaPvkHEyBedcesXE4kP-AUJASRCH7zB3QyR1kHDj-JEzUvgef20WbZvYEaP7b1h0b8ndpEy6Pee4i6wZ8qP2124FF8JEIMDxFYwj_7rg2oIx-N5gFab1l52150IzH1b39chuDCscVimlpYICxhTolUhsb4GH5bLMeH2WzMhby2l1uE1mfYxaJ0zn_iF0ov5lACpElQhgh3i2tVHqR4ej6BskVVghTE7dABdxEHvlp9XBOKu"/>
+<div class="absolute top-2 left-2 bg-accent text-white px-2 py-1 rounded shadow-sm text-caption font-medium">Converted</div>
+</div>
+</div>
+<div class="flex justify-center">
+<span class="font-mono text-caption text-text-muted bg-gray-50 px-3 py-1 rounded border border-gray-200">
+                            quality 82 · −83% size
+                        </span>
+</div>
+</div>
+</div>
+<!-- Right Options Panel -->
+<aside class="w-full lg:w-72 flex-shrink-0 flex flex-col gap-6">
+<div class="bg-surface border border-border rounded-lg p-5 flex flex-col gap-5">
+<!-- Output Format -->
+<div class="flex flex-col gap-1.5">
+<label class="text-[13px] font-medium text-text-main">Output format</label>
+<select class="block w-full rounded-md border-border text-body shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 h-9 py-1 px-3">
+<option selected="" value="webp">WebP</option>
+<option value="jpeg">JPEG</option>
+<option value="png">PNG</option>
+<option value="avif">AVIF</option>
+</select>
+</div>
+<!-- Quality -->
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between items-center">
+<label class="text-[13px] font-medium text-text-main">Quality</label>
+<span class="font-mono text-caption text-text-muted">82%</span>
+</div>
+<input class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-accent" max="100" min="1" type="range" value="82"/>
+</div>
+<!-- Resize -->
+<div class="flex flex-col gap-1.5 pt-2 border-t border-border">
+<label class="text-[13px] font-medium text-text-main">Resize width (px)</label>
+<input class="block w-full rounded-md border-border text-body shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 h-9 py-1 px-3" type="number" value="1920"/>
+</div>
+<!-- Aspect Ratio -->
+<div class="flex items-start gap-2">
+<input checked="" class="mt-0.5 rounded border-gray-300 text-accent focus:ring-accent cursor-pointer" type="checkbox"/>
+<label class="text-[13px] font-medium text-text-main cursor-pointer leading-tight">
+                            Keep aspect ratio
+                        </label>
+</div>
+<!-- EXIF -->
+<div class="flex flex-col gap-1 pt-2 border-t border-border">
+<div class="flex items-start gap-2">
+<input class="mt-0.5 rounded border-gray-300 text-accent focus:ring-accent cursor-pointer" type="checkbox"/>
+<label class="text-[13px] font-medium text-text-main cursor-pointer leading-tight">
+                                Strip EXIF metadata
+                            </label>
+</div>
+<p class="text-caption text-text-muted ml-6">Removes GPS and camera data</p>
+</div>
+</div>
+<!-- Bottom Actions container to push them to bottom if needed, though they sit below panel here -->
+<div class="mt-auto flex flex-col gap-4">
+<!-- Progress Bar (Thin) -->
+<div class="w-full h-[3px] bg-gray-200 rounded-full overflow-hidden">
+<div class="h-full bg-accent w-0 transition-all duration-300 ease-out" style="width: 0%;"></div>
+</div>
+<!-- Buttons -->
+<div class="flex items-center justify-end gap-3">
+<button class="px-4 py-2 text-body font-medium text-text-main bg-white border border-border rounded-md hover:bg-gray-50 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1">
+                            Reset
+                        </button>
+<button class="px-4 py-2 text-body font-medium text-white bg-accent rounded-md hover:bg-accent-hover transition-colors duration-150 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1">
+                            Convert 3 images
+                            <span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</body></html>

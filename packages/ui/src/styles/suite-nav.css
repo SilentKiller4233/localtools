@@ -1,0 +1,75 @@
+/* Slim top navigation bar — shared by home and every tool page. */
+.lt-suite-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lt-space-4);
+  height: 56px;
+  padding: 0 var(--lt-space-6);
+  background-color: var(--lt-surface);
+  border-bottom: 1px solid var(--lt-border);
+}
+
+.lt-suite-nav__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lt-space-2);
+  font-size: var(--lt-font-size-title);
+  line-height: var(--lt-line-height-title);
+  font-weight: 600;
+  color: var(--lt-text);
+  white-space: nowrap;
+}
+
+.lt-suite-nav__brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lt-suite-nav__tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--lt-space-1);
+  padding: var(--lt-space-1);
+  background-color: var(--lt-canvas);
+  border: 1px solid var(--lt-border);
+  border-radius: var(--lt-radius-pill);
+}
+
+.lt-suite-nav__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lt-space-2);
+  padding: 6px var(--lt-space-4);
+  border: none;
+  border-radius: var(--lt-radius-pill);
+  background-color: transparent;
+  color: var(--lt-text-muted);
+  font-family: inherit;
+  font-size: var(--lt-font-size-body);
+  font-weight: 500;
+  line-height: var(--lt-line-height-body);
+  cursor: pointer;
+}
+
+.lt-suite-nav__tab:hover {
+  color: var(--lt-text);
+}
+
+.lt-suite-nav__tab--active,
+.lt-suite-nav__tab--active:hover {
+  background-color: var(--lt-accent);
+  color: var(--lt-on-accent);
+}
+
+.lt-suite-nav__glyph {
+  font-size: var(--lt-font-size-caption);
+  line-height: 1;
+}
+
+.lt-suite-nav__trailing {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}

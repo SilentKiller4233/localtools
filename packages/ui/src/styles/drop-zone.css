@@ -1,0 +1,77 @@
+/* Drop zone — states mirror the Stitch component sheet exactly. */
+.lt-dropzone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--lt-space-8) var(--lt-space-6);
+  background-color: var(--lt-surface);
+  border: 1px dashed var(--lt-border-strong);
+  border-radius: var(--lt-radius-card);
+  cursor: pointer;
+}
+
+.lt-dropzone--compact {
+  padding: var(--lt-space-3) var(--lt-space-4);
+}
+
+.lt-dropzone__input {
+  /* The real input is visually hidden but must stay focusable/clickable. */
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lt-dropzone__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lt-space-1);
+}
+
+.lt-dropzone__icon {
+  font-size: var(--lt-font-size-title);
+  line-height: 1;
+  color: var(--lt-text-muted);
+}
+
+.lt-dropzone__headline {
+  margin: 0;
+  font-weight: 600;
+  color: var(--lt-text);
+}
+
+.lt-dropzone__hint {
+  margin: 0;
+  font-family: var(--lt-font-mono);
+  font-size: var(--lt-font-size-caption);
+  color: var(--lt-text-muted);
+}
+
+/* drag-over: accent border + faint accent tint */
+.lt-dropzone--drag-over {
+  border-color: var(--lt-accent);
+  background-color: var(--lt-accent-subtle);
+}
+.lt-dropzone--drag-over .lt-dropzone__icon,
+.lt-dropzone--drag-over .lt-dropzone__headline {
+  color: var(--lt-accent);
+}
+
+/* error: error-red dashed border + tint */
+.lt-dropzone--error {
+  border-color: var(--lt-error);
+  background-color: var(--lt-error-bg);
+}
+.lt-dropzone--error .lt-dropzone__icon,
+.lt-dropzone--error .lt-dropzone__headline {
+  color: var(--lt-error-text);
+}
+
+/* uploading: solid border, non-interactive */
+.lt-dropzone--uploading {
+  border-style: solid;
+  cursor: progress;
+}

@@ -1,0 +1,76 @@
+.lt-card {
+  background-color: var(--lt-surface);
+  border: 1px solid var(--lt-border);
+  border-radius: var(--lt-radius-card);
+}
+
+/* Home-grid tool card (Section 9): icon square, name, one-liner, badge. */
+.lt-tool-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lt-space-3);
+  width: 100%;
+  text-align: left;
+  padding: var(--lt-space-4);
+  background-color: var(--lt-surface);
+  border: 1px solid var(--lt-border);
+  border-radius: var(--lt-radius-card);
+  font-family: inherit;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.lt-tool-card:hover,
+.lt-tool-card:focus-visible {
+  border-color: var(--lt-accent);
+  box-shadow: var(--lt-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.lt-tool-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--lt-radius-control);
+  background-color: var(--lt-canvas);
+  color: var(--lt-text-muted);
+}
+
+.lt-tool-card:hover .lt-tool-card__icon,
+.lt-tool-card:focus-visible .lt-tool-card__icon {
+  color: var(--lt-accent);
+  background-color: var(--lt-accent-subtle);
+}
+
+.lt-tool-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin-right: var(--lt-space-6);
+}
+
+.lt-tool-card__title {
+  font-size: var(--lt-font-size-body);
+  font-weight: 600;
+  color: var(--lt-text);
+}
+
+.lt-tool-card__desc {
+  font-size: var(--lt-font-size-caption);
+  color: var(--lt-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lt-tool-card__badge {
+  position: absolute;
+  top: var(--lt-space-3);
+  right: var(--lt-space-3);
+}

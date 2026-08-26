@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Drop Zone — Component States</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f5ff',
+                            100: '#e5edff',
+                            200: '#cddbfe',
+                            300: '#a4bdfd',
+                            400: '#7694fa',
+                            500: '#3b5af4',
+                            600: '#0F62FE', // Accent blue
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                            950: '#172554',
+                        },
+                        neutral: {
+                            50: '#F5F5F5', // Canvas gray
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            300: '#d1d5db',
+                            400: '#9ca3af',
+                            500: '#6b7280',
+                            600: '#4b5563',
+                            700: '#374151',
+                            800: '#1f2937',
+                            900: '#111827',
+                            950: '#030712',
+                        },
+                        status: {
+                            success: '#10b981',
+                            warning: '#f59e0b',
+                            error: '#ef4444',
+                            info: '#3b82f6',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    borderRadius: {
+                        'md': '6px',
+                        'lg': '8px',
+                        'full': '9999px',
+                    },
+                    boxShadow: {
+                        'faint': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #F5F5F5;
+            color: #111827;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+</head>
+<body class="p-8 md:p-12 lg:p-16 min-h-screen flex flex-col items-center">
+<div class="w-full max-w-4xl space-y-12">
+<!-- Header -->
+<header class="mb-12">
+<p class="text-[11px] uppercase tracking-widest text-neutral-500 font-semibold mb-2">LocalTools UI kit</p>
+<h1 class="text-3xl font-semibold tracking-tight text-neutral-900">Drop Zone — Component States</h1>
+</header>
+<!-- Grid of Variants -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-12">
+<!-- 1. DEFAULT -->
+<section class="space-y-3">
+<div class="flex justify-between items-baseline">
+<h2 class="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold">Default</h2>
+<p class="text-xs text-neutral-400 font-mono">Idle state</p>
+</div>
+<div class="bg-white border border-dashed border-neutral-300 rounded-lg p-8 flex flex-col items-center justify-center text-center transition-colors duration-150 hover:border-neutral-400 hover:shadow-faint">
+<span class="material-symbols-outlined text-4xl text-neutral-400 mb-4" data-icon="cloud_upload">cloud_upload</span>
+<p class="text-[14px] font-semibold text-neutral-900 mb-1">Drop files here or click to browse</p>
+<p class="text-[13px] text-neutral-500 font-mono">.pdf .png .jpg · up to 500 MB</p>
+</div>
+</section>
+<!-- 2. DRAG-OVER -->
+<section class="space-y-3">
+<div class="flex justify-between items-baseline">
+<h2 class="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold">Drag-over</h2>
+<p class="text-xs text-neutral-400 font-mono">onDragOver state</p>
+</div>
+<div class="bg-brand-50 border border-dashed border-brand-600 rounded-lg p-8 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-4xl text-brand-600 mb-4" data-icon="cloud_upload">cloud_upload</span>
+<p class="text-[14px] font-semibold text-brand-600 mb-1">Drop files here to upload</p>
+<p class="text-[13px] text-brand-600/70 font-mono">Ready to receive</p>
+</div>
+</section>
+<!-- 3. UPLOADING -->
+<section class="space-y-3 col-span-1 md:col-span-2 max-w-xl">
+<div class="flex justify-between items-baseline">
+<h2 class="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold">Uploading</h2>
+<p class="text-xs text-neutral-400 font-mono">Processing state</p>
+</div>
+<div class="bg-white border border-neutral-200 rounded-lg p-4 shadow-faint">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-neutral-400" data-icon="description">description</span>
+<span class="text-[14px] font-mono text-neutral-900">report.pdf</span>
+</div>
+<span class="text-[12px] font-mono text-neutral-500">65% · 4.2 MB/s</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-neutral-100 rounded-full h-[3px] overflow-hidden">
+<div class="bg-brand-600 h-[3px] rounded-full" style="width: 65%"></div>
+</div>
+</div>
+</section>
+<!-- 4. ERROR -->
+<section class="space-y-3">
+<div class="flex justify-between items-baseline">
+<h2 class="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold">Error</h2>
+<p class="text-xs text-neutral-400 font-mono">Validation failed</p>
+</div>
+<div class="bg-red-50 border border-dashed border-status-error rounded-lg p-8 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-4xl text-status-error mb-4" data-icon="error">error</span>
+<p class="text-[14px] font-semibold text-status-error mb-1">This file type isn't supported</p>
+<p class="text-[13px] text-status-error/80 font-mono">received: movie.exe</p>
+</div>
+</section>
+<!-- 5. COMPACT -->
+<section class="space-y-3">
+<div class="flex justify-between items-baseline">
+<h2 class="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold">Compact</h2>
+<p class="text-xs text-neutral-400 font-mono">List footer</p>
+</div>
+<button class="w-full bg-white border border-dashed border-neutral-300 rounded-lg p-4 flex items-center justify-center space-x-3 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-brand-600 focus:ring-offset-1 focus:ring-offset-neutral-50">
+<span class="material-symbols-outlined text-neutral-500 text-xl" data-icon="add">add</span>
+<span class="text-[14px] font-semibold text-neutral-700">Add more files</span>
+<span class="text-neutral-300">·</span>
+<span class="text-[13px] text-neutral-500 font-mono">3 selected · 5.1 MB total</span>
+</button>
+</section>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,19 @@
+/* Small square icon-ish button used for the theme override control. */
+.lt-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--lt-border-strong);
+  border-radius: var(--lt-radius-control);
+  background-color: var(--lt-surface);
+  color: var(--lt-text-muted);
+  font-size: var(--lt-font-size-body);
+  cursor: pointer;
+}
+
+.lt-theme-toggle:hover {
+  color: var(--lt-accent);
+  border-color: var(--lt-accent);
+}

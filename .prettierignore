@@ -4,3 +4,4 @@ node_modules/
 .turbo/
 coverage/
 apps/desktop/src-tauri/
+packages/ui/stitch-reference/

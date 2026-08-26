@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LocalTools - PDF Tools</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#f9fafb', // near-white app background
+                        surface: '#ffffff', // white cards
+                        canvas: '#f3f4f6', // subtle gray canvas
+                        border: '#e5e7eb', // hairline gray borders
+                        accent: '#0F62FE', // ONE sparing accent
+                        accentHover: '#004ee3',
+                        text: {
+                            main: '#111827',
+                            muted: '#6b7280',
+                        },
+                        status: {
+                            success: '#10b981',
+                            successBg: '#d1fae5',
+                            successText: '#065f46',
+                            warning: '#f59e0b',
+                            warningBg: '#fef3c7',
+                            warningText: '#92400e',
+                            error: '#ef4444',
+                            info: '#0F62FE',
+                        }
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        card: "8px",
+                        input: "6px",
+                        button: "6px",
+                        pill: "9999px"
+                    },
+                    spacing: {
+                        '1': '4px',
+                        '2': '8px',
+                        '3': '12px',
+                        '4': '16px',
+                        '6': '24px',
+                        '8': '32px',
+                    },
+                    fontFamily: {
+                        ui: ["Inter", "sans-serif"],
+                        mono: ["JetBrains Mono", "monospace"],
+                        headline: ["Inter"],
+                        display: ["Inter"],
+                        body: ["Inter"],
+                        label: ["Public Sans"]
+                    },
+                    fontSize: {
+                        display: ['30px', { lineHeight: '36px', fontWeight: '600' }],
+                        title: ['20px', { lineHeight: '28px', fontWeight: '600' }],
+                        heading: ['16px', { lineHeight: '24px', fontWeight: '600' }],
+                        body: ['14px', { lineHeight: '20px', fontWeight: '400' }],
+                        caption: ['12px', { lineHeight: '16px', fontWeight: '400' }],
+                        micro: ['11px', { lineHeight: '12px', fontWeight: '600', letterSpacing: '0.05em' }],
+                    },
+                    boxShadow: {
+                        cardHover: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: theme('colors.background');
+            color: theme('colors.text.main');
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .transition-subtle {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+
+        /* Tool card hover effects */
+        .tool-card:hover {
+            border-color: theme('colors.accent');
+            box-shadow: theme('boxShadow.cardHover');
+            transform: translateY(-1px);
+        }
+        
+        .tool-card:hover .icon-container {
+            color: theme('colors.accent');
+            background-color: rgba(15, 98, 254, 0.1);
+        }
+
+        /* Hide scrollbar for clean look but allow scrolling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.border');
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.text.muted');
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<!-- Top Navigation Bar (from JSON) -->
+<header class="bg-surface w-full h-14 border-b border-border flex justify-between items-center px-6 max-w-full sticky top-0 z-50">
+<!-- Brand -->
+<div class="flex items-center gap-2 font-ui font-semibold text-[20px] text-text-main">
+<span class="material-symbols-outlined text-text-main text-[20px]" style="font-variation-settings: 'FILL' 1;">build</span>
+            LocalTools
+        </div>
+<!-- Navigation Tabs -->
+<nav class="hidden md:flex items-center gap-1 bg-canvas p-1 rounded-pill border border-border">
+<a class="px-4 py-1.5 text-sm font-medium rounded-pill transition-subtle flex items-center gap-2 bg-accent text-white shadow-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                PDF
+            </a>
+<a class="px-4 py-1.5 text-sm font-medium text-text-muted hover:text-text-main rounded-pill transition-subtle flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[18px]">movie</span>
+                Media
+            </a>
+<a class="px-4 py-1.5 text-sm font-medium text-text-muted hover:text-text-main rounded-pill transition-subtle flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[18px]">image</span>
+                Image
+            </a>
+<a class="px-4 py-1.5 text-sm font-medium text-text-muted hover:text-text-main rounded-pill transition-subtle flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[18px]">code</span>
+                Text &amp; Dev
+            </a>
+</nav>
+<!-- Search / Actions -->
+<div class="flex items-center">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-[18px]">search</span>
+<input class="w-48 pl-9 pr-3 py-1.5 bg-canvas border border-transparent rounded-input text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-subtle text-text-main placeholder-text-muted" placeholder="Search tools..." type="text"/>
+</div>
+<button class="sm:hidden p-2 text-text-muted hover:text-text-main transition-subtle">
+<span class="material-symbols-outlined">search</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<!-- Header Section -->
+<div class="mb-8">
+<h1 class="text-title text-text-main mb-1">PDF Tools</h1>
+<p class="text-body text-text-muted">27 tools — everything runs locally in your browser</p>
+</div>
+<!-- Filter Input -->
+<div class="relative mb-6">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-[18px]">filter_list</span>
+<input class="w-full pl-9 pr-4 py-2 bg-surface border border-border rounded-input text-body focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-subtle placeholder-text-muted shadow-sm" placeholder="Filter tools…" type="text"/>
+</div>
+<!-- Tools Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<!-- Tool Card: Merge PDF -->
+<div class="tool-card group relative bg-surface border border-border rounded-card p-4 transition-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="icon-container w-8 h-8 rounded bg-canvas flex items-center justify-center text-text-muted transition-subtle border border-border group-hover:border-accent/30">
+<span class="material-symbols-outlined text-[18px]">file_copy</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-pill text-micro uppercase tracking-wider bg-status-successBg text-status-successText">Instant</span>
+</div>
+<h3 class="text-heading text-text-main mb-1">Merge PDF</h3>
+<p class="text-caption text-text-muted flex-1">Combine multiple PDFs into one.</p>
+</div>
+<!-- Tool Card: Split PDF -->
+<div class="tool-card group relative bg-surface border border-border rounded-card p-4 transition-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="icon-container w-8 h-8 rounded bg-canvas flex items-center justify-center text-text-muted transition-subtle border border-border group-hover:border-accent/30">
+<span class="material-symbols-outlined text-[18px]">content_cut</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-pill text-micro uppercase tracking-wider bg-status-successBg text-status-successText">Instant</span>
+</div>
+<h3 class="text-heading text-text-main mb-1">Split PDF</h3>
+<p class="text-caption text-text-muted flex-1">Split by range, every N pages, or size.</p>
+</div>
+<!-- Tool Card: Rotate Pages -->
+<div class="tool-card group relative bg-surface border border-border rounded-card p-4 transition-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="icon-container w-8 h-8 rounded bg-canvas flex items-center justify-center text-text-muted transition-subtle border border-border group-hover:border-accent/30">
+<span class="material-symbols-outlined text-[18px]">rotate_right</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-pill text-micro uppercase tracking-wider bg-status-successBg text-status-successText">Instant</span>
+</div>
+<h3 class="text-heading text-text-main mb-1">Rotate Pages</h3>
+<p class="text-caption text-text-muted flex-1">Rotate specific pages or entire document.</p>
+</div>
+<!-- Tool Card: Delete Pages -->
+<div class="tool-card group relative bg-surface border border-border rounded-card p-4 transition-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="icon-container w-8 h-8 rounded bg-canvas flex items-center justify-center text-text-muted transition-subtle border border-border group-hover:border-accent/30">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-pill text-micro uppercase tracking-wider bg-status-successBg text-status-successText">Instant</span>
+</div>
+<h3 class="text-heading text-text-main mb-1">Delete Pages</h3>
+<p class="text-caption text-text-muted flex-1">Remove unwanted pages from a PDF.</p>
+</div>
+<!-- Tool Card: Extract Pages -->
+<div class="tool-card group relative bg-surface border border-border rounded-card p-4 transition-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="icon-container w-8 h-8 rounded bg-canvas flex items-center justify-center text-text-muted transition-subtle border border-border group-hover:border-accent/30">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-pill text-micro uppercase tracking-wider bg-status-successBg text-status-successText">Instant</span>
+</div>
+<h3 class="text-heading text-text-main mb-1">Extract Pages</h3>
+<p class="text-caption text-text-muted flex-1">Pull out specific pages as a new file.</p>
+</div>
+<!-- Tool Card: Reorder Pages -->
+<div class="tool-card group relative bg-surface border border-border rounded-card p-4 transition-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="icon-container w-8 h-8 rounded bg-canvas flex items-center justify-center text-text-muted transition-subtle border border-border group-hover:border-accent/30">
+<span class="material-symbols-outlined text-[18px]">drag_indicator</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-pill text-micro uppercase tracking-wider bg-status-successBg text-status-successText">Instant</span>
+</div>
+<h3 class="text-heading text-text-main mb-1">Reorder Pages</h3>
+<p class="text-caption text-text-muted flex-1">Change the sequence of pages.</p>
+</div>
+<!-- Tool Card: Compress PDF -->
+<div class="tool-card group relative bg-surface border border-border rounded-card p-4 transition-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="icon-container w-8 h-8 rounded bg-canvas flex items-center justify-center text-text-muted transition-subtle border border-border group-hover:border-accent/30">
+<span class="material-symbols-outlined text-[18px]">compress</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-pill text-micro uppercase tracking-wider bg-status-warningBg text-status-warningText">One-time setup</span>
+</div>
+<h3 class="text-heading text-text-main mb-1">Compress PDF</h3>
+<p class="text-caption text-text-muted flex-1">Reduce file size with minimal quality loss.</p>
+</div>
+<!-- Tool Card: Protect PDF -->
+<div class="tool-card group relative bg-surface border border-border rounded-card p-4 transition-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="icon-container w-8 h-8 rounded bg-canvas flex items-center justify-center text-text-muted transition-subtle border border-border group-hover:border-accent/30">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-pill text-micro uppercase tracking-wider bg-status-successBg text-status-successText">Instant</span>
+</div>
+<h3 class="text-heading text-text-main mb-1">Protect PDF</h3>
+<p class="text-caption text-text-muted flex-1">Add password encryption.</p>
+</div>
+<!-- Tool Card: Compare PDFs -->
+<div class="tool-card group relative bg-surface border border-border rounded-card p-4 transition-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="icon-container w-8 h-8 rounded bg-canvas flex items-center justify-center text-text-muted transition-subtle border border-border group-hover:border-accent/30">
+<span class="material-symbols-outlined text-[18px]">view_column</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-pill text-micro uppercase tracking-wider bg-status-successBg text-status-successText">Instant</span>
+</div>
+<h3 class="text-heading text-text-main mb-1">Compare PDFs</h3>
+<p class="text-caption text-text-muted flex-1">Visual and text diff between two files.</p>
+</div>
+</div>
+</main>
+</body></html>

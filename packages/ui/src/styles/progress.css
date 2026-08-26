@@ -1,0 +1,29 @@
+/* Thin 3px linear progress bar. */
+.lt-progress {
+  width: 100%;
+  height: 3px;
+  border-radius: var(--lt-radius-pill);
+  background-color: var(--lt-canvas);
+  overflow: hidden;
+}
+
+.lt-progress__fill {
+  height: 100%;
+  width: 0;
+  background-color: var(--lt-accent);
+  transition: width var(--lt-dur-base) var(--lt-ease);
+}
+
+.lt-progress__fill--indeterminate {
+  width: 40%;
+  animation: lt-progress-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes lt-progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}

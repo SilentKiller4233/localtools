@@ -1,0 +1,133 @@
+/*
+ * LocalTools design tokens — single source of truth for theming.
+ *
+ * Translated from the Stitch MCP design direction (see ./stitch-reference/
+ * and DECISIONS.md D-011). Light theme is canonical; dark theme mirrors the
+ * same ramp with lifted surfaces and a contrast-adjusted accent.
+ *
+ * Naming convention: every custom property is prefixed `--lt-`.
+ */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --lt-bg: #f9fafb;
+  --lt-surface: #ffffff;
+  --lt-canvas: #f3f4f6;
+  --lt-recessed: #f3f4f6;
+  --lt-border: #e5e7eb;
+  --lt-border-strong: #d1d5db;
+
+  /* Text */
+  --lt-text: #111827;
+  --lt-text-muted: #6b7280;
+  --lt-text-faint: #9ca3af;
+
+  /* The one sparing accent */
+  --lt-accent: #0f62fe;
+  --lt-accent-hover: #004ee3;
+  --lt-accent-subtle: rgba(15, 98, 254, 0.08);
+  --lt-on-accent: #ffffff;
+  --lt-focus-ring: rgba(15, 98, 254, 0.45);
+
+  /* Semantic status — muted, tinted, used only for status */
+  --lt-success: #10b981;
+  --lt-success-bg: #d1fae5;
+  --lt-success-text: #065f46;
+  --lt-warning: #f59e0b;
+  --lt-warning-bg: #fef3c7;
+  --lt-warning-text: #92400e;
+  --lt-error: #ef4444;
+  --lt-error-bg: #fee2e2;
+  --lt-error-text: #991b1b;
+  --lt-info: #0f62fe;
+  --lt-info-bg: rgba(15, 98, 254, 0.08);
+  --lt-info-text: #1e40af;
+
+  /* Elevation — nearly absent, faint ambient lift on hover only */
+  --lt-shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --lt-bg: #0d1117;
+  --lt-surface: #161b22;
+  --lt-canvas: #11161d;
+  --lt-recessed: #0a0e13;
+  --lt-border: #2a3038;
+  --lt-border-strong: #3a414b;
+
+  --lt-text: #e6edf3;
+  --lt-text-muted: #9aa4b2;
+  --lt-text-faint: #6e7885;
+
+  /* Contrast-adjusted accent for dark surfaces (WCAG AA against --lt-on-accent) */
+  --lt-accent: #1f6feb;
+  --lt-accent-hover: #388bfd;
+  --lt-accent-subtle: rgba(31, 111, 235, 0.16);
+  --lt-on-accent: #ffffff;
+  --lt-focus-ring: rgba(56, 139, 253, 0.55);
+
+  --lt-success: #34d399;
+  --lt-success-bg: rgba(52, 211, 153, 0.12);
+  --lt-success-text: #6ee7b7;
+  --lt-warning: #fbbf24;
+  --lt-warning-bg: rgba(251, 191, 36, 0.12);
+  --lt-warning-text: #fcd34d;
+  --lt-error: #f87171;
+  --lt-error-bg: rgba(248, 113, 113, 0.12);
+  --lt-error-text: #fca5a5;
+  --lt-info: #58a6ff;
+  --lt-info-bg: rgba(88, 166, 255, 0.12);
+  --lt-info-text: #a5cfff;
+
+  --lt-shadow-hover: 0 4px 8px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
+}
+
+:root {
+  /*
+   * Typography — Inter for all UI text; JetBrains Mono ONLY for technical
+   * output. Both MUST be self-hosted in production (PROJECT_SPEC Section 7);
+   * until the font files land, these stacks fall back to system equivalents.
+   * See fonts/README.md and DECISIONS.md D-011.
+   */
+  --lt-font-ui:
+    'Inter', 'InterVariable', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --lt-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Strict named type scale */
+  --lt-font-size-display: 30px;
+  --lt-line-height-display: 36px;
+  --lt-weight-display: 600;
+  --lt-font-size-title: 20px;
+  --lt-line-height-title: 28px;
+  --lt-font-size-heading: 16px;
+  --lt-line-height-heading: 24px;
+  --lt-font-size-body: 14px;
+  --lt-line-height-body: 20px;
+  --lt-font-size-caption: 12px;
+  --lt-line-height-caption: 16px;
+  --lt-font-size-micro: 11px;
+  --lt-line-height-micro: 12px;
+  --lt-letter-spacing-micro: 0.05em;
+
+  /* Strict 4px spacing scale */
+  --lt-space-1: 4px;
+  --lt-space-2: 8px;
+  --lt-space-3: 12px;
+  --lt-space-4: 16px;
+  --lt-space-6: 24px;
+  --lt-space-8: 32px;
+
+  /* Shape */
+  --lt-radius-card: 8px;
+  --lt-radius-control: 6px;
+  --lt-radius-pill: 999px;
+
+  /* Motion — subtle, purposeful, reduced-motion aware (see global.css) */
+  --lt-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --lt-dur-fast: 120ms;
+  --lt-dur-base: 150ms;
+}

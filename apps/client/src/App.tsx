@@ -1,34 +1,56 @@
+import { useEffect, useState } from 'react';
 import type { SuiteId } from '@localtools/shared-types';
-import { UI_PACKAGE_STUB } from '@localtools/ui';
+import { SuiteNav } from '@localtools/ui';
+import { UiPreviewPage } from './pages/UiPreviewPage';
 
 /**
- * Phase 0 shell stub. Real routing, suite nav, and tool grids arrive in
- * Phases 1–2 after the Stitch MCP design pass (PROJECT_SPEC Sections 7/9).
+ * Phase 1 shell: hash routing between the placeholder home page and the
+ * /dev/ui-preview acceptance surface. Real per-suite routes arrive in
+ * Phase 2 (react-router), so this router is deliberately minimal.
  */
-const SUITES: ReadonlyArray<{ id: SuiteId; name: string; status: string }> = [
-  { id: 'pdf', name: 'PDF Tools', status: 'Phase 3' },
-  { id: 'media', name: 'Media Tools', status: 'Phases 7–9' },
-  { id: 'image', name: 'Image Tools', status: 'Phase 5' },
-  { id: 'devtext', name: 'Text & Dev Tools', status: 'Phase 6' },
-];
-
 export function App() {
+  const [route, setRoute] = useState(
+    () => window.location.hash.replace(/^#/, '') || window.location.pathname,
+  );
+  const [activeSuite, setActiveSuite] = useState<SuiteId>('pdf');
+
+  // Registered once with cleanup — a render-body listener would stack up
+  // under StrictMode's double mount.
+  useEffect(() => {
+    const onRouteChange = () => {
+      setRoute(window.location.hash.replace(/^#/, '') || window.location.pathname);
+    };
+    window.addEventListener('hashchange', onRouteChange);
+    return () => {
+      window.removeEventListener('hashchange', onRouteChange);
+    };
+  }, []);
+
+  if (route.startsWith('/dev/ui-preview')) {
+    return <UiPreviewPage />;
+  }
+
   return (
-    <main>
-      <h1>LocalTools</h1>
-      <p>Self-hosted, privacy-first quality-of-life toolkit. Scaffold stub (Phase 0).</p>
-      <ul aria-label="Suites">
-        {SUITES.map((suite) => (
-          <li key={suite.id}>
-            <strong>{suite.name}</strong> — planned for {suite.status}
-          </li>
-        ))}
-      </ul>
-      <p>
-        <small>
-          Shared UI package linked: <code>{UI_PACKAGE_STUB}</code>
-        </small>
-      </p>
-    </main>
+    <div>
+      <SuiteNav
+        active={activeSuite}
+        onNavigate={(suite) => {
+          setActiveSuite(suite);
+        }}
+        trailing={
+          <a className="app-dev-link" href="#/dev/ui-preview">
+            UI preview →
+          </a>
+        }
+      />
+      <main className="app-main">
+        <h1>LocalTools</h1>
+        <p>
+          Self-hosted, privacy-first quality-of-life toolkit. Suite pages and tool grids land in
+          Phase 2 — the Phase 1 design direction lives at{' '}
+          <a href="#/dev/ui-preview">/dev/ui-preview</a>.
+        </p>
+      </main>
+    </div>
   );
 }
