@@ -1,67 +1,50 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-08-30 19:45 PKT (UTC+05:00), mid-session — Phase 2 closeout in progress_
+_Last updated: 2026-08-30 19:55 PKT (UTC+05:00), end of session 4 — Phase 2 committed, pushed, CI green_
 
 ## Where things stand right now
 
-**Phase 2 (client shell) is code-complete and locally verified but NOT yet committed.** Phases 0–1 are complete, committed, pushed, CI-green (`main` @ `1b04c18`). The working tree holds all Phase 2 work (verified by inspection this session): vendored fonts, lucide-react wiring, 97-tool registry, hash router + suite/tool pages, PWA manifest/SW/icons, offline test script. This session is executing the Phase 2 closeout: docs updates (TESTS/DECISIONS), dependency cleanup, verify → commit → push → CI check → SUMMARY → final HANDOFF rewrite.
+**Phases 0–2 of PROJECT_SPEC Section 15 are complete, committed, pushed, and CI-green** on `main`. HEAD after Phase 2 commit: `be2d5c7` (`feat(client): Phase 2 — client shell, tool registry, PWA`); CI run 33318482555 succeeded (compose-validate + verify on ubuntu and windows). Phase 2 acceptance verified last session and logged in TESTS.md: Lighthouse 12 real run (perf 82 / a11y 100 / BP 100 / SEO 91; PWA category no longer exists upstream — reinterpretation recorded as D-012) plus a controlled offline-reload PASS (server killed → reload rendered `h1="Media Tools"` + 18 cards purely from the service-worker cache). **Next: Phase 3 — PDF suite Group A tools** (first functional-tool phase).
 
 ## Last thing done
 
-Session 3 (previous, ended at tool-call ceiling mid-closeout): built and verified all Phase 2 code — `pnpm verify` green 8/8, bundle 63.9KB gzipped (<250KB budget), Lighthouse 12 real scores (perf 82 / a11y 100 / best-practices 100 / SEO 91), controlled offline-reload test **PASS** (`scripts/offline-test.mjs`: puppeteer warmup → SW controlling confirmed → server killed + verified down → reload rendered `h1="Media Tools"` + 18 cards from cache). Work was left intentionally uncommitted when the ceiling hit.
-
-Session 4 (this one, so far): confirmed the tree matches the briefing exactly — 97 tools in registry (73 A / 23 B / 1 C), `i18n/en.json` has 97 tool keys, `PHASE_OVERRIDES` routes TTS + PDF→audiobook to Phase 9, no lucide imports in `packages/ui`, ports 4173/5173/8787 clear. Rewrote this HANDOFF to reflect reality (was stale end-of-Phase-1).
+This session closed out Phase 2 (code was built/verified last session but left uncommitted at the tool-call ceiling): removed the accidental `lucide-react` dep from `packages/ui` (lockfile re-synced; `apps/client` keeps it), appended the Phase 2 section to TESTS.md, recorded DECISIONS.md D-012 (Lighthouse-PWA reinterpretation; TTS/PDF→audiobook → Phase 9 via `PHASE_OVERRIDES`; puppeteer-core devDep rationale), ran `pnpm verify` green 8/8 (bundle 63.9KB gzipped), committed `be2d5c7` (26 files), pushed, confirmed CI green, updated SUMMARY.md to "2 of 15".
 
 ## In-progress / uncommitted work
 
-**All Phase 2 work, uncommitted** (full inventory):
+None, working tree is clean after this session's final docs commit (SUMMARY.md + this HANDOFF.md rewrite). All Phase 2 work is inside `be2d5c7`; the docs closeout is the last commit on `main`.
 
-- `apps/client/package.json` (+ lucide-react dep, + puppeteer-core devDep)
-- `apps/client/index.html` (SW registration snippet)
-- `apps/client/src/App.tsx` (hash router, suite/tool page wiring, lazy `/dev/ui-preview`)
-- `apps/client/src/styles.css` (font-face rules + shell styles)
-- `apps/client/src/lib/router.ts` (NEW — minimal hash router)
-- `apps/client/src/lib/tool-registry.ts` (NEW — 97 tools, PHASE_OVERRIDES → Phase 9 for TTS/audiobook)
-- `apps/client/src/i18n/en.json` (NEW — all display strings, en route to Section 7 i18n mandate)
-- `apps/client/src/pages/SuitePage.tsx` (NEW — filterable grid)
-- `apps/client/src/pages/ToolPage.tsx` (NEW — tool placeholder page)
-- `apps/client/public/manifest.webmanifest`, `apps/client/public/sw.js`, `apps/client/public/icons/` (NEW — PWA)
-- `apps/client/scripts/offline-test.mjs` (NEW — puppeteer-core offline-reload test)
-- `packages/ui/package.json` (⚠️ accidental `lucide-react` dep — this session removes it)
-- `packages/ui/src/tokens.css` (font-face rules)
-- `packages/ui/fonts/` (Inter variable + JetBrains Mono Regular/Medium woff2 + OFL license files + README)
-- `pnpm-lock.yaml`
+## Next immediate steps (in order — do these first)
 
-**Phase 2 closeout steps still to do this session** (in order):
-
-1. Remove `lucide-react` from `packages/ui/package.json`, re-run `pnpm install`
-2. Append Phase 2 section to TESTS.md (scores + PWA-category note + offline methodology)
-3. Add DECISIONS.md D-012 (Lighthouse-PWA reinterpretation; TTS/audiobook → Phase 9; puppeteer-core rationale)
-4. `pnpm verify` green → commit `feat(client): Phase 2 — client shell, tool registry, PWA` → push → confirm CI green
-5. Update SUMMARY.md (2 of 15) → rewrite HANDOFF.md (resume = Phase 3) → docs commit → push → CI
-6. Discord webhook notification (literal last action per protocol skill)
+1. **Phase 3 kickoff:** implement the PDF suite's 21 Group A tools (Section 3.1) in `packages/pdf-core` using `pdf-lib` / `pdfjs-dist` / `@neslinesli93/qpdf-wasm` (add as deps of `pdf-core`; pull current docs via Context7 for `pdfjs-dist`'s worker setup and qpdf-wasm's `callMain` format — both are easy to misremember).
+2. Start with the foundational four (Merge, Split by range/every-N/by-size, Extract pages, Rotate) so the per-tool page pattern (real drop zone → options → progress → human-readable errors, per Section 9) replaces the ToolPage placeholder for real tools; add per-tool routes as suites gain function.
+3. Wire the Section 14.1/14.2 test harness: shared PDF fixtures (`simple-text.pdf`, `malformed.pdf`, `zero-page.pdf`, `password-protected.pdf`, `oversized.pdf`, …), happy-path + malformed/empty/oversized paths per tool; join the test chain into `pnpm verify` (D-009 anticipated this).
+4. Section 14.3 redaction test (content-stream level, not overlay) must land with the Redact tool — treat it as part of that tool's definition of done, plus the 50MB no-main-thread-blocking worker check.
+5. Keep `pnpm verify` green throughout; update SUMMARY.md at phase end; HANDOFF.md last. Commit: `feat(pdf): Phase 3 — PDF suite Group A tools`.
 
 ## Blockers / open decisions needing human input
 
 None blocking. Non-blocking:
 
-- Classic PAT (used for pushes, `repo`+`workflow` scopes) transited chat two sessions ago — rotate at github.com/settings/tokens when convenient, before Phase 15 public flip.
+- Classic PAT used for pushes (`repo`+`workflow` scopes) transited chat two sessions ago — **rotate it** at github.com/settings/tokens when convenient (before Phase 15's public flip at the latest). After rotating, update `~/.git-credentials` and `%APPDATA%/GitHub CLI/hosts.yml` (both hold it; see session-1 gotchas for the eviction path).
 - Deferred decisions unchanged: @imgly/background-removal license re-check (Phase 5, D-001); ffmpeg build variant (Phase 7, D-001); SECURITY.md contact address (D-006).
 
 ## Environment / local state notes
 
-- Working dir: `D:\random projects vibecoded\QOL tools` (spaces — always quote). Windows host, bash (MSYS). Node v22 via pnpm 10.34.5.
-- Ports 4173/5173/8787 verified free this session (no orphaned preview servers).
-- Git auth: classic PAT in `~/.git-credentials` + gh hosts.yml; push works over HTTPS.
-- `packages/ui` ships one stylesheet entry (`import '@localtools/ui/styles.css'`); zero CSS imports in TSX (tsc limitation, D-011).
-- Chrome path for puppeteer-core: `C:/Program Files/Google/Chrome/Application/chrome.exe` (first in CHROME_PATHS list).
+- Working dir: `D:\random projects vibecoded\QOL tools` (spaces — always quote). Windows host, bash (MSYS). Node v22 targeted, pnpm 10.34.5.
+- Git auth: classic PAT in both `~/.git-credentials` and gh's hosts.yml; push works over HTTPS. Repo stays PRIVATE until Phase 15 (D-010).
+- Ports 4173/5173/8787 all free (verified this session; no orphaned preview servers).
+- Chrome for puppeteer-core scripts: `C:/Program Files/Google/Chrome/Application/chrome.exe` (offline-test.mjs auto-resolves it).
+- The puppeteer PWA test profile lives at `%LOCALAPPDATA%/Temp/localtools-pwa-profile` — safe to delete if a future offline test behaves oddly (stale SW registration).
+- `packages/ui` ships one stylesheet entry (`import '@localtools/ui/styles.css'`), zero CSS imports in TSX (tsc limitation, D-011).
 
 ## Useful context / gotchas discovered this session
 
-- The offline-test script had an ESM bug last session (`require('fs')` in `.mjs`) — already fixed with `import { existsSync } from 'node:fs'`; current file is correct, no action needed.
-- `pnpm --filter <pkg> add` installs into that exact package — this is how lucide-react accidentally landed in `packages/ui` (wrong filter target).
-- Orphaned vite preview servers survive wrapper kills — free port by PID: `netstat -ano` → `MSYS_NO_PATHCONV=1 taskkill /F /PID <pid>` (single slashes; `/F` not `//F`).
-- Pillow (not sharp/magick) is available on host for icon resizing if ever needed again.
-- Preview-pane element tracker (drive_preview) can wedge after interactions — text dumps (`desktop_preview read`) stay reliable as fallback.
-- Registry structure: tools are `[id, group, icon]` tuples grouped in per-suite arrays (PDF_GROUP_A, PDF_GROUP_B, MEDIA_TOOLS, IMAGE_TOOLS, DEVTEXT_TOOLS); display strings in `src/i18n/en.json` — grep for `['<id>', '<group>',` to find entries.
-- Session terminal cwd drifts after `cd` — pass absolute paths to file tools or use the `workdir` param.
+- **Prettier check covers the root .md docs** — a plain-prose HANDOFF/TESTS/DECISIONS edit will fail `pnpm verify`'s format gate until `pnpm exec prettier --write <file>` is run. Budget one extra verify cycle for any docs-heavy session (hit this today).
+- `pnpm --filter <pkg> add` installs into exactly that package — verify the target before running (this is how lucide-react landed in `packages/ui` last session).
+- Prettier formats the registry's long tuple arrays; after prettier --write on `tool-registry.ts`, entries collapse to one line each — harmless, just noisy diffs.
+- Tool registry shape: `[id, group, icon]` tuples in per-suite arrays (`PDF_GROUP_A`, `PDF_GROUP_B`, `MEDIA_TOOLS`, `IMAGE_TOOLS`, `DEVTEXT_TOOLS`); display strings in `apps/client/src/i18n/en.json` (97 tool keys); `PHASE_OVERRIDES` maps unlisted tools (TTS, audiobook → 9). Grep with `\['<id>', '(a|b|c)',` to find entries.
+- Orphaned vite previews survive wrapper kills — free the port by PID: `netstat -ano` → `MSYS_NO_PATHCONV=1 taskkill /F /PID <pid>` (single slashes, `/F` not `//F`).
+- `gh run view <id> --json status,conclusion` is the fast CI check; `gh run list --branch main --limit 3` for the run id right after a push (~20s trigger delay).
+- Preview-pane element tracker (drive_preview) can wedge after interactions; `desktop_preview read` text dumps stay reliable.
+- Prior sessions' gotchas still apply and are worth re-reading in git history (`docs: close out Phase 1 session`): gh CLI token validation quirks, Vite dep-optimize staleness, strict-TS lint traps (`no-confusing-void-expression`, `restrict-template-expressions`, `exactOptionalPropertyTypes`).
