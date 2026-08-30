@@ -33,6 +33,27 @@ deferred to Phase 14 per spec phase order.
 | Offline reload (Section 8)                                 | manual (local)    | PASS   | `scripts/offline-test.mjs` (puppeteer-core + system Chrome): warmup pass confirmed `serviceWorker controlling:true` → server killed and verified down (curl connect refused) → reload rendered `h1="Media Tools"` + 18 tool cards from cache → **OFFLINE_RELOAD_PASS** |
 | Chrome installability prerequisites                        | manual (local)    | PASS   | Manifest + versioned SW + icon set (SVG + PNGs) served; SW registers and controls the page on first load                                                                                                                                                               |
 
+## Status: Phase 3 (in progress — batch 1 of the PDF Group A tools)
+
+First functional-tool batch in `@localtools/pdf-core` (harness + foundational
+five). All Section 14.1 paths per tool: happy / malformed / empty / oversized.
+Harness decisions (vitest per-package, committed fixtures, `maxBytes` seam,
+pypdf-generated encrypted fixture, truncated-real-PDF malformed fixture) are
+recorded as D-013.
+
+| Check                                                                                       | Kind      | Result  | Notes                                                                                                                                          |
+| ------------------------------------------------------------------------------------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| loadPdf shared error paths (empty/malformed/zero-page/encrypted/oversized)                  | automated | PASS    | 11 tests, `test/load.test.ts`; encrypted → redirect message naming the Unlock tool (Section 13)                                                |
+| Merge — 3 docs→6pp, single-doc, no-inputs, bad member, empty-bytes member, encrypted member | automated | PASS    | `test/tools.test.ts`                                                                                                                           |
+| Split — every-n=2 → 2+1pp, invalid n, by-size single/multi part, malformed, empty           | automated | PASS    | by-size uses deterministic greedy fill (documented in-code)                                                                                    |
+| Extract — "1,3"→2pp, full-range, out-of-bounds, empty selection, malformed                  | automated | PASS    | Ascending-order emission; custom order is Organize's job                                                                                       |
+| Delete — "2"→2pp, "1-2"→1pp, all-pages rejected, empty selection, malformed                 | automated | PASS    | Remove-everything rejected (a PDF needs ≥1 page)                                                                                               |
+| Rotate — 90° all→[90,90,90], subset, 45° rejected, malformed, empty                         | automated | PASS    | Cumulative rotation via `setRotation((current + angle) % 360)`                                                                                 |
+| `pnpm verify` full gate incl. new test step                                                 | automated | PASS    | verify = format→lint→typecheck→**test**→build; pdf-core 38/38                                                                                  |
+| PDF Group A remaining 16 tools                                                              | automated | pending | Subsequent Phase 3 batches: page-numbers, watermark, metadata, grayscale, resize, N-up, then pdfjs/qpdf-dependent tools, then client UI wiring |
+| Redaction content-removal test (Section 14.3)                                               | automated | pending | Lands with the Redact tool batch (part of its definition of done)                                                                              |
+| 50MB no-main-thread-blocking worker check                                                   | automated | pending | Lands with client UI wiring batch                                                                                                              |
+
 ## Pending (scheduled by later phases)
 
 - Per-tool functional tests — Phases 3–9 (Section 14.1/14.2)

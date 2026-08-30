@@ -1,7 +1,16 @@
-/**
- * PDF suite Group A logic (pdf-lib / pdfjs-dist / qpdf-wasm per Section 4.1).
- *
- * Phase 0 stub: library wiring lands with Phase 3. Nothing here may shell out
- * or touch the network — Group A is strictly in-process/WASM.
- */
-export const PDF_CORE_STUB = '@localtools/pdf-core' as const;
+export { ToolError, MAX_PDF_BYTES, ERROR_MESSAGES, toolError } from './errors';
+export { isPdfLibEncryptionError } from './errors';
+export { loadPdf, parsePageRanges, assertSize, hasPdfSignature } from './load';
+export { mergePdfs } from './tools/merge';
+export { splitPdf } from './tools/split';
+export type {
+  SplitMode,
+  SplitOptions,
+  SplitEveryNOptions,
+  SplitBySizeOptions,
+  SplitOutput,
+} from './tools/split';
+export { extractPages } from './tools/extract';
+export { deletePages } from './tools/delete';
+export { rotatePages } from './tools/rotate';
+export type { RotateOptions } from './tools/rotate';

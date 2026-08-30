@@ -4,7 +4,7 @@ _Last updated: 2026-08-30 19:55 PKT (UTC+05:00), end of session 4 — Phase 2 co
 
 ## Where things stand right now
 
-**Phases 0–2 of PROJECT_SPEC Section 15 are complete, committed, pushed, and CI-green** on `main`. HEAD after Phase 2 commit: `be2d5c7` (`feat(client): Phase 2 — client shell, tool registry, PWA`); CI run 33318482555 succeeded (compose-validate + verify on ubuntu and windows). Phase 2 acceptance verified last session and logged in TESTS.md: Lighthouse 12 real run (perf 82 / a11y 100 / BP 100 / SEO 91; PWA category no longer exists upstream — reinterpretation recorded as D-012) plus a controlled offline-reload PASS (server killed → reload rendered `h1="Media Tools"` + 18 cards purely from the service-worker cache). **Next: Phase 3 — PDF suite Group A tools** (first functional-tool phase).
+**Phase 3 (PDF suite Group A tools) IN PROGRESS — batch 1 committed, tree clean after commit.** Batch 1 delivered the vitest harness + Section 14.2 fixtures + foundational five tools (Merge, Split, Extract, Delete, Rotate) with full Section 14.1 coverage — `pnpm verify` green including the new test step (verify = format→lint→typecheck→**test**→build), pdf-core 38/38. Remaining Phase 3 batches: (2) pdf-lib content tools — page-numbers, watermark, edit-metadata, grayscale, resize-pages, n-up-layout; (3) pdfjs/qpdf-dependent tools — pdf-to-text, pdf-to-image, image-to-pdf, compare-pdfs, protect/unlock (qpdf-wasm), optimize, quick-compress, repair, fill-forms, bookmarks-toc, redact (+ Section 14.3 content-removal test); (4) client UI wiring (drop zone → options → progress → errors per Section 9, Web Worker offload, 50MB no-blocking check). Later phases unchanged (see SUMMARY.md).
 
 ## Last thing done
 

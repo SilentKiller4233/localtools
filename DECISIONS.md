@@ -173,3 +173,48 @@ Three Phase 2 calls, recorded together:
   dev-only, never imported by app code, and can be dropped once Phase 13 wires
   PWA/offline checks into `pnpm verify` proper (or kept there for the same
   purpose).
+
+---
+
+## Phase 3 — PDF suite (Group A)
+
+### D-013 — Test harness shape: vitest per-package, committed fixtures, oversized-input seam
+
+Test-infrastructure calls made when the first real tests landed (pdf-core):
+
+- **Vitest 4, one runner per package** (`test: vitest run`), not a single
+  root-level runner. Turbo already fans `test` out per workspace (D-004/D-009),
+  suites stay isolated, and future packages (image-core, devtext-core) copy the
+  same three-file shape: `vitest.config.ts`, `test/helpers.ts`,
+  `test/*.test.ts`. `pnpm verify` now runs `pnpm test` between typecheck and
+  build, so CI exercises functional tests from here on.
+- **Tests import `src/` directly, not `dist/`.** The build tsconfig split
+  (`tsconfig.json` = src+test+scripts with `noEmit`, `tsconfig.build.json` =
+  src→dist only, matching D-007's compiled-dist export contract) means tests
+  typecheck the same code they run, and test files can never leak into the
+  published `dist/`.
+- **Section 14.2 fixtures are COMMITTED, tiny, deterministic** (creation
+  metadata disabled so regeneration is stable), living in root `fixtures/pdf/`
+  shared across suites per the spec. `scripts/generate-fixtures.ts` is the
+  in-repo provenance/generator; vitest's `globalSetup` regenerates any
+  MISSING fixture only (never overwrites committed bytes).
+- **`password-protected.pdf` is generated host-side with pypdf** (RC4-128,
+  password `localtools`), not pdf-lib — pdf-lib cannot author encrypted PDFs
+  (it can only load with `ignoreEncryption`). pypdf is a one-time host tool
+  (same category as Pillow for the Phase 2 icons), not a project dependency;
+  regenerating this fixture is a documented manual step. If pypdf ever
+  vanishes, `qpdf` (already a Phase 4 engine dependency) can produce the same
+  fixture — command noted here for that contingency.
+- **Oversized-input (Section 14.1) is tested via a `maxBytes` seam on
+  `loadPdf`/`assertSize`, not a real >500MB fixture.** A genuine half-gig
+  committed artifact is absurd; the seam exercises the exact production code
+  path (assert-before-parse, no partial work) with a real small PDF under a
+  tiny cap. Client callers always use the 500MB default.
+- **`malformed.pdf` must be a TRUNCATED real PDF, not a fake text body** —
+  pdf-lib's parser is lenient enough to accept a fake body as a parseable
+  (if bogus) document, so the fixture is `simple-text.pdf` cut at 40% of its
+  bytes mid-object-stream. Verified: the naive fixture passed parsing, the
+  truncated one reliably throws.
+- Deferred fixtures (`multi-language-text.pdf`, `bookmarked-toc.pdf`,
+  `with-embedded-fonts.pdf`) arrive with the tools that consume them
+  (pdf-to-text/redaction, bookmarks-toc, watermark respectively).
