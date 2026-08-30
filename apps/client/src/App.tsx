@@ -1,56 +1,63 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { SuiteId } from '@localtools/shared-types';
-import { SuiteNav } from '@localtools/ui';
+import { useHashRoute } from './lib/router';
+import { getTool } from './lib/tool-registry';
+import { SuitePage } from './pages/SuitePage';
+import { ToolPage } from './pages/ToolPage';
 import { UiPreviewPage } from './pages/UiPreviewPage';
 
+const SUITE_IDS = ['pdf', 'media', 'image', 'devtext'] as const;
+
 /**
- * Phase 1 shell: hash routing between the placeholder home page and the
- * /dev/ui-preview acceptance surface. Real per-suite routes arrive in
- * Phase 2 (react-router), so this router is deliberately minimal.
+ * Phase 2 client shell. Route table (hash-based):
+ *   /                    → home = PDF suite grid (suite tabs switch)
+ *   /suite/:suite        → suite tool grid
+ *   /tool/:tool          → tool page shell (placeholder until its phase)
+ *   /dev/ui-preview      → design-system preview (Phase 1 surface, kept)
  */
 export function App() {
-  const [route, setRoute] = useState(
-    () => window.location.hash.replace(/^#/, '') || window.location.pathname,
-  );
+  const [route] = useHashRoute();
   const [activeSuite, setActiveSuite] = useState<SuiteId>('pdf');
-
-  // Registered once with cleanup — a render-body listener would stack up
-  // under StrictMode's double mount.
-  useEffect(() => {
-    const onRouteChange = () => {
-      setRoute(window.location.hash.replace(/^#/, '') || window.location.pathname);
-    };
-    window.addEventListener('hashchange', onRouteChange);
-    return () => {
-      window.removeEventListener('hashchange', onRouteChange);
-    };
-  }, []);
 
   if (route.startsWith('/dev/ui-preview')) {
     return <UiPreviewPage />;
   }
 
-  return (
-    <div>
-      <SuiteNav
-        active={activeSuite}
-        onNavigate={(suite) => {
-          setActiveSuite(suite);
+  const toolMatch = /^\/tool\/([a-z0-9-]+)$/.exec(route);
+  if (toolMatch !== null && toolMatch[1] !== undefined) {
+    const tool = getTool(toolMatch[1]);
+    if (tool !== undefined) {
+      return <ToolPage key={tool.id} toolId={tool.id} />;
+    }
+    // Fall through to home view for unknown tools.
+    return <SuitePage suite="pdf" />;
+  }
+
+  const suiteMatch = /^\/suite\/([a-z]+)$/.exec(route);
+  let suite: SuiteId | null = null;
+  if (suiteMatch !== null) {
+    const raw = suiteMatch[1];
+    if (raw !== undefined && (SUITE_IDS as readonly string[]).includes(raw)) {
+      suite = raw as SuiteId;
+    }
+  }
+  if (suite === null && route !== '/' && route !== '') {
+    // Unknown path → treat as home rather than a dead end.
+    suite = 'pdf';
+  }
+
+  if (suite !== null) {
+    return (
+      <SuitePage
+        key={suite}
+        suite={suite}
+        onNavigate={(s) => {
+          setActiveSuite(s);
         }}
-        trailing={
-          <a className="app-dev-link" href="#/dev/ui-preview">
-            UI preview →
-          </a>
-        }
       />
-      <main className="app-main">
-        <h1>LocalTools</h1>
-        <p>
-          Self-hosted, privacy-first quality-of-life toolkit. Suite pages and tool grids land in
-          Phase 2 — the Phase 1 design direction lives at{' '}
-          <a href="#/dev/ui-preview">/dev/ui-preview</a>.
-        </p>
-      </main>
-    </div>
-  );
+    );
+  }
+
+  // Home: the PDF suite grid is the landing view; nav switches suites.
+  return <SuitePage key="home" suite={activeSuite} />;
 }

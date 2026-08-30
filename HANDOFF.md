@@ -1,46 +1,67 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-08-26 ~11:40 PKT (UTC+05:00), end of session 2 — Phase 1 complete, Phase 2 not started_
+_Last updated: 2026-08-30 19:45 PKT (UTC+05:00), mid-session — Phase 2 closeout in progress_
 
 ## Where things stand right now
 
-Phases 0 and 1 of PROJECT_SPEC Section 15 are **complete, committed, pushed, and CI-green** on `main` (HEAD `99c4c9b`; CI run 32963765073 success). Phase 1 acceptance verified: `/dev/ui-preview` renders every tokenized component in **both** themes including suite-nav — confirmed live against the production build (`vite preview`, not just dev), including a real toggle→persist→reload cycle. The push blocker from session 1 is fully resolved (see gotchas). Phase 2 (client shell) has **not** been started.
+**Phase 2 (client shell) is code-complete and locally verified but NOT yet committed.** Phases 0–1 are complete, committed, pushed, CI-green (`main` @ `1b04c18`). The working tree holds all Phase 2 work (verified by inspection this session): vendored fonts, lucide-react wiring, 97-tool registry, hash router + suite/tool pages, PWA manifest/SW/icons, offline test script. This session is executing the Phase 2 closeout: docs updates (TESTS/DECISIONS), dependency cleanup, verify → commit → push → CI check → SUMMARY → final HANDOFF rewrite.
 
 ## Last thing done
 
-Committed and pushed Phase 1 as `feat(ui): design tokens and base components from Stitch direction` (`99c4c9b`, 37 files), confirmed CI green, updated SUMMARY.md to the post-Phase-1 state. Immediately before that: proved theme persistence end-to-end via keyboard-driven clicks in the production preview build.
+Session 3 (previous, ended at tool-call ceiling mid-closeout): built and verified all Phase 2 code — `pnpm verify` green 8/8, bundle 63.9KB gzipped (<250KB budget), Lighthouse 12 real scores (perf 82 / a11y 100 / best-practices 100 / SEO 91), controlled offline-reload test **PASS** (`scripts/offline-test.mjs`: puppeteer warmup → SW controlling confirmed → server killed + verified down → reload rendered `h1="Media Tools"` + 18 cards from cache). Work was left intentionally uncommitted when the ceiling hit.
+
+Session 4 (this one, so far): confirmed the tree matches the briefing exactly — 97 tools in registry (73 A / 23 B / 1 C), `i18n/en.json` has 97 tool keys, `PHASE_OVERRIDES` routes TTS + PDF→audiobook to Phase 9, no lucide imports in `packages/ui`, ports 4173/5173/8787 clear. Rewrote this HANDOFF to reflect reality (was stale end-of-Phase-1).
 
 ## In-progress / uncommitted work
 
-None, working tree is clean (verify with `git status`). All Phase 1 work is inside commit `99c4c9b`.
+**All Phase 2 work, uncommitted** (full inventory):
 
-## Next immediate steps (in order — do these first)
+- `apps/client/package.json` (+ lucide-react dep, + puppeteer-core devDep)
+- `apps/client/index.html` (SW registration snippet)
+- `apps/client/src/App.tsx` (hash router, suite/tool page wiring, lazy `/dev/ui-preview`)
+- `apps/client/src/styles.css` (font-face rules + shell styles)
+- `apps/client/src/lib/router.ts` (NEW — minimal hash router)
+- `apps/client/src/lib/tool-registry.ts` (NEW — 97 tools, PHASE_OVERRIDES → Phase 9 for TTS/audiobook)
+- `apps/client/src/i18n/en.json` (NEW — all display strings, en route to Section 7 i18n mandate)
+- `apps/client/src/pages/SuitePage.tsx` (NEW — filterable grid)
+- `apps/client/src/pages/ToolPage.tsx` (NEW — tool placeholder page)
+- `apps/client/public/manifest.webmanifest`, `apps/client/public/sw.js`, `apps/client/public/icons/` (NEW — PWA)
+- `apps/client/scripts/offline-test.mjs` (NEW — puppeteer-core offline-reload test)
+- `packages/ui/package.json` (⚠️ accidental `lucide-react` dep — this session removes it)
+- `packages/ui/src/tokens.css` (font-face rules)
+- `packages/ui/fonts/` (Inter variable + JetBrains Mono Regular/Medium woff2 + OFL license files + README)
+- `pnpm-lock.yaml`
 
-1. **Phase 2 kickoff:** add real routing (react-router or equivalent conservative choice — record it) with per-suite routes; replace the placeholder home page with the Section 9 pattern: suite-level nav + searchable/filterable tool grid fed by a tool registry built on `shared-types`' `ToolDefinition`.
-2. Wire the Lucide icon set into `packages/ui` (replaces the inline glyph placeholders; see D-011 icons note).
-3. Vendor Inter + JetBrains Mono per `packages/ui/fonts/README.md` (OFL, self-hosted, no CDN) and add the `@font-face` rules to tokens.
-4. PWA manifest + service worker; Lighthouse PWA ≥90 is the Phase 2 acceptance bar alongside offline reload.
-5. Keep `pnpm verify` green throughout; update SUMMARY.md at phase end; HANDOFF.md last.
+**Phase 2 closeout steps still to do this session** (in order):
+
+1. Remove `lucide-react` from `packages/ui/package.json`, re-run `pnpm install`
+2. Append Phase 2 section to TESTS.md (scores + PWA-category note + offline methodology)
+3. Add DECISIONS.md D-012 (Lighthouse-PWA reinterpretation; TTS/audiobook → Phase 9; puppeteer-core rationale)
+4. `pnpm verify` green → commit `feat(client): Phase 2 — client shell, tool registry, PWA` → push → confirm CI green
+5. Update SUMMARY.md (2 of 15) → rewrite HANDOFF.md (resume = Phase 3) → docs commit → push → CI
+6. Discord webhook notification (literal last action per protocol skill)
 
 ## Blockers / open decisions needing human input
 
-None blocking. Non-blocking notes:
+None blocking. Non-blocking:
 
-- The classic PAT used for pushes was pasted into chat this session — **consider rotating it** at github.com/settings/tokens once convenient (or before the repo goes public in Phase 15). It has `repo, workflow` scopes.
+- Classic PAT (used for pushes, `repo`+`workflow` scopes) transited chat two sessions ago — rotate at github.com/settings/tokens when convenient, before Phase 15 public flip.
 - Deferred decisions unchanged: @imgly/background-removal license re-check (Phase 5, D-001); ffmpeg build variant (Phase 7, D-001); SECURITY.md contact address (D-006).
 
 ## Environment / local state notes
 
-- Working dir: `D:\random projects vibecoded\QOL tools` (spaces — always quote). Windows host, bash (MSYS). Node v22 targeted (`$HOME/AppData/Local/hermes/node/node.exe`), pnpm 10.34.5.
-- Git auth now: classic PAT (`repo`,`workflow`) installed in BOTH `~/.git-credentials` AND gh's hosts.yml (`%APPDATA%/GitHub CLI/hosts.yml`); the old fine-grained PAT was evicted from Windows Credential Manager via `git credential reject`. Push works over HTTPS.
-- No dev/preview servers left running (both were killed after verification). Ports 5173/8787 free. Docker daemon still unverified/not needed yet.
-- `pnpm verify` green (format+lint+typecheck+build, 8 tasks). Client bundle ≈49.65KB gzipped JS + ≈2.97KB CSS (budget 250KB).
+- Working dir: `D:\random projects vibecoded\QOL tools` (spaces — always quote). Windows host, bash (MSYS). Node v22 via pnpm 10.34.5.
+- Ports 4173/5173/8787 verified free this session (no orphaned preview servers).
+- Git auth: classic PAT in `~/.git-credentials` + gh hosts.yml; push works over HTTPS.
+- `packages/ui` ships one stylesheet entry (`import '@localtools/ui/styles.css'`); zero CSS imports in TSX (tsc limitation, D-011).
+- Chrome path for puppeteer-core: `C:/Program Files/Google/Chrome/Application/chrome.exe` (first in CHROME_PATHS list).
 
 ## Useful context / gotchas discovered this session
 
-- **Push-blocker resolution path** (for any future recurrence): gh CLI refuses tokens lacking `read:org` via `gh auth login --with-token` ("error validating token") — write `%APPDATA%/GitHub CLI/hosts.yml` directly instead (documented fallback). Credential Manager (`manager` helper) sits BEFORE the store file in git's helper chain and gh's own helper sits LAST (`.gitconfig` ends with an empty entry then `gh auth git-credential`) — a stale token in ANY layer wins; check all three with `git credential fill`.
-- **Preview-pane automation quirk:** mouse clicks from the desktop preview pane did NOT reach React handlers in this app (verified across dev and prod builds); keyboard events DO work. Use `drive_preview press Enter` + selector for click-testing UI there.
-- **Vite dep-optimize cache:** after rebuilding a workspace package, the dev server can keep serving stale pre-bundled output (theme fix appeared "broken" until tested against `vite preview`). Deleting `apps/client/node_modules/.vite` clears it (that deletion command was blocked by an approval prompt this session — use node's fs.rmSync or ask first).
-- **tsc-compiled packages cannot import CSS:** emitted `import './x.css'` stays verbatim in dist/ and Rollup fails to resolve it. `@localtools/ui` therefore ships one stylesheet entry (`import '@localtools/ui/styles.css'`) and zero CSS imports in TSX.
-- **strict TS lints that will bite new code:** `no-confusing-void-expression` forbids `onClick={() => setX(y)}` arrow shorthands (use braces); `restrict-template-expressions` bans bare numbers in template literals (`String(n)`); `exactOptionalPropertyTypes` forbids passing `state={cond ? 'error' : undefined}` — spread conditionally instead.
-- Session cwd drifts after `cd` in the terminal tool — pass absolute paths to file tools or re-pin workdir each call.
+- The offline-test script had an ESM bug last session (`require('fs')` in `.mjs`) — already fixed with `import { existsSync } from 'node:fs'`; current file is correct, no action needed.
+- `pnpm --filter <pkg> add` installs into that exact package — this is how lucide-react accidentally landed in `packages/ui` (wrong filter target).
+- Orphaned vite preview servers survive wrapper kills — free port by PID: `netstat -ano` → `MSYS_NO_PATHCONV=1 taskkill /F /PID <pid>` (single slashes; `/F` not `//F`).
+- Pillow (not sharp/magick) is available on host for icon resizing if ever needed again.
+- Preview-pane element tracker (drive_preview) can wedge after interactions — text dumps (`desktop_preview read`) stay reliable as fallback.
+- Registry structure: tools are `[id, group, icon]` tuples grouped in per-suite arrays (PDF_GROUP_A, PDF_GROUP_B, MEDIA_TOOLS, IMAGE_TOOLS, DEVTEXT_TOOLS); display strings in `src/i18n/en.json` — grep for `['<id>', '<group>',` to find entries.
+- Session terminal cwd drifts after `cd` — pass absolute paths to file tools or use the `workdir` param.

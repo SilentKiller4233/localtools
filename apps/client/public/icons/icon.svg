@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- LocalTools app icon: wrench glyph on accent blue, per the design system -->
+  <rect width="512" height="512" rx="112" fill="#0f62fe"/>
+  <g transform="translate(256 256) rotate(-45) translate(-256 -256)" fill="#ffffff">
+    <path d="M395.7 233.7c-30.4-30.4-76.4-36.8-113.2-19.4L151.6 83.4C135.9 67.7 110.8 67.7 95.1 83.4L83.4 95.1c-15.7 15.7-15.7 40.8 0 56.5l130.9 130.9c-17.4 36.8-11 82.8 19.4 113.2 33.9 33.9 86.5 37.7 124.3 11.4l-62.5-62.5c-6.7-6.7-6.7-17.7 0-24.4l41.1-41.1c6.7-6.7 17.7-6.7 24.4 0l62.5 62.5c26.3-37.8 22.5-90.4-11.8-123.9z"/>
+  </g>
+</svg>

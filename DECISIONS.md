@@ -136,3 +136,40 @@ Implementation decisions on top of it:
 - **Theme contract verified end-to-end** on the production build:
   `prefers-color-scheme` bootstrap → manual toggle writes `data-theme` +
   localStorage → restore across reload, both directions.
+
+---
+
+## Phase 2 — Client shell
+
+### D-012 — Phase 2 acceptance reinterpretation; media-phase assignment; puppeteer-core devDep
+
+Three Phase 2 calls, recorded together:
+
+- **"Lighthouse PWA ≥90" is unsatisfiable as written.** Lighthouse 12 removed
+  the PWA category entirely (upstream change; no PWA score is produced at all).
+  Rather than pinning an old Lighthouse major just to keep scoring a category
+  the tool abandoned, the acceptance is reinterpreted to its substance: Chrome
+  installability prerequisites hold (valid manifest + versioned service worker
+  that registers and controls + full icon set, all served same-origin), and a
+  controlled offline-reload test demonstrates the actual requirement
+  ("offline reload works") end-to-end — puppeteer warmup confirms
+  `serviceWorker controlling:true`, the server is killed and verified down,
+  then a reload renders the Media suite (h1 + all 18 tool cards) purely from
+  the SW cache (`scripts/offline-test.mjs`, logged in TESTS.md). Performance
+  tuning remains deferred to Phase 14 per spec phase order; the Phase 2 run's
+  scores (perf 82 / a11y 100 / BP 100 / SEO 91) are recorded in TESTS.md as
+  the regression baseline.
+- **Piper TTS + PDF→audiobook assigned to Phase 9.** Section 15 lists no
+  explicit phase for the Media suite's Group B text-to-speech tools (Section
+  3.2). Conservative choice: they ride with the media speech phase (Phase 9),
+  whose lazy-download model-caching infrastructure they share; encoded in
+  `apps/client/src/lib/tool-registry.ts` `PHASE_OVERRIDES` and surfaced by the
+  tool grid badges now, so the UI never promises a tool before its phase.
+- **`puppeteer-core` (not `puppeteer`) is a devDependency of `apps/client`.**
+  It exists solely to drive the offline-reload acceptance script against the
+  system Chrome executable; `puppeteer-core` ships no browser download (that
+  would add ~300MB to every CI install for a tool the app itself never uses at
+  runtime), and the script resolves the local Chrome path explicitly. It is
+  dev-only, never imported by app code, and can be dropped once Phase 13 wires
+  PWA/offline checks into `pnpm verify` proper (or kept there for the same
+  purpose).

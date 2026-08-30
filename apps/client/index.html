@@ -8,10 +8,25 @@
       content="LocalTools — free, unlimited, privacy-first PDF, media, image, and text tools that run on your own machine."
     />
     <meta name="color-scheme" content="light dark" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0f62fe" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>LocalTools</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Service worker registration (PWA, PROJECT_SPEC Section 8).
+      // Kept inline + tiny so it never blocks first paint.
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {
+            /* Registration is progressive enhancement; the app works without it. */
+          });
+        });
+      }
+    </script>
   </body>
 </html>

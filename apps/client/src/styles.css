@@ -1,19 +1,129 @@
 @import '@localtools/ui/styles.css';
 
-/* ---- App-shell styles (Phase 1) ------------------------------------ */
+/* ---- App-shell styles (Phase 2) ------------------------------------ */
 
-.app-main {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--lt-space-8) var(--lt-space-6);
+.lt-page {
+  min-height: 100vh;
 }
 
-.app-dev-link {
+.lt-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--lt-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lt-space-4);
+}
+
+.lt-suite-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--lt-space-4);
+  margin-top: var(--lt-space-2);
+}
+
+.lt-suite-header h1,
+.lt-tool-header h1 {
+  margin: 0;
+  font-size: var(--lt-font-size-title);
+  line-height: var(--lt-line-height-title);
+  font-weight: var(--lt-weight-display);
+}
+
+.lt-suite-caption {
+  margin: var(--lt-space-1) 0 0;
+  color: var(--lt-text-muted);
+  font-size: var(--lt-font-size-body);
+}
+
+.lt-suite-count {
+  color: var(--lt-text-muted);
   font-size: var(--lt-font-size-caption);
+  white-space: nowrap;
+}
+
+/* Responsive card grid — 390px-safe, grows with viewport width. */
+.lt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: var(--lt-space-3);
+}
+
+.lt-filter {
+  max-width: 480px;
+}
+
+.lt-nav-search {
+  width: 220px;
+}
+
+.lt-empty {
+  padding: var(--lt-space-8);
+  text-align: center;
   color: var(--lt-text-muted);
 }
 
-/* ---- /dev/ui-preview page ------------------------------------------ */
+.lt-mono {
+  font-family: var(--lt-font-mono);
+}
+
+/* ---- Breadcrumb + tool page ---------------------------------------- */
+
+.lt-breadcrumb {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: var(--lt-space-3) var(--lt-space-6) 0;
+}
+
+.lt-crumb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lt-space-1);
+  font-size: var(--lt-font-size-caption);
+  color: var(--lt-text-muted);
+  text-decoration: none;
+}
+
+.lt-crumb-link:hover {
+  color: var(--lt-accent);
+}
+
+.lt-tool-header {
+  display: flex;
+  align-items: center;
+  gap: var(--lt-space-3);
+}
+
+.lt-tool-hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--lt-radius-card);
+  background-color: var(--lt-accent-subtle);
+  color: var(--lt-accent);
+  flex-shrink: 0;
+}
+
+.lt-tool-placeholder {
+  padding: var(--lt-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lt-space-4);
+  align-items: flex-start;
+}
+
+.lt-placeholder-note {
+  margin: 0;
+  color: var(--lt-text-muted);
+  font-size: var(--lt-font-size-caption);
+  max-width: 60ch;
+}
+
+/* ---- /dev/ui-preview page (Phase 1 surface) ------------------------- */
 
 .preview-main {
   max-width: 960px;
@@ -87,6 +197,7 @@
   color: var(--lt-text-muted);
 }
 
-.lt-mono {
-  font-family: var(--lt-font-mono);
+.app-dev-link {
+  font-size: var(--lt-font-size-caption);
+  color: var(--lt-text-muted);
 }
