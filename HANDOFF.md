@@ -1,13 +1,15 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-08-30 20:05 PKT (UTC+05:00), mid-session — Phase 3 batch 2 in flight_
+_Last updated: 2026-09-01 22:20 PKT (UTC+05:00), mid-Phase-3 — batches 1–3 committed+CI-green, batch 4 in flight_
 
 ## Where things stand right now
 
-**Phases 0–2 complete/committed/pushed/CI-green.** **Phase 3 (PDF Group A) in progress, batch 2 of 4:**
+**Phases 0–2 complete/committed/pushed/CI-green. Phase 3 (PDF Group A) in progress:**
 
-- **Batch 1 COMMITTED** as `0ac2f9a` (`feat(pdf): Phase 3 batch 1 — vitest harness, fixtures, foundational tools`, 28 files, pushed, CI run 33331849365 green). Contains: vitest 4 harness wired into `pnpm verify` (format→lint→typecheck→test→build), Section 14.2 fixtures at root `fixtures/pdf/` (generator script + globalSetup fills-missing-only; `password-protected.pdf` made host-side with pypdf per D-013), ToolError taxonomy, shared `loadPdf` (size-cap-before-parse with `maxBytes` seam, encrypted→Unlock redirect, zero-page detection), Merge/Split/Extract/Delete/Rotate — 38/38 tests. DECISIONS.md D-013 + TESTS.md Phase 3 log included.
-- **Batch 2 UNCOMMITTED, code-complete, one verification run behind** (see next section).
+- **Batch 1** `0ac2f9a` — vitest harness + fixtures + Merge/Split/Extract/Delete/Rotate (38 tests). CI green.
+- **Batch 2** `e05bdaf` — page-numbers, watermark, metadata, resize, n-up (63 tests total). CI green.
+- **Batch 3** `0e37d1a` — qpdf-wasm singleton wrapper (protect/unlock/optimize), pdfjs extractText (legacy build for Node), imagesToPdf (magic-byte sniffing), fillForm/readFormFields. 86 tests total. CI run 33533841217 green.
+- **Batch 4 (IN FLIGHT, uncommitted):** remaining Group A tools — compare-pdfs, redact + Section 14.3 content-removal test, repair, bookmarks-toc, quick-compress, organize-pages. Then the rendering-dependent set (pdf-to-image, visual compare, grayscale) needs a canvas strategy decision (browser-native vs Node polyfill) → D-014.
 
 ## Last thing done
 
