@@ -22,7 +22,8 @@ export type ToolErrorCode =
   | 'single-file-only' // multiple files supplied to a one-file tool
   | 'size-limit' // input exceeds the configured cap
   | 'zero-page-pdf' // parseable header but no pages
-  | 'invalid-option'; // a non-file option (text, size, color…) is invalid
+  | 'invalid-option' // a non-file option (text, size, color…) is invalid
+  | 'qpdf-failed'; // the qpdf-wasm step failed (bad password, corrupt input…)
 
 export const MAX_PDF_BYTES: number = 500 * 1024 * 1024; // Section 8: 500MB
 
@@ -38,6 +39,7 @@ export const ERROR_MESSAGES: Readonly<Record<ToolErrorCode, string>> = {
   'size-limit': `File exceeds the ${String(Math.round(MAX_PDF_BYTES / (1024 * 1024)))}MB processing cap.`,
   'zero-page-pdf': 'This PDF contains no pages.',
   'invalid-option': 'One of the options is not valid.',
+  'qpdf-failed': 'The PDF operation failed — the file or password may be invalid.',
 };
 
 export function toolError(code: ToolErrorCode, message?: string): ToolError {

@@ -19,12 +19,21 @@ export function assertSize(bytes: Uint8Array, maxBytes: number = MAX_PDF_BYTES):
  * - encrypted → encrypted-pdf (redirect hint lives in the message; password
  *   workflows are the Unlock tool's job, Section 13 edge case)
  * - parse failure / zero pages → invalid-pdf / zero-page-pdf
+ *
+ * Encryption is detected from the raw trailer (/Encrypt entry) BEFORE any
+ * parser runs: qpdf's AES-256 output contains objects strict parsing rejects
+ * before pdf-lib's own EncryptedPDFError can surface (verified against
+ * qpdf-wasm 0.3.0 output + pdf-lib 1.17.1). A raw scan for the trailer dict
+ * is deterministic for the last-trailer convention.
  */
 export async function loadPdf(
   bytes: Uint8Array,
   opts: { ignoreEncryption?: boolean; maxBytes?: number } = {},
 ): Promise<PDFDocument> {
   assertSize(bytes, opts.maxBytes);
+  if (!opts.ignoreEncryption && looksEncrypted(bytes)) {
+    throw toolError('encrypted-pdf');
+  }
   let doc: PDFDocument;
   try {
     doc = await PDFDocument.load(bytes, {
@@ -38,6 +47,20 @@ export async function loadPdf(
   }
   if (doc.getPageCount() === 0) throw toolError('zero-page-pdf');
   return doc;
+}
+
+/**
+ * Raw-byte encryption sniff: find the LAST `trailer` keyword and check for
+ * an /Encrypt entry within that dictionary (or an XRef-stream /Encrypt in
+ * the document catalog region qpdf emits). Conservative: only reports
+ * encrypted when a clear /Encrypt marker exists near the file end, where
+ * trailers live.
+ */
+export function looksEncrypted(bytes: Uint8Array): boolean {
+  const tail = new TextDecoder('latin1').decode(bytes.slice(-4096));
+  const lastTrailer = tail.lastIndexOf('trailer');
+  const region = lastTrailer >= 0 ? tail.slice(lastTrailer) : tail;
+  return /\/Encrypt\b/.test(region);
 }
 
 /**
