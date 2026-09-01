@@ -21,7 +21,8 @@ export type ToolErrorCode =
   | 'no-inputs' // a multi-file tool received no files
   | 'single-file-only' // multiple files supplied to a one-file tool
   | 'size-limit' // input exceeds the configured cap
-  | 'zero-page-pdf'; // parseable header but no pages
+  | 'zero-page-pdf' // parseable header but no pages
+  | 'invalid-option'; // a non-file option (text, size, color…) is invalid
 
 export const MAX_PDF_BYTES: number = 500 * 1024 * 1024; // Section 8: 500MB
 
@@ -36,6 +37,7 @@ export const ERROR_MESSAGES: Readonly<Record<ToolErrorCode, string>> = {
   'single-file-only': 'This tool processes one file at a time.',
   'size-limit': `File exceeds the ${String(Math.round(MAX_PDF_BYTES / (1024 * 1024)))}MB processing cap.`,
   'zero-page-pdf': 'This PDF contains no pages.',
+  'invalid-option': 'One of the options is not valid.',
 };
 
 export function toolError(code: ToolErrorCode, message?: string): ToolError {
