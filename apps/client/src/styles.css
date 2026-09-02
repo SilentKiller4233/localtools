@@ -374,7 +374,13 @@
   border: 1px dashed var(--lt-border, #ccc);
   border-radius: var(--lt-radius-card, 8px);
   background:
-    linear-gradient(45deg, transparent 48%, var(--lt-border, #eee) 48%, var(--lt-border, #eee) 52%, transparent 52%),
+    linear-gradient(
+      45deg,
+      transparent 48%,
+      var(--lt-border, #eee) 48%,
+      var(--lt-border, #eee) 52%,
+      transparent 52%
+    ),
     var(--lt-surface-muted, rgba(127, 127, 127, 0.06));
   touch-action: none;
   cursor: crosshair;
