@@ -1,15 +1,16 @@
 import { Badge, Button, Card } from '@localtools/ui';
 import { ArrowLeft } from 'lucide-react';
 import { badgeLabel, getTool } from '../lib/tool-registry';
+import { pdfToolPage } from './ToolPageSpec';
 import en from '../i18n/en.json';
 
 const UI = en.ui;
 
 /**
- * Phase 2 tool shell: correct route, identity, and designed empty state.
- * Real tool implementations replace the placeholder panel suite by suite
- * (Phases 3–9); the drop-zone/options/action frame from the Stitch screens
- * is the template they grow into.
+ * Per-tool page: Phase 3 wiring — every PDF Group A tool renders its real
+ * runner page (drop zone → options → progress → human-readable errors per
+ * Section 9, processing in the Web Worker per Section 8). Tools from
+ * later phases keep the designed placeholder showing their phase.
  */
 export function ToolPage({ toolId }: { toolId: string }) {
   const tool = getTool(toolId);
@@ -26,6 +27,13 @@ export function ToolPage({ toolId }: { toolId: string }) {
     );
   }
 
+  // PDF Group A tools carry the full real page (their own header/breadcrumb).
+  if (tool.suite === 'pdf' && tool.group === 'a') {
+    const real = pdfToolPage(tool);
+    if (real !== null) return real;
+  }
+
+  // Everything else: the designed placeholder until its phase lands.
   return (
     <div className="lt-page">
       <nav aria-label="Breadcrumb" className="lt-breadcrumb">
@@ -46,10 +54,7 @@ export function ToolPage({ toolId }: { toolId: string }) {
             {badgeLabel(tool.group)}
           </Badge>
         </header>
-
         <Card className="lt-tool-placeholder">
-          {/* Static preview of the shared drop zone; the interactive
-              component arrives with each tool's implementation phase. */}
           <div className="lt-dropzone" aria-hidden="true">
             <div className="lt-dropzone__content">
               <span className="lt-dropzone__icon">⬆</span>

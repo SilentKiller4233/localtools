@@ -1,4 +1,3 @@
-import { createRequire } from 'node:module';
 import type {
   PDFDocumentLoadingTask,
   PDFDocumentProxy,
@@ -76,11 +75,18 @@ function getPdfjs(): Promise<PdfjsModule> {
 
 /** Node: resolve the installed pdfjs-dist's asset dirs. `new URL(bare
  * specifier)` does NOT resolve package specifiers (same trap as qpdf-wasm)
- * — createRequire().resolve() does. */
+ * — createRequire().resolve() does. The node:module import is behind a
+ * runtime require so browser bundles never statically reference it. */
+interface NodeModuleShape {
+  createRequire: (from: string) => { resolve: (id: string) => string };
+}
+
 function pdfjsSourceOptions(): Record<string, unknown> {
   if (IS_NODE) {
-    const require = createRequire(import.meta.url);
-    const base = require.resolve('pdfjs-dist/package.json').replace(/package\.json$/, '');
+    const requireFn = require as (mid: string) => unknown;
+    const { createRequire } = requireFn('node:module') as NodeModuleShape;
+    const req = createRequire(import.meta.url);
+    const base = req.resolve('pdfjs-dist/package.json').replace(/package\.json$/, '');
     return {
       standardFontDataUrl: `${base}standard_fonts/`,
       cMapUrl: `${base}cmaps/`,

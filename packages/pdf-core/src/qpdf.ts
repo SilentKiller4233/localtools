@@ -1,8 +1,26 @@
 import createModule from '@neslinesli93/qpdf-wasm';
 import type { QpdfInstance } from '@neslinesli93/qpdf-wasm';
-import { pathToFileURL } from 'node:url';
-import { createRequire } from 'node:module';
 import { ToolError } from './errors';
+
+/**
+ * Node-only module imports live behind a runtime require so bundlers never
+ * statically pull node:url/node:module into a browser chunk (qpdf.ts is
+ * imported by the browser Worker for the shared wasm singleton). In Node
+ * (tests/engine) the require resolves normally; in the browser the wasm
+ * asset URL is a plain public path and these helpers are never called.
+ */
+interface NodeModuleShape {
+  createRequire: (from: string) => { resolve: (id: string) => string };
+}
+interface NodeUrlShape {
+  pathToFileURL: (p: string) => { href: string };
+}
+function nodeRequire(id: 'node:module'): NodeModuleShape;
+function nodeRequire(id: 'node:url'): NodeUrlShape;
+function nodeRequire(id: string): unknown {
+  const requireFn = require as (mid: string) => unknown;
+  return requireFn(id);
+}
 
 /**
  * Lazy singleton qpdf-wasm module. Instantiating the WASM module costs
@@ -23,9 +41,12 @@ const IS_NODE = typeof process !== 'undefined' && process.versions?.node !== und
 function wasmUrl(): string {
   if (IS_NODE) {
     // Node: resolve the installed package's wasm via require resolution —
-    // new URL(bare-specifier) does NOT resolve package specifiers.
-    const require = createRequire(import.meta.url);
-    const resolved = require.resolve('@neslinesli93/qpdf-wasm/dist/qpdf.wasm');
+    // new URL(bare-specifier) does NOT resolve package specifiers. The
+    // node: imports are behind nodeRequire (browser-bundle safety, above).
+    const { createRequire } = nodeRequire('node:module');
+    const { pathToFileURL } = nodeRequire('node:url');
+    const req = createRequire(import.meta.url);
+    const resolved = req.resolve('@neslinesli93/qpdf-wasm/dist/qpdf.wasm');
     return pathToFileURL(resolved).href;
   }
   // Browser: the app copies the wasm asset to /wasm/qpdf.wasm at build time.

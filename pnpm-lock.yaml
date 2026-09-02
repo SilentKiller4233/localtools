@@ -26,6 +26,9 @@ importers:
 
   apps/client:
     dependencies:
+      '@localtools/pdf-core':
+        specifier: workspace:*
+        version: link:../../packages/pdf-core
       '@localtools/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types

@@ -1,63 +1,61 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-01 ~23:55 PKT (UTC+05:00), end of session 5 — Phase 3 batches 1–4 committed, CI green; rendering batch next_
+_Last updated: 2026-09-02 ~19:20 PKT (UTC+05:00), end of session 6 — Phase 3 COMPLETE (PDF Group A 21/21), pushed; CI status to confirm on open_
 
 ## Where things stand right now
 
-**Phases 0–2 complete/pushed/CI-green. Phase 3 (PDF Group A) is ~70% done, all committed+CI-green on `main` (HEAD `2118068`):**
+**Phases 0–3 complete. Phase 3 (PDF suite Group A) is DONE**: all 21 Group A tools implemented in `@localtools/pdf-core` (165/165 tests), wired into real client tool pages (Web Worker offload, Section 9 pattern), and the Section 14.5 worker-offload acceptance **PASSED** (52MB fixture → 0 main-thread long tasks through the production UI). Everything is committed on `main` and pushed; confirm CI green on the final push before starting Phase 4.
 
-- **Batch 1** `0ac2f9a` — vitest 4 harness wired into `pnpm verify` (format→lint→typecheck→test→build), Section 14.2 fixtures at root `fixtures/pdf/` (deterministic generator + globalSetup fills-missing-only; `password-protected.pdf` via host-side pypdf), ToolError taxonomy, shared `loadPdf` (size-cap-before-parse + `maxBytes` seam, raw `/Encrypt` trailer sniff → encrypted-pdf redirect, zero-page detection). Merge/Split/Extract/Delete/Rotate.
-- **Batch 2** `e05bdaf` — addPageNumbers, addTextWatermark, editMetadata/readMetadata, resizePages, nUpPages. (63 tests)
-- **Batch 3** `0e37d1a` — qpdf-wasm singleton (`src/qpdf.ts`, arg-array callMain only), protectPdf/unlockPdf/optimizePdf, extractText (pdfjs 6 legacy build for Node), imagesToPdf (magic-byte sniffing), fillForm/readFormFields. (86 tests)
-- **Batch 4** `2118068` — redactPdf (**Section 14.3 mandatory test PASSES**: string absent from raw bytes + text layer, black box drawn in decompressed stream), comparePdfs (text diff), organizePages, repairPdf, quickCompress, setBookmarks/readBookmarks, streams.ts codec. (111 tests)
+Session 6 commits (on top of session 5's `cdab492`):
 
-`pnpm verify` green (all 8 workspaces + 111 pdf-core tests in the turbo gate). Working tree clean after the docs commit.
+- `84fa0f8` — batch 5: render pipeline (D-014) + pdf-to-image/visual-compare/grayscale (138 tests)
+- final commit (this session) — batches 6+7: crop, sign, redact-by-text (165 tests) + full client wiring (worker bridge, 21 real tool pages, CameraCapture, SignaturePad, vite worker/asset config, worker-offload-test script) + docs close-out (SUMMARY.md at Phase 3 complete, TESTS.md batch rows, D-014).
 
 ## Last thing done
 
-Batch 4 committed + pushed + CI run 33545077227 green (all 3 jobs). TESTS.md updated with batch rows; this HANDOFF rewrite is the session's final repo action.
+Batches 6+7 completed and verified: pdf-core 165/165, client tsc+eslint+vite build green (initial JS 72.9KB gzipped), `WORKER_OFFLOAD_PASS` via `apps/client/scripts/worker-offload-test.mjs` (52MB padded fixture — verified parseable by pdf-lib — merged through the real Merge PDF page in headless Chrome with PerformanceObserver long-task counter: 0 tasks / 0ms). `pnpm verify` green before commit. This HANDOFF rewrite is the session's final repo action.
 
 ## In-progress / uncommitted work
 
-None after this docs commit. All four batches are inside `0ac2f9a`, `e05bdaf`, `0e37d1a`, `2118068` on `main`, pushed, CI-verified.
+Verify before trusting: the final commit + push at the end of this session included everything (check `git status` is clean and `git log --oneline -3` shows the Phase 3 complete commit). If CI on the final push shows failures, fix-forward on a new commit — do not amend.
 
 ## Next immediate steps (in order — do these first)
 
-1. **Batch 5 — rendering-dependent tools:** pdf-to-image (pdfjs render→PNG/JPG), compare-visual (render + pixelmatch), grayscale (render→desaturate→re-embed). These need a **canvas strategy decision → record as D-014**: browser-native canvas + Node test path via `@napi-rs/canvas` (pdfjs's own optional dep — already declared, zero new deps) OR render only in the browser with a graceful engine-side error. Check what pdfjs 6.3.289 expects (`canvasFactory` option) before committing.
-2. **Batch 6 — client-UI-only tools:** scan-to-pdf (camera capture component), sign-pdf (draw/type/image pad) — these are UI-component work in `apps/client`, logic lands with the UI wiring batch.
-3. **Batch 7 — client UI wiring:** per-tool real pages (drop zone → options → progress → human-readable errors per Section 9), Web Worker offload, 50MB no-main-thread-blocking check (Section 14.5), wire the implemented 19 tools into the ToolPage placeholders.
-4. Update SUMMARY.md to Phase 3 complete (PDF suite Group A done), TESTS.md rows, DECISIONS.md D-014, commit `feat(pdf): Phase 3 — PDF suite Group A complete`, push, CI green.
+1. Confirm CI green on the last two pushes (`gh run list --limit 3` or the GitHub Actions page; repo: SilentKiller4233/localtools, private).
+2. **Phase 4 — PDF Group B (engine, Docker target)**: Fastify endpoints for the 6 Group B tools (LibreOffice ↔Office, OCRmyPDF/Tesseract OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint default + Playwright opt-in HTML→PDF) behind the FULL Section 5 control set (5.1–5.7: loopback bind, magic-byte validation via `file-type`, size caps, per-request temp dirs + 5-min sweeper, execFile/spawn arg-arrays ONLY, timeouts with SIGTERM→SIGKILL, subprocess concurrency caps + 429). Fixtures: sample .docx/.xlsx/.pptx/.html already spec'd in Section 14.2. Docker stack test is the phase acceptance.
+3. Wire engine Group B endpoints into the existing ToolRunnerPage pattern (engine URL fetch instead of worker runTool — add an `engine-client.ts` alongside `pdf-worker-client.ts`).
 
 ## Blockers / open decisions needing human input
 
 None blocking. Non-blocking:
 
-- Classic PAT (repo+workflow scopes) transited chat ~3 sessions ago — rotate before Phase 15's public flip.
-- Context7 MCP is NOT connected in this environment — version-sensitive APIs are verified from installed `.d.ts`/source instead. Consider recording this deviation in DECISIONS if it persists next session.
+- Classic PAT (repo+workflow scopes) transited chat ~4 sessions ago — rotate before Phase 15's public flip.
+- Context7 MCP is NOT connected in this environment — version-sensitive APIs verified from installed `.d.ts`/source (D-014 was done this way).
 - Deferred: @imgly license re-check (Phase 5), ffmpeg variant (Phase 7), SECURITY.md contact (D-006).
+- **Composio GitHub integration is available but plain git+PAT was used this session (pushes worked fine)** — spec Section 12 prefers Composio for repo actions; use whichever is reliable, but note the deviation if it persists.
 
 ## Environment / local state notes
 
 - Working dir: `D:\random projects vibecoded\QOL tools` (spaces — always quote). Windows, bash (MSYS). pnpm 10.34.5, Node 22.
-- Ports 4173/5173/8787 free. Git auth: classic PAT in `~/.git-credentials` + gh hosts.yml; push over HTTPS works.
-- pypdf 6.16.2 installed host-side (fixture generation only, not a project dep).
-- pdf-core deps: pdf-lib 1.17.1, pdfjs-dist 6.3.289, @neslinesli93/qpdf-wasm 0.3.0, pixelmatch 7.2.0, diff 9.0.0 (+types). `@napi-rs/canvas` is pdfjs's optionalDependency — check if it's already in node_modules before adding anything for D-014.
-- pdf-core tsconfigs: `tsconfig.json` (src+test+scripts, noEmit) vs `tsconfig.build.json` (src→dist only).
+- Ports 4173/5173/8787 free (4173 preview server killed at session end).
+- pdf-core deps: pdf-lib 1.17.1, pdfjs-dist 6.3.289, @neslinesli93/qpdf-wasm 0.3.0, pixelmatch 7.2.0 (ships own types), diff 9.0.0. `@napi-rs/canvas` = pdfjs's optionalDependency (never a direct dep — D-014).
+- Client now depends on `@localtools/pdf-core` (workspace). Vite config: `worker.format='es'` (module workers — required for the worker's lazy pdfjs/qpdf imports) + inline `localtools-pdf-assets` plugin copying `pdfjs-dist` `standard_fonts/cmaps/wasm` and `qpdf.wasm` to `/pdfjs/*` + `/wasm/qpdf.wasm` in dev AND build (`closeBundle` → `dist/`).
+- pypdf 6.16.2 host-side (fixture generation only).
+- pdf-core tsconfigs: `tsconfig.json` (src+test+scripts, noEmit) vs `tsconfig.build.json` (src→dist). Client consumes pdf-core's `dist/` — **rebuild pdf-core (`pnpm --filter @localtools/pdf-core build`) before client typecheck after changing pdf-core src**.
+- Turbo caches `test` aggressively — `pnpm test --force` to prove tests ran.
 
 ## Useful context / gotchas discovered this session
 
-- **pdf-lib `context.obj('string')` → PDFName, not PDFString** — outline titles must use `PDFString.of()` explicitly. Verified live (`/Start` vs `(Start)`).
-- **pdf-lib `save()`/`load()` stamp Producer in the CONSTRUCTOR via `updateInfoDict` when `updateMetadata: true` (default)** — read back with `load(bytes, {updateMetadata: false})` when asserting Producer.
-- **`PDFEmbeddedPage.scale()` returns only `{width, height}`** — pass original embedded page + width/height options to `drawPage()`.
-- **qpdf-wasm requires a non-empty owner password for AES-256** (empty owner pw = openable without password = insecure → exit 2). protectPdf defaults owner password to the user password.
-- **qpdf AES-256 output trips pdf-lib's `throwOnInvalidObject` before its EncryptedPDFError fires** — hence the raw `/Encrypt` trailer sniff in loadPdf BEFORE any parse.
-- **pdfjs 6 in Node needs the legacy build** (`pdfjs-dist/legacy/build/pdf.mjs`) — the standard build's worker spawn hangs 30s+ under vitest. Also: `destroy()` is on the loadingTask, `PDFDocumentProxy` only has `cleanup()`.
-- **pdf-lib `Contents()` returns `PDFStream | PDFArray | undefined`** — narrow with `instanceof PDFArray` before `.asArray()`.
-- **strict lint forbids defensive checks on closed unions** (`no-unnecessary-condition`) — type user-facing options as `string` + validate at runtime. Cross-environment `process` checks need a targeted eslint-disable.
-- **pdf-lib emits text as HEX strings** `<...> Tj` — redaction's scanner must match literal AND hex forms.
-- Redaction content streams are Flate-compressed — tests must inflate before regex-matching box ops.
-- `new URL(bare-specifier)` does NOT resolve package specifiers — use `createRequire().resolve()` in Node for wasm paths.
-- qpdf-wasm's `.d.ts` omits `FS.writeFile` (runtime has it) — one narrow cast bridges it.
-- **Turbo caches `test` aggressively** — `pnpm test --force` to prove tests ran.
-- Prettier gate covers root `.md` — `prettier --write` before verify.
-- pdfjs `standardFontDataUrl` warning in tests is benign (Helvetica fixture needs no font file).
+- **napi `putImageData` requires a REAL ImageData from the SAME context** (`ctx.createImageData(w,h)` then `.data.set(...)`); duck-typed `{data,width,height}` objects throw "Failed to recover ImageData type from napi value".
+- **`standardFontDataUrl` in Node must be a plain fs path** (Node's `_fetch` is bare `fs.readFile`); `file://` URLs fail on spaces and standard-14 fonts silently don't render (spike: dark pixels 2582 → 4674 after fix).
+- **`useWorkerFetch: false` is required in getDocument inside a Worker** — the default chain touches `document.baseURI` (ReferenceError, no DOM in Workers).
+- **Under pnpm isolation pdf-core cannot `require('@napi-rs/canvas')`** — all skia canvases must come from `doc.canvasFactory`.
+- **pdfjs's `DOMCanvasFactory`/`BaseCanvasFactory` are NOT exported** from its builds — a Worker needs a self-built contract-complete factory class (see `OffscreenCanvasFactory` in `packages/pdf-core/src/render.ts`).
+- **Node-only imports (`node:url`, `node:module`) must sit behind a runtime `require` in pdf-core** — static imports break Rollup when the browser Worker bundles pdf-core (fixed in qpdf.ts + render.ts via `nodeRequire`-style helpers with hand-rolled interfaces; `import()`-type annotations and `NodeRequire` are banned by the lint config).
+- **Vite worker default format is IIFE — incompatible with the worker's code-split lazy imports**; `worker: { format: 'es' }` is mandatory.
+- `exactOptionalPropertyTypes` forces conditional spreads for every optional JSX prop (`...(x ? { prop: x } : {})`) in client TSX.
+- DOM-lib "always defined" globals (`document`, `navigator.mediaDevices`) that genuinely disappear at runtime (Workers, insecure contexts) must be read through `as unknown as {...}` widened views or the type-aware lint calls the guard dead code.
+- `.mjs` scripts must be plain JS (no TS annotations) — Node parses them raw.
+- 52MB test fixture strategy: real `simple-text.pdf` padded with a giant `%` comment line to 52MB — pdf-lib parses it fine (verified); avoids committing a huge blob while making parse cost scale with real byte volume.
+- **429 rate limits on the free provider**: batch tool calls, prefer one background `pnpm verify` over repeated foreground runs.
+- Prior sessions' pdf-lib/pdfjs/qpdf gotchas (hex Tj strings, producer stamp at construction, qpdf AES-256 owner-password, legacy build for Node, etc.) all remain valid — see pdf-document-processing skill + earlier HANDOFFs in git history.
