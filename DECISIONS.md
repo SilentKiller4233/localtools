@@ -218,3 +218,59 @@ Test-infrastructure calls made when the first real tests landed (pdf-core):
 - Deferred fixtures (`multi-language-text.pdf`, `bookmarked-toc.pdf`,
   `with-embedded-fonts.pdf`) arrive with the tools that consume them
   (pdf-to-text/redaction, bookmarks-toc, watermark respectively).
+
+### D-014 — Canvas strategy for rendering-dependent PDF tools: pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optional dep (zero new direct deps)
+
+Verified against installed source/typings (pdfjs-dist 6.3.289,
+`@napi-rs/canvas` 1.0.8), not memory:
+
+- **pdfjs 6.3.289's `getDocument(src)` auto-selects the canvas factory by
+  environment** (legacy/build/pdf.mjs, `getDocument`): under Node it uses
+  its internal `NodeCanvasFactory`, which lazily
+  `require("@napi-rs/canvas")` at render time (`canvas.createCanvas(w,h)`);
+  in browsers it uses `DOMCanvasFactory` (`document.createElement` — needs
+  DOM). `render({ canvasContext, canvas, viewport })` accepts the caller's
+  canvas; pdfjs's factory is used for its own internal scratch canvases.
+- **`@napi-rs/canvas` is pdfjs-dist's own declared `optionalDependency`** —
+  already in the pnpm store (linked beside pdfjs-dist, so pdfjs's
+  `require` resolves; win32-x64 binary present, Linux/macOS binaries are
+  its own optionalDeps so CI/other hosts resolve too). Promoting it to a
+  direct pdf-core dependency would duplicate the pin, not change what
+  runs; the honest shape is to rely on pdfjs's own optional-dep contract
+  and declare nothing new. Consequence: Node rendering (tests, any future
+  engine use) works with zero new direct deps; browsers use DOM/Offscreen
+  canvas with no polyfill.
+- **Browser rendering happens in the Web Worker** (Batch 7 wiring): a
+  Worker has no `document`, so a `CanvasFactory` class must be supplied to
+  `getDocument` (pdfjs exposes `DOMCanvasFactory` at
+  `pdfjs-dist/legacy/build/pdf.mjs` exports; it can be extended to use
+  `OffscreenCanvas` instead of `ownerDocument.createElement` — pdfjs's
+  factory contract only needs `_createCanvas` + the base
+  create/reset/destroy which are exported on `BaseCanvasFactory`). The
+  client worker passes a `CanvasFactory: OffscreenCanvasFactory` class.
+  Images return to the main thread as transferred `Uint8Array` blobs
+  (via `canvas.toBlob`/`convertToBlob`) or raw pixel data, never as
+  structured-clone'd canvas objects.
+- **`standardFontDataUrl` is a plain fs path in Node** — Node's
+  `NodeBinaryDataFactory._fetch` is a bare `fs.readFile(url)` (not a
+  fetch); a `file://` URL fails with an escaped-space path warning and
+  standard-14 fonts silently don't render. Resolve the installed
+  `pdfjs-dist/standard_fonts/` dir via `createRequire().resolve()` and
+  pass the raw path. In the browser it's a URL prefix
+  (`/pdfjs/standard_fonts/` copied by Vite).
+- **Type-level**: pdfjs 6's own `types/src/pdf.d.ts` re-exports
+  `PDFPageProxy`/`RenderTask`/`PageViewport` types, and pixelmatch 7.2.0
+  ships its own types (`@types/pixelmatch` 5.x in devDeps is stale v5-era
+  dead weight — removed).
+- **Decision on the two other candidates:** engine-side rendering was
+  rejected (would move Group A tools to Group B, violating Section 0
+  privacy-first). "Browser-only render + graceful engine error" was
+  rejected (untestable in Node under Section 14.1, and the client is the
+  only target that needs it anyway).
+- JPEG in Node uses `canvas.toBuffer('image/jpeg', { quality: 0-1 })`
+  (Skia backend; no chroma-sampling options); PNG is default. Grayscale
+  uses the same render pipeline desaturated in pixel space
+  (`getImageData` → luminance transform → `putImageData`) and re-embedded
+  via `PDFDocument.embedPng` — pdf-lib has no non-separable blend mode,
+  so overlay approaches can't do true grayscale (verified in
+  pdf-document-processing skill).

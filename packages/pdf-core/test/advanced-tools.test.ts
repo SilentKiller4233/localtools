@@ -100,17 +100,18 @@ describe('compare — Section 14.1', () => {
     expect(result.identical).toBe(false);
   });
 
-  it('scanned (no text) input → clear guidance error', async () => {
-    await expectToolError(
-      comparePdfs(fixture('scanned-image-only.pdf'), fixture('simple-text.pdf')),
-      'invalid-option',
-    );
+  it('scanned (no text) input → auto-routes to visual compare', async () => {
+    // Since the D-014 canvas batch, scanned docs compare via pixels instead
+    // of erroring (Section 13 image-only edge case resolved).
+    const result = await comparePdfs(fixture('scanned-image-only.pdf'), fixture('simple-text.pdf'));
+    expect(result.visual).toBeDefined();
+    expect(result.identical).toBe(false);
   });
 
   it('malformed input → invalid-pdf', async () => {
     await expectToolError(
       comparePdfs(fixture('malformed.pdf'), fixture('simple-text.pdf')),
-      'invalid-option', // extractText inside returns null → guidance error
+      'invalid-pdf', // shared loadPdf pre-flight rejects before extraction
     );
   });
 });
