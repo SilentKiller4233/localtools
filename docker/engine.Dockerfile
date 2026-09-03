@@ -20,6 +20,8 @@ RUN pnpm --filter @localtools/engine... build
 # resolves workspace deps into real files — the workspace node_modules
 # symlinks don't survive a plain COPY of node_modules). --legacy: pnpm v10
 # deploy otherwise requires inject-workspace-packages=true in the workspace.
+# Deploy layout is FLAT: /pruned = { node_modules/, package.json, dist/, … }
+# of the engine package alone (workspace deps resolved into node_modules).
 RUN pnpm --filter @localtools/engine --prod --legacy deploy /pruned
 
 FROM node:22-bookworm-slim
@@ -37,18 +39,17 @@ RUN apt-get update \
   && apt-get purge -y python3-pip \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/*
+# Flat deploy layout: the engine's own package.json + dist at /app root,
+# deps (incl. @localtools/shared-types) inside node_modules.
 COPY --from=build /pruned/node_modules ./node_modules
 COPY --from=build /pruned/package.json ./package.json
-COPY --from=build /pruned/apps/engine/package.json ./apps/engine/package.json
-COPY --from=build /pruned/apps/engine/dist ./apps/engine/dist
-COPY --from=build /pruned/packages/shared-types/package.json ./packages/shared-types/package.json
-COPY --from=build /pruned/packages/shared-types/dist ./packages/shared-types/dist
+COPY --from=build /pruned/dist ./dist
 # Engine helper scripts: WeasyPrint launcher (Windows-only no-op here) and
 # the opt-in Playwright PDF runner.
-COPY apps/engine/scripts ./apps/engine/scripts
+COPY apps/engine/scripts ./scripts
 # Non-root, read-only-rootfs-friendly: temp work happens in /tmp (tmpfs in
 # compose). Section 5.4 hardening flags live in docker-compose.yml.
 USER node
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:8787/healthz').then(r=>{if(!r.ok)throw 0}).catch(()=>process.exit(1))" || exit 1
-CMD ["node", "apps/engine/dist/server.js"]
+CMD ["node", "dist/server.js"]
