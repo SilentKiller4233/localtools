@@ -7,10 +7,10 @@ import en from '../i18n/en.json';
 const UI = en.ui;
 
 /**
- * Per-tool page: Phase 3 wiring — every PDF Group A tool renders its real
- * runner page (drop zone → options → progress → human-readable errors per
- * Section 9, processing in the Web Worker per Section 8). Tools from
- * later phases keep the designed placeholder showing their phase.
+ * Per-tool page: Phase 3+4 wiring — every PDF tool (Group A in the Web
+ * Worker, Group B via the local engine) renders its real runner page per
+ * the Section 9 pattern. Tools from later phases keep the designed
+ * placeholder showing their phase.
  */
 export function ToolPage({ toolId }: { toolId: string }) {
   const tool = getTool(toolId);
@@ -27,8 +27,8 @@ export function ToolPage({ toolId }: { toolId: string }) {
     );
   }
 
-  // PDF Group A tools carry the full real page (their own header/breadcrumb).
-  if (tool.suite === 'pdf' && tool.group === 'a') {
+  // PDF Group A (worker) + Group B (engine) tools carry real pages.
+  if (tool.suite === 'pdf') {
     const real = pdfToolPage(tool);
     if (real !== null) return real;
   }

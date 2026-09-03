@@ -71,3 +71,29 @@ recorded as D-013.
 ## Manual log
 
 (no manual checks performed yet)
+
+## Status: Phase 4 (PDF suite Group B — engine, Docker target)
+
+Section 15 Phase 4 acceptance: "Section 14.1/14.4 pass for every PDF Group B
+tool; Docker stack test passes." Engine suite runs the REAL native tools
+installed on the dev host (Ghostscript 10.07.1, Tesseract 5.4, LibreOffice
+26.8, WeasyPrint 69 + GTK3 runtime); the Docker stack acceptance runs as a
+CI job (compose-stack) because the dev host has no Docker (D-015).
+
+| Check                                         | Kind              | Result       | Notes                                                                                                                   |
+| --------------------------------------------- | ----------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Engine unit/integration suite (39 tests)      | automated (local) | PASS         | 14.1 happy/malformed/empty/oversized per tool + 14.4 security regressions; real native tools, container-sniffed outputs |
+| Office to-PDF (docx/xlsx/pptx → PDF)          | automated (local) | PASS         | LibreOffice headless via soffice.com; outputs magic-byte verified as PDF                                                |
+| Office from-PDF (PDF → docx/pptx)             | automated (local) | PASS         | Pinned import filters + explicit OOXML export (D-015): genuine word/ + ppt/ containers with text                        |
+| Office from-PDF (PDF → xlsx)                  | automated (local) | PASS         | Clear unsupported error — LibreOffice has no Calc PDF import (D-015)                                                    |
+| OCR (scanned PDF → searchable PDF)            | automated (local) | PASS         | Tesseract fallback path (no OCRmyPDF on host); 2.9s on fixture                                                          |
+| Deep compress / PDF-A / deep repair           | automated (local) | PASS         | Ghostscript pdfwrite; malformed fixture salvaged OR clean tool-failed                                                   |
+| HTML→PDF (inline + uploaded)                  | automated (local) | PASS         | WeasyPrint via launcher + @page stylesheet (D-015)                                                                      |
+| Playwright opt-in without component           | automated (local) | PASS         | 503 tool-unavailable, never silent WeasyPrint fallback                                                                  |
+| Security: headers/CSP/exact-origin CORS       | automated (local) | PASS         | 5.7 headers on every response via fastify-plugin (encapsulation bug fixed)                                              |
+| Security: magic bytes vs hostile filenames    | automated (local) | PASS         | Command-injection-style + traversal names never reach the filesystem                                                    |
+| Security: caps (per-file/request/empty/none)  | automated (local) | PASS         | 413/422 mapped through the JSON envelope; tiny-cap seam for oversized                                                   |
+| Security: temp-dir cleanup on success+failure | automated (local) | PASS         | finally-block removal + 5-min sweeper                                                                                   |
+| Security: concurrency cap → 429               | automated (local) | PASS         | 1-slot engine; /healthz busy counter for deterministic polling                                                          |
+| Security: expose-refusal + bearer 401         | automated (local) | PASS         | Boot refuses LOCALTOOLS_EXPOSE without ≥32-char token; auth via fastify-plugin                                          |
+| Docker stack round trip                       | automated (CI)    | pending push | compose-stack job: build, healthz gate, deep-compress through container                                                 |

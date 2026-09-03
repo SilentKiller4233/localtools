@@ -29,3 +29,23 @@ export interface EngineError {
   /** Human-readable, safe-to-show message (never raw filesystem paths). */
   message: string;
 }
+
+export type { EngineFile, OfficeConversionDirectionValue } from './pdf-engine.js';
+export {
+  EngineFileSchema,
+  OfficeConversionDirection,
+  OfficeConversionRequestSchema,
+  OcrPdfRequestSchema,
+  DeepCompressRequestSchema,
+  PdfToPdfARequestSchema,
+  DeepRepairRequestSchema,
+  HtmlToPdfRequestSchema,
+} from './pdf-engine.js';
+export type {
+  OfficeConversionRequest,
+  OcrPdfRequest,
+  DeepCompressRequest,
+  PdfToPdfARequest,
+  DeepRepairRequest,
+  HtmlToPdfRequest,
+} from './pdf-engine.js';

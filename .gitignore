@@ -36,3 +36,8 @@ apps/desktop/src-tauri/gen/
 
 # Native tool caches used at runtime (never part of the repo)
 .cache/
+
+# Portable / locally-installed native toolchain (dev-machine only; the
+# Docker image installs these via apt inside the image — Section 11)
+gs10.*/
+GTK3-Runtime*/

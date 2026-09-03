@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Field, Input } from '@localtools/ui';
 import { ToolRunnerPage } from './ToolRunnerPage';
+import { EngineRunnerPage } from './EngineRunnerPage';
+import type { EngineClientFile } from '../lib/engine-client';
 import { CameraCapture } from './CameraCapture';
 import { SignaturePad } from './SignaturePad';
 import type { SignaturePadHandle } from './SignaturePad';
@@ -98,8 +100,24 @@ export function pdfToolPage(tool: RegisteredTool): ReactNode {
           )}
         />
       );
+    case 'word-conversion':
+      return <OfficeConversionPage key={tool.id} tool={tool} target="word" />;
+    case 'excel-conversion':
+      return <OfficeConversionPage key={tool.id} tool={tool} target="excel" />;
+    case 'powerpoint-conversion':
+      return <OfficeConversionPage key={tool.id} tool={tool} target="powerpoint" />;
+    case 'ocr-pdf':
+      return <OcrPage key={tool.id} tool={tool} />;
+    case 'deep-compress':
+      return <DeepCompressPage key={tool.id} tool={tool} />;
+    case 'pdf-to-pdfa':
+      return <PdfToPdfAPage key={tool.id} tool={tool} />;
+    case 'deep-repair':
+      return <DeepRepairPage key={tool.id} tool={tool} />;
+    case 'html-to-pdf':
+      return <HtmlToPdfPage key={tool.id} tool={tool} />;
     default:
-      return null; // Group B tools stay placeholders until Phase 4.
+      return null;
   }
 }
 
@@ -1280,6 +1298,266 @@ function ScanToPdfPage({ tool }: ToolPageSpec) {
         />
       }
       buildOptions={() => ({})}
+    />
+  );
+}
+
+/* ---------------- PDF Group B (engine) pages ---------------- */
+
+function OfficeConversionPage({
+  tool,
+  target,
+}: ToolPageSpec & { target: 'word' | 'excel' | 'powerpoint' }) {
+  const [direction, setDirection] = useState<'to-pdf' | 'from-pdf'>('to-pdf');
+  const [file, setFile] = useState<EngineClientFile | undefined>(undefined);
+
+  const accept =
+    direction === 'to-pdf'
+      ? target === 'word'
+        ? '.doc,.docx'
+        : target === 'excel'
+          ? '.xls,.xlsx'
+          : '.ppt,.pptx'
+      : '.pdf,application/pdf';
+
+  const validate = (): string | undefined => {
+    if (file === undefined) return 'Select a file first';
+    const ext = file.name.toLowerCase().split('.').pop() ?? '';
+    if (direction === 'to-pdf' && ext === 'pdf')
+      return 'Pick an Office document (not a PDF) for this direction';
+    if (direction === 'from-pdf' && ext !== 'pdf') return 'Pick a PDF for this direction';
+    if (direction === 'from-pdf' && target === 'excel') {
+      return 'PDF → Excel isn’t supported (no spreadsheet PDF import exists)';
+    }
+    return undefined;
+  };
+
+  return (
+    <EngineRunnerPage
+      tool={tool}
+      accept={accept}
+      hint={
+        direction === 'to-pdf'
+          ? 'Select the Office document to convert to PDF'
+          : 'Select the PDF to convert to an Office format'
+      }
+      optionsPanel={
+        <div className="lt-options">
+          <Field label="Direction" htmlFor="office-direction">
+            <select
+              value={direction}
+              onChange={(e) => {
+                setDirection(e.target.value as 'to-pdf' | 'from-pdf');
+                setFile(undefined);
+              }}
+              className="lt-input"
+            >
+              <option value="to-pdf">Office → PDF</option>
+              <option value="from-pdf">PDF → Office</option>
+            </select>
+          </Field>
+        </div>
+      }
+      validate={validate}
+      endpoint="/pdf/office-conversion"
+      buildOptions={() => ({ target, direction, file: 0 })}
+      multiple={false}
+    />
+  );
+}
+
+function OcrPage({ tool }: ToolPageSpec) {
+  const [language, setLanguage] = useState('eng');
+  const [clean, setClean] = useState(false);
+  const [rotate, setRotate] = useState(true);
+  const [skipText, setSkipText] = useState(true);
+  return (
+    <EngineRunnerPage
+      tool={tool}
+      accept=".pdf,application/pdf"
+      hint="Select a scanned PDF to make it searchable"
+      optionsPanel={
+        <div className="lt-options">
+          <Field label="Language" htmlFor="ocr-language">
+            <select
+              value={language}
+              onChange={(e) => {
+                setLanguage(e.target.value);
+              }}
+              className="lt-input"
+            >
+              <option value="eng">English</option>
+            </select>
+          </Field>
+          <label className="lt-check">
+            <input
+              type="checkbox"
+              checked={rotate}
+              onChange={(e) => {
+                setRotate(e.target.checked);
+              }}
+            />{' '}
+            Rotate pages upright first
+          </label>
+          <label className="lt-check">
+            <input
+              type="checkbox"
+              checked={skipText}
+              onChange={(e) => {
+                setSkipText(e.target.checked);
+              }}
+            />{' '}
+            Skip pages that already have text
+          </label>
+          <label className="lt-check">
+            <input
+              type="checkbox"
+              checked={clean}
+              onChange={(e) => {
+                setClean(e.target.checked);
+              }}
+            />{' '}
+            Clean &amp; deskew (slower, better on photos)
+          </label>
+        </div>
+      }
+      endpoint="/pdf/ocr"
+      buildOptions={() => ({ language, clean, skipText, rotate, file: 0 })}
+    />
+  );
+}
+
+function DeepCompressPage({ tool }: ToolPageSpec) {
+  const [preset, setPreset] = useState<'screen' | 'ebook' | 'printer'>('ebook');
+  return (
+    <EngineRunnerPage
+      tool={tool}
+      accept=".pdf,application/pdf"
+      hint="Select a PDF for deep (Ghostscript) compression"
+      optionsPanel={
+        <div className="lt-options">
+          <Field label="Quality" htmlFor="compress-preset">
+            <select
+              value={preset}
+              onChange={(e) => {
+                setPreset(e.target.value as 'screen' | 'ebook' | 'printer');
+              }}
+              className="lt-input"
+            >
+              <option value="screen">Screen — smallest (72 dpi)</option>
+              <option value="ebook">Ebook — balanced (150 dpi)</option>
+              <option value="printer">Printer — highest (300 dpi)</option>
+            </select>
+          </Field>
+        </div>
+      }
+      endpoint="/pdf/deep-compress"
+      buildOptions={() => ({ preset, file: 0 })}
+    />
+  );
+}
+
+function PdfToPdfAPage({ tool }: ToolPageSpec) {
+  const [flavor, setFlavor] = useState<'2b' | '3b'>('2b');
+  return (
+    <EngineRunnerPage
+      tool={tool}
+      accept=".pdf,application/pdf"
+      hint="Select a PDF to convert to the archival PDF/A format"
+      optionsPanel={
+        <div className="lt-options">
+          <Field label="PDF/A flavor" htmlFor="pdfa-flavor">
+            <select
+              value={flavor}
+              onChange={(e) => {
+                setFlavor(e.target.value as '2b' | '3b');
+              }}
+              className="lt-input"
+            >
+              <option value="2b">PDF/A-2b (recommended)</option>
+              <option value="3b">PDF/A-3b</option>
+            </select>
+          </Field>
+        </div>
+      }
+      endpoint="/pdf/pdf-a"
+      buildOptions={() => ({ flavor, file: 0 })}
+    />
+  );
+}
+
+function DeepRepairPage({ tool }: ToolPageSpec) {
+  return (
+    <EngineRunnerPage
+      tool={tool}
+      accept=".pdf,application/pdf"
+      hint="Select a damaged PDF to attempt a deep repair"
+      endpoint="/pdf/deep-repair"
+      buildOptions={() => ({ file: 0 })}
+    />
+  );
+}
+
+function HtmlToPdfPage({ tool }: ToolPageSpec) {
+  const [renderer, setRenderer] = useState<'weasyprint' | 'playwright'>('weasyprint');
+  const [pageSize, setPageSize] = useState('A4');
+  const [margin, setMargin] = useState('15');
+  return (
+    <EngineRunnerPage
+      tool={tool}
+      accept=".html,.htm,text/html"
+      hint="Select an HTML file to render as a PDF"
+      optionsPanel={
+        <div className="lt-options">
+          <Field label="Renderer" htmlFor="html-renderer">
+            <select
+              value={renderer}
+              onChange={(e) => {
+                setRenderer(e.target.value as 'weasyprint' | 'playwright');
+              }}
+              className="lt-input"
+            >
+              <option value="weasyprint">WeasyPrint — default, fast</option>
+              <option value="playwright">
+                Playwright — for JS-heavy pages (optional download)
+              </option>
+            </select>
+          </Field>
+          <Field label="Page size" htmlFor="html-pagesize">
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(e.target.value);
+              }}
+              className="lt-input"
+            >
+              <option value="A4">A4</option>
+              <option value="letter">Letter</option>
+            </select>
+          </Field>
+          <Field label="Margin (mm)" htmlFor="html-margin">
+            <Input
+              id="html-margin"
+              value={margin}
+              onChange={(e) => {
+                setMargin(e.target.value);
+              }}
+              inputMode="numeric"
+            />
+          </Field>
+        </div>
+      }
+      endpoint="/pdf/html-to-pdf"
+      buildOptions={() => {
+        const mm = Number(margin);
+        const m = Number.isFinite(mm) && mm >= 0 && mm <= 200 ? mm : 15;
+        return {
+          renderer,
+          pageSize,
+          marginMm: { top: m, right: m, bottom: m, left: m },
+          file: 0,
+        };
+      }}
     />
   );
 }

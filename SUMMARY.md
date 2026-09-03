@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-02, after Phase 3 — PDF suite (Group A) complete_
+_Last updated: 2026-09-03, after Phase 4 — PDF suite (Group B) engine complete_
 
 ## What this project is
 
@@ -8,14 +8,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 3 of 15 (Section 15)
-- PDF suite: **Group A complete — 21/21 tools implemented, tested (165/165), and wired into real client tool pages**; Group B (6 tools) is Phase 4
+- Phases complete: 4 of 15 (Section 15)
+- PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
 - Media suite: not started (design direction + shell only; 18 tools registered, incl. the single Group C downloader; TTS/audiobook assigned Phase 9 per D-012)
 - Image suite: not started (design direction + shell only; 14 tools registered)
 - Text & Dev suite: not started (design direction + shell only; 30 tools registered)
 - Desktop app (Tauri): not started (placeholder `apps/desktop/README.md` only)
-- Docker Compose target: compose file + both Dockerfiles scaffolded with hardened defaults; images **not yet built/run**
-- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core) + build, all green across 8 workspaces
+- Docker Compose target: engine Dockerfile now real (multi-stage bookworm-slim + ghostscript/tesseract/libreoffice/pip-weasyprint, non-root, healthcheck); stack acceptance runs as the CI `compose-stack` job (dev host has no Docker — D-015)
+- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 39 engine) + build
 
 ## What has been built so far
 
@@ -41,6 +41,15 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - PWA: `manifest.webmanifest`, versioned service worker with precache+runtime caching, generated icon set; offline-reload acceptance **OFFLINE_RELOAD_PASS** (logged in TESTS.md)
 - Lighthouse 12 baseline: perf 82 / a11y 100 / best-practices 100 / SEO 91 (PWA category removed upstream — acceptance reinterpreted per D-012). Bundle 63.9KB gzipped at Phase 2.
 
+**Phase 4 — PDF suite Group B (6/6 endpoints, complete)**
+
+- `@localtools/engine` (Fastify 5): request harness owning the full Section 5 control set — multipart size caps (stream-level, envelope-mapped 413), `file-type` magic-byte validation, fresh internal names in per-request temp dirs (finally-removal + 5-min sweeper), zod option schemas shared with the client, subprocess concurrency cap → 429, anonymous-id logging (never filenames). Subprocess runner: spawn argument arrays ONLY (`shell:false` hardcoded), SIGTERM→SIGKILL (+ taskkill /T on Windows).
+- Six endpoints: `/pdf/office-conversion` (LibreOffice; pinned `writer_pdf_import`/`impress_pdf_import` + explicit OOXML export for from-PDF; PDF→xlsx rejected with a clear error — no Calc PDF import exists), `/pdf/ocr` (OCRmyPDF or Ghostscript+Tesseract fallback), `/pdf/deep-compress`, `/pdf/pdf-a`, `/pdf/deep-repair` (Ghostscript), `/pdf/html-to-pdf` (WeasyPrint default via per-request `@page` stylesheet + Windows launcher script; Playwright strictly opt-in → 503, never a silent fallback).
+- Security plugins (fastify-plugin wrapped — plugin-encapsulation bug found and fixed during testing): CSP/nosniff/no-referrer headers, exact-origin CORS, bearer auth + boot-refusal when `LOCALTOOLS_EXPOSE` without a ≥32-char token. `/healthz` reports busy/capacity.
+- Fixtures added: `sample.docx/.xlsx/.pptx/.html`, `malformed.docx`, `empty.*`.
+- Engine tests: 39 (Section 14.1 per-tool happy/malformed/empty/oversized with container-sniffed outputs; 14.4 regressions: headers/CORS, hostile filenames, caps, temp cleanup, deterministic 429, auth) — running against the REAL installed tools.
+- Client: `lib/engine-client.ts` (fetch bridge, base64 EngineFiles, taxonomy copy) + `EngineRunnerPage` (Section 9 pattern for engine tools) + real pages for all 8 Group B tool cards; `ToolPage` dispatches PDF Group B to them.
+
 **Phase 3 — PDF suite Group A (21/21 tools, complete)**
 
 - **Batches 1–4** (commits `0ac2f9a`, `e05bdaf`, `0e37d1a`, `2118068`): vitest 4 harness wired into `pnpm verify`, committed deterministic Section 14.2 fixtures at root `fixtures/pdf/`, shared `loadPdf` (size-cap-before-parse, `/Encrypt` trailer sniff, zero-page detection), ToolError taxonomy. Tools: Merge, Split (every-N/by-size), Extract, Delete, Rotate, Organize, page numbers, text watermark, metadata edit/read, resize, N-up, protect/unlock/optimize (qpdf-wasm singleton, arg-array callMain), text extraction (pdfjs legacy build in Node), image→PDF (magic-byte sniffing), fill/read forms, **genuine redaction** (Section 14.3 mandatory test PASSES — redacted string absent from raw bytes + text layer with black box drawn), text compare, quick compress, repair, bookmarks.
@@ -52,7 +61,6 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## What's left
 
-- Phase 4 — PDF Group B endpoints behind Section 5 controls (Docker target): LibreOffice conversion, OCR, Ghostscript deep compress/PDF-A/deep repair, WeasyPrint/Playwright HTML→PDF
 - Phase 5 — Image suite (all Group A) + EXIF-stripping byte-level test
 - Phase 6 — Text & Dev suite (all Group A)
 - Phase 7 — Media conversion (ffmpeg Group B) + ffprobe sanity checks
@@ -63,7 +71,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Key architectural decisions made so far
 
-All detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); **D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node**.
+D-015 (Phase 4: OCR fallback, LibreOffice from-PDF filters, WeasyPrint launcher/GTK, Docker-stack-in-CI) plus earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); **D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node**.
 
 ## Known issues / tech debt
 

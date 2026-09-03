@@ -33,7 +33,10 @@
     "searchLabel": "Search tools"
   },
   "tools": {
-    "merge-pdf": { "name": "Merge PDF", "description": "Combine multiple PDFs into one document." },
+    "merge-pdf": {
+      "name": "Merge PDF",
+      "description": "Combine multiple PDFs into one document."
+    },
     "split-pdf": {
       "name": "Split PDF",
       "description": "Split by page range, every N pages, or file size."
@@ -50,8 +53,14 @@
       "name": "Organize Pages",
       "description": "Reorder pages with drag-and-drop thumbnails."
     },
-    "rotate-pages": { "name": "Rotate Pages", "description": "Turn pages 90°, 180°, or 270°." },
-    "crop-pages": { "name": "Crop Pages", "description": "Trim margins or crop to a region." },
+    "rotate-pages": {
+      "name": "Rotate Pages",
+      "description": "Turn pages 90°, 180°, or 270°."
+    },
+    "crop-pages": {
+      "name": "Crop Pages",
+      "description": "Trim margins or crop to a region."
+    },
     "page-numbers": {
       "name": "Add Page Numbers",
       "description": "Stamp numbered labels onto pages."
@@ -60,13 +69,22 @@
       "name": "Add Watermark",
       "description": "Overlay text or an image across pages."
     },
-    "pdf-to-image": { "name": "PDF to JPG/PNG", "description": "Render each page as an image." },
+    "pdf-to-image": {
+      "name": "PDF to JPG/PNG",
+      "description": "Render each page as an image."
+    },
     "image-to-pdf": {
       "name": "JPG/PNG to PDF",
       "description": "Bundle images into a PDF document."
     },
-    "scan-to-pdf": { "name": "Scan to PDF", "description": "Capture with your camera into a PDF." },
-    "sign-pdf": { "name": "Sign PDF", "description": "Draw, type, or place a visual signature." },
+    "scan-to-pdf": {
+      "name": "Scan to PDF",
+      "description": "Capture with your camera into a PDF."
+    },
+    "sign-pdf": {
+      "name": "Sign PDF",
+      "description": "Draw, type, or place a visual signature."
+    },
     "protect-pdf": {
       "name": "Protect PDF",
       "description": "Add real AES-128/256 password encryption."
@@ -107,8 +125,14 @@
       "name": "Resize Page Dimensions",
       "description": "Scale pages to another paper size."
     },
-    "n-up-layout": { "name": "N-up Layout", "description": "Place multiple pages per sheet." },
-    "grayscale-pdf": { "name": "Grayscale", "description": "Convert a PDF to black and white." },
+    "n-up-layout": {
+      "name": "N-up Layout",
+      "description": "Place multiple pages per sheet."
+    },
+    "grayscale-pdf": {
+      "name": "Grayscale",
+      "description": "Convert a PDF to black and white."
+    },
     "pdf-to-text": {
       "name": "PDF to Text/Markdown",
       "description": "Extract the text layer as txt or md."
@@ -117,31 +141,38 @@
       "name": "Repair PDF",
       "description": "Best-effort in-browser structural recovery."
     },
-
     "word-conversion": {
       "name": "PDF ↔ Word",
       "description": "Convert with LibreOffice via the local helper."
     },
     "excel-conversion": {
       "name": "PDF ↔ Excel",
-      "description": "Spreadsheet conversion via the local helper."
+      "description": "Excel → PDF. (PDF → Excel isn't supported — the conversion engine has no spreadsheet PDF import.)"
     },
     "powerpoint-conversion": {
       "name": "PDF ↔ PowerPoint",
       "description": "Slide conversion via the local helper."
     },
-    "ocr-pdf": { "name": "OCR PDF", "description": "Add a searchable text layer (Tesseract)." },
+    "ocr-pdf": {
+      "name": "OCR PDF",
+      "description": "Add a searchable text layer (Tesseract)."
+    },
     "deep-compress": {
       "name": "Deep Compress",
       "description": "Ghostscript-powered maximum shrinking."
     },
-    "pdf-to-pdfa": { "name": "PDF to PDF/A", "description": "Archive-grade long-term format." },
+    "pdf-to-pdfa": {
+      "name": "PDF to PDF/A",
+      "description": "Archive-grade long-term format."
+    },
     "deep-repair": {
       "name": "Deep Repair",
       "description": "Ghostscript-powered recovery of broken PDFs."
     },
-    "html-to-pdf": { "name": "HTML to PDF", "description": "Render web pages and markup to PDF." },
-
+    "html-to-pdf": {
+      "name": "HTML to PDF",
+      "description": "Render web pages and markup to PDF."
+    },
     "universal-downloader": {
       "name": "Universal Downloader",
       "description": "Save video/audio from supported sites via yt-dlp."
@@ -158,13 +189,22 @@
       "name": "Video Trimmer",
       "description": "Cut clips, losslessly where possible."
     },
-    "video-merger": { "name": "Merge Videos", "description": "Concatenate clips into one file." },
+    "video-merger": {
+      "name": "Merge Videos",
+      "description": "Concatenate clips into one file."
+    },
     "extract-audio": {
       "name": "Extract Audio",
       "description": "Pull the audio track out of a video."
     },
-    "video-to-gif": { "name": "Video to GIF", "description": "Turn clips into animated GIFs." },
-    "gif-to-video": { "name": "GIF to Video", "description": "Convert GIFs to mp4/webm." },
+    "video-to-gif": {
+      "name": "Video to GIF",
+      "description": "Turn clips into animated GIFs."
+    },
+    "gif-to-video": {
+      "name": "GIF to Video",
+      "description": "Convert GIFs to mp4/webm."
+    },
     "audio-converter": {
       "name": "Audio Converter",
       "description": "mp3, wav, flac, ogg, aac, m4a."
@@ -173,12 +213,18 @@
       "name": "Audio Compressor",
       "description": "Reduce bitrate while keeping quality."
     },
-    "audio-trimmer": { "name": "Audio Trimmer", "description": "Cut audio files to a range." },
+    "audio-trimmer": {
+      "name": "Audio Trimmer",
+      "description": "Cut audio files to a range."
+    },
     "loudness-normalizer": {
       "name": "Loudness Normalizer",
       "description": "Even out volume levels (EBU R128)."
     },
-    "burn-subtitles": { "name": "Burn Subtitles", "description": "Hardcode .srt/.vtt into video." },
+    "burn-subtitles": {
+      "name": "Burn Subtitles",
+      "description": "Hardcode .srt/.vtt into video."
+    },
     "resolution-changer": {
       "name": "Resolution / Aspect Changer",
       "description": "Resize, crop, or pad for social formats."
@@ -199,13 +245,18 @@
       "name": "PDF to Audiobook",
       "description": "Documents read aloud, chapter by chapter."
     },
-
     "image-converter": {
       "name": "Format Converter",
       "description": "PNG, JPG, WebP, AVIF, BMP, GIF, TIFF."
     },
-    "image-compressor": { "name": "Compressor", "description": "Per-format quality controls." },
-    "image-resizer": { "name": "Resizer", "description": "Exact size, percentage, or max bounds." },
+    "image-compressor": {
+      "name": "Compressor",
+      "description": "Per-format quality controls."
+    },
+    "image-resizer": {
+      "name": "Resizer",
+      "description": "Exact size, percentage, or max bounds."
+    },
     "batch-image-processing": {
       "name": "Batch Processing",
       "description": "Convert/compress a whole folder at once."
@@ -214,7 +265,10 @@
       "name": "Background Remover",
       "description": "Client-side subject cutout, best-effort."
     },
-    "heic-converter": { "name": "HEIC → JPG/PNG", "description": "Open iPhone photos anywhere." },
+    "heic-converter": {
+      "name": "HEIC → JPG/PNG",
+      "description": "Open iPhone photos anywhere."
+    },
     "favicon-generator": {
       "name": "Favicon Generator",
       "description": "Full icon set + manifest snippet."
@@ -247,15 +301,26 @@
       "name": "Color Palette Extractor",
       "description": "Dominant colors as hex/rgb swatches."
     },
-
     "json-formatter": {
       "name": "JSON Formatter",
       "description": "Format, validate, and minify JSON."
     },
-    "yaml-json": { "name": "YAML ↔ JSON", "description": "Two-way structured-config converter." },
-    "csv-json": { "name": "CSV ↔ JSON", "description": "Spreadsheet rows in and out of JSON." },
-    "xml-formatter": { "name": "XML Formatter", "description": "Pretty-print and validate XML." },
-    "base64": { "name": "Base64 Encode/Decode", "description": "Text and files, both directions." },
+    "yaml-json": {
+      "name": "YAML ↔ JSON",
+      "description": "Two-way structured-config converter."
+    },
+    "csv-json": {
+      "name": "CSV ↔ JSON",
+      "description": "Spreadsheet rows in and out of JSON."
+    },
+    "xml-formatter": {
+      "name": "XML Formatter",
+      "description": "Pretty-print and validate XML."
+    },
+    "base64": {
+      "name": "Base64 Encode/Decode",
+      "description": "Text and files, both directions."
+    },
     "url-encoder": {
       "name": "URL Encode/Decode",
       "description": "Percent-encoding for URLs and params."
@@ -264,13 +329,22 @@
       "name": "JWT Decoder",
       "description": "Inspect header, payload, signature claims."
     },
-    "hash-generator": { "name": "Hash Generator", "description": "MD5, SHA-1, SHA-256, SHA-512." },
+    "hash-generator": {
+      "name": "Hash Generator",
+      "description": "MD5, SHA-1, SHA-256, SHA-512."
+    },
     "uuid-generator": {
       "name": "UUID / ULID Generator",
       "description": "Fresh identifiers in one click."
     },
-    "regex-tester": { "name": "Regex Tester", "description": "Live matches with group breakdown." },
-    "text-diff": { "name": "Text Diff", "description": "Compare two texts line by line." },
+    "regex-tester": {
+      "name": "Regex Tester",
+      "description": "Live matches with group breakdown."
+    },
+    "text-diff": {
+      "name": "Text Diff",
+      "description": "Compare two texts line by line."
+    },
     "minifier-beautifier": {
       "name": "CSS/JS/HTML Minify & Beautify",
       "description": "Compress or restore readability."
@@ -279,7 +353,10 @@
       "name": "Markdown ↔ HTML",
       "description": "Render or unrender Markdown."
     },
-    "markdown-to-pdf": { "name": "Markdown to PDF", "description": "Typeset Markdown into a PDF." },
+    "markdown-to-pdf": {
+      "name": "Markdown to PDF",
+      "description": "Typeset Markdown into a PDF."
+    },
     "color-converter": {
       "name": "Color Converter",
       "description": "hex, rgb, hsl, oklch + palettes."
@@ -288,7 +365,10 @@
       "name": "CSS Gradient Generator",
       "description": "Design gradients visually, copy CSS."
     },
-    "cron-parser": { "name": "Cron Explainer", "description": "Human-readable cron schedules." },
+    "cron-parser": {
+      "name": "Cron Explainer",
+      "description": "Human-readable cron schedules."
+    },
     "timestamp-converter": {
       "name": "Timestamp Converter",
       "description": "Unix time ↔ dates with timezones."
@@ -297,7 +377,10 @@
       "name": "Case Converter",
       "description": "camelCase, snake_case, kebab, Title…"
     },
-    "slug-generator": { "name": "Slug Generator", "description": "URL-safe slugs from any title." },
+    "slug-generator": {
+      "name": "Slug Generator",
+      "description": "URL-safe slugs from any title."
+    },
     "lorem-ipsum": {
       "name": "Lorem Ipsum",
       "description": "Placeholder text in paragraphs or words."

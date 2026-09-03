@@ -30,9 +30,48 @@ jobs:
       - name: Verify (format + lint + typecheck + build)
         run: pnpm verify
 
-  compose-validate:
+  compose-stack:
+    # Phase 4 acceptance: the Docker stack test (Section 14.7 engine round
+    # trip). Runs only where Docker exists (ubuntu runners) — the Windows
+    # dev host has no Docker (recorded in DECISIONS.md).
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Validate docker-compose.yml syntax
-        run: docker compose -f docker-compose.yml config --quiet
+
+      - name: Build the stack
+        run: docker compose build
+
+      - name: Bring the stack up
+        run: docker compose up -d --wait
+
+      - name: Engine round trip (PDF Group B through the container)
+        run: |
+          set -euo pipefail
+          # Health gate.
+          curl -fsS http://127.0.0.1:8787/healthz
+          # Section 14.7-style round trip: one real Group B tool through
+          # the containerized engine — deep-compress the committed fixture.
+          REPLY=$(curl -fsS -X POST http://127.0.0.1:8787/pdf/deep-compress \
+            -F 'options={"preset":"ebook","file":0}' \
+            -F 'files=@fixtures/pdf/simple-text.pdf;filename=doc.pdf')
+          echo "$REPLY" | node -e "
+            let s=''; process.stdin.on('data',c=>s+=c).on('end',()=>{
+              const r = JSON.parse(s);
+              if (!r.ok) { console.error('engine returned error', r.error); process.exit(1); }
+              const f = r.data.files[0];
+              if (!f || f.ext !== 'pdf' || f.data.length < 100) {
+                console.error('bad output file'); process.exit(1);
+              }
+              console.log('ENGINE_STACK_PASS', f.data.length, 'b64 chars');
+            });
+          "
+
+      - name: Client serves
+        run: |
+          set -euo pipefail
+          curl -fsS -o /dev/null http://localhost:5173/
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

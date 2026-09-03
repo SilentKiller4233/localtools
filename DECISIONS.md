@@ -274,3 +274,50 @@ Verified against installed source/typings (pdfjs-dist 6.3.289,
   via `PDFDocument.embedPng` — pdf-lib has no non-separable blend mode,
   so overlay approaches can't do true grayscale (verified in
   pdf-document-processing skill).
+
+### D-015 — Phase 4 engine architecture: OCR fallback, LibreOffice filters, WeasyPrint launcher, Docker-in-CI
+
+- **OCR: OCRmyPDF primary with a Ghostscript+Tesseract fallback.** The spec
+  names OCRmyPDF (Section 4.1) but it is Python-packaged and absent on
+  Windows dev hosts; the engine runs OCRmyPDF when installed (Docker
+  image) and otherwise rasterizes via Ghostscript (`tiff24nc` @200dpi) and
+  OCRed each page with Tesseract's `pdf` config, concatenating with
+  Ghostscript. Both paths are argument-array subprocesses (Section 5.3).
+- **LibreOffice from-PDF needs the import filter pinned AND the explicit
+  OOXML export filter** (verified against LibreOffice 26.8.0.3): the PDF
+  import defaults to Draw's model, which exports invalid renamed-ODF files
+  under Word filters. The working chains are
+  `--infilter=writer_pdf_import --convert-to "docx:MS Word 2007 XML"` and
+  `--infilter=impress_pdf_import --convert-to "pptx:Impress MS PowerPoint
+2007 XML"` — both produce genuine OOXML containers with the PDF's text.
+  **PDF→Excel is impossible on stock LibreOffice** (pdfimport.xcd defines
+  only draw/impress/writer PDF imports — no Calc import exists), so the
+  engine rejects that combination with a clear message instead of emitting
+  an invalid file; the client tool description notes the limitation.
+  Every invocation runs with an isolated user profile
+  (`-env:UserInstallation` into the request temp dir) to avoid the
+  single-instance profile lock. Office→PDF uses plain `pdf` with no
+  infilter. All via `soffice.com` on Windows.
+- **WeasyPrint on Windows needs os.add_dll_directory, not just PATH.**
+  cffi's dlopen of libgobject fails with loader error 0x7e for its
+  transitive DLL deps when the GTK3 runtime bin dir is only on PATH.
+  The engine spawns `apps/engine/scripts/weasyprint-launcher.py` (via
+  the Windows `py` launcher, which picks an interpreter that actually
+  has weasyprint installed — bare `python` may resolve to a uv-managed
+  interpreter without it). Page size/margins are passed through a
+  per-request user stylesheet with `@page { size; margin }` — the CLI's
+  `-s` is stylesheets, not page size (verified against WeasyPrint 69).
+- **Docker stack acceptance runs as a CI job, not locally.** The dev
+  host has no Docker/WSL (user decision): `ci.yml` gains a
+  `compose-stack` job (ubuntu) that builds the compose stack, gates on
+  `/healthz`, and round-trips one real Group B tool (deep-compress)
+  through the containerized engine. Native-tool unit tests run directly
+  on the dev host with real installs.
+- **Engine owns its own error taxonomy** (`errors.ts`) mirroring
+  pdf-core's ToolError shape but with engine-specific codes; Layer 2
+  never imports Layer 1's pdf-core package.
+- **Playwright HTML→PDF is strictly opt-in** (`LOCALTOOLS_PLAYWRIGHT_ENABLED`):
+  the engine reports 503 tool-unavailable rather than silently falling
+  back to WeasyPrint for JS-heavy pages (spec Section 4.1: opt-in only).
+  The renderer runner (`scripts/playwright-pdf.mjs`) loads only
+  `file://` URLs — no arbitrary network fetch.
