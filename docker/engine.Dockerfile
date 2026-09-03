@@ -16,6 +16,10 @@ COPY packages/shared-types ./packages/shared-types
 COPY apps/engine ./apps/engine
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @localtools/engine... build
+# Prune to a self-contained production deploy of the engine (pnpm deploy
+# resolves workspace deps into real files — the workspace node_modules
+# symlinks don't survive a plain COPY of node_modules).
+RUN pnpm --filter @localtools/engine --prod deploy /pruned
 
 FROM node:22-bookworm-slim
 ENV NODE_ENV=production
@@ -32,12 +36,12 @@ RUN apt-get update \
   && apt-get purge -y python3-pip \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/*
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/packages/shared-types/package.json ./packages/shared-types/package.json
-COPY --from=build /app/packages/shared-types/dist ./packages/shared-types/dist
-COPY --from=build /app/apps/engine/package.json ./apps/engine/package.json
-COPY --from=build /app/apps/engine/dist ./apps/engine/dist
+COPY --from=build /pruned/node_modules ./node_modules
+COPY --from=build /pruned/package.json ./package.json
+COPY --from=build /pruned/apps/engine/package.json ./apps/engine/package.json
+COPY --from=build /pruned/apps/engine/dist ./apps/engine/dist
+COPY --from=build /pruned/packages/shared-types/package.json ./packages/shared-types/package.json
+COPY --from=build /pruned/packages/shared-types/dist ./packages/shared-types/dist
 # Engine helper scripts: WeasyPrint launcher (Windows-only no-op here) and
 # the opt-in Playwright PDF runner.
 COPY apps/engine/scripts ./apps/engine/scripts
