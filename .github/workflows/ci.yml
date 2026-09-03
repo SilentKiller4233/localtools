@@ -45,6 +45,12 @@ jobs:
       - name: Bring the stack up
         run: docker compose up -d --wait
 
+      # Always leave the engine's own logs in the CI record — the job's
+      # biggest debugging gap so far has been tearing down without logs.
+      - name: Engine container logs (diagnostics)
+        if: always()
+        run: docker compose logs engine || true
+
       - name: Engine round trip (PDF Group B through the container)
         run: |
           set -euo pipefail

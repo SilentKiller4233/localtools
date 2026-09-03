@@ -35,6 +35,7 @@ RUN apt-get update \
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/packages/shared-types/package.json ./packages/shared-types/package.json
+COPY --from=build /app/packages/shared-types/dist ./packages/shared-types/dist
 COPY --from=build /app/apps/engine/package.json ./apps/engine/package.json
 COPY --from=build /app/apps/engine/dist ./apps/engine/dist
 # Engine helper scripts: WeasyPrint launcher (Windows-only no-op here) and

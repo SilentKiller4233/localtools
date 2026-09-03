@@ -50,7 +50,11 @@ export function loadConfig(): EngineConfig {
     );
   }
   return {
-    host: exposed ? '0.0.0.0' : '127.0.0.1',
+    // LOCALTOOLS_ENGINE_HOST lets the Docker container bind 0.0.0.0 inside
+    // its namespace; the host-side loopback guarantee (Section 5.1) is
+    // enforced by compose's `127.0.0.1:8787:8787` port mapping, not by the
+    // in-container bind. Default stays loopback for dev machines/sidecars.
+    host: process.env['LOCALTOOLS_ENGINE_HOST'] ?? (exposed ? '0.0.0.0' : '127.0.0.1'),
     port: envInt('LOCALTOOLS_ENGINE_PORT', 8787),
     exposed,
     authToken: exposed ? token : undefined,

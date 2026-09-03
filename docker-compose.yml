@@ -25,6 +25,9 @@ services:
       context: .
       dockerfile: docker/engine.Dockerfile
     environment:
+      # In-container bind; host-side loopback (Section 5.1) is enforced by
+      # the 127.0.0.1:8787:8787 port mapping below, not this bind.
+      LOCALTOOLS_ENGINE_HOST: 0.0.0.0
       LOCALTOOLS_EXPOSE: ${LOCALTOOLS_EXPOSE:-false}
       LOCALTOOLS_AUTH_TOKEN: ${LOCALTOOLS_AUTH_TOKEN:-}
       LOCALTOOLS_CLIENT_ORIGIN: ${LOCALTOOLS_CLIENT_ORIGIN:-http://localhost:5173}
