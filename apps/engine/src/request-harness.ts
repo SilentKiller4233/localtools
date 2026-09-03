@@ -96,15 +96,24 @@ export class GroupBRequestHarness {
       }
 
       // ── 5. Concurrency-capped execution ────────────────────────────
-      const ctx: GroupBContext = {
-        config: this.config,
-        temp,
-        files: inputFiles,
-        options: parsedOptions,
-        timeoutMs: this.config.fileTimeoutSeconds * 1000,
-        outDir: await this.makeOutDir(temp),
-      };
-      const result = await this.limiter.run(() => handler(ctx));
+      // The limiter wraps the WHOLE per-request pipeline from temp-dir
+      // creation through the tool run (Section 5.2 caps per-request
+      // processing, not just the subprocess instant) — so a request holds
+      // a slot for its entire processing lifetime, deterministically
+      // observable via /healthz busy on any host, native tools or not.
+      const result = await this.limiter.run(async () => {
+        if (temp === undefined) throw new EngineToolError('internal', 'Temp dir missing.');
+        const requestTemp: TempDir = temp;
+        const ctx: GroupBContext = {
+          config: this.config,
+          temp: requestTemp,
+          files: inputFiles,
+          options: parsedOptions,
+          timeoutMs: this.config.fileTimeoutSeconds * 1000,
+          outDir: await this.makeOutDir(requestTemp),
+        };
+        return handler(ctx);
+      });
 
       // ── 6. Encode outputs ──────────────────────────────────────────
       const payload = {

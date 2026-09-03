@@ -10,7 +10,7 @@
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 RUN corepack enable
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY tooling ./tooling
 COPY packages/shared-types ./packages/shared-types
 COPY apps/engine ./apps/engine

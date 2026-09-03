@@ -179,39 +179,59 @@ describe('temp-dir lifecycle (5.2)', () => {
 
 describe('concurrency cap → 429 (5.2/13)', () => {
   it('answers 429 engine-busy when the subprocess slots are full', async () => {
-    // Cap=1 engine. Hold the slot with a REAL slow operation: Ghostscript
-    // on a padded ~2MB PDF (a giant % comment line — parse cost is real
-    // for GS even though the PDF is trivial) reliably outlives the gap.
+    // The limiter wraps the whole per-request pipeline (harness step 5),
+    // so a big upload holds a slot through its 8MB temp write + tool run.
+    // On hosts WITH the native tool the slot is held for the full
+    // Ghostscript run; WITHOUT tools, for the temp-write + 503 path.
+    // Poll busy>=1 then fire the second request; retry the pair a few
+    // times in case the first finished before we could observe it.
     const one = await startEngine({ maxConcurrentSubprocesses: 1, fileTimeoutSeconds: 30 });
     try {
       const simple = await readFixture('simple-text.pdf');
-      // Pad to ~2MB: big enough that GS takes >1s, small enough to stay fast.
-      const pad = new Uint8Array(2 * 1024 * 1024);
-      const pdf = new Uint8Array(simple.byteLength + pad.byteLength);
-      pdf.set(simple, 0);
-      pdf.set(pad, simple.byteLength);
-      const slowPromise = postForm(
-        `${one.url}/pdf/deep-compress`,
-        multipartBody({ preset: 'printer', file: 0 }, { name: 'a.pdf', bytes: pdf }),
-      );
-      // Deterministic: poll /healthz until the engine reports the first
-      // request inside the limiter (busy >= 1), then fire the second.
-      const inSlot = await waitFor(
-        async () => {
-          const res = await fetch(`${one.url}/healthz`);
-          const body = (await res.json()) as { ok: boolean; data?: { busy?: number } };
-          return body.ok && (body.data?.busy ?? 0) >= 1;
-        },
-        { timeoutMs: 10_000, intervalMs: 50 },
-      );
-      expect(inSlot).toBe(true);
-      const second = await postForm(
-        `${one.url}/pdf/deep-compress`,
-        multipartBody({ preset: 'ebook', file: 0 }, { name: 'b.pdf', bytes: simple }),
-      );
-      expect(second.status).toBe(429);
-      if (!second.body.ok) expect(second.body.error.code).toBe('engine-busy');
-      await slowPromise;
+      // Eight padded ~8MB files: ALL their temp writes happen INSIDE the
+      // limiter, so the first request deterministically holds its slot for
+      // hundreds of ms on any host — with or without native tools.
+      const bigFiles: { name: string; bytes: Uint8Array }[] = [];
+      for (let i = 0; i < 8; i += 1) {
+        const pad = new Uint8Array(8 * 1024 * 1024);
+        const pdf = new Uint8Array(simple.byteLength + pad.byteLength);
+        pdf.set(simple, 0);
+        pdf.set(pad, simple.byteLength);
+        bigFiles.push({ name: `a${String(i)}.pdf`, bytes: pdf });
+      }
+      const slowForm = new FormData();
+      slowForm.append('options', JSON.stringify({ preset: 'ebook', file: 0 }));
+      for (const f of bigFiles) {
+        slowForm.append('files', new Blob([f.bytes]), f.name);
+      }
+
+      let sawBusy = false;
+      let got429 = false;
+      for (let attempt = 0; attempt < 3 && !got429; attempt += 1) {
+        const slowPromise = postForm(`${one.url}/pdf/deep-compress`, slowForm);
+        const inSlot = await waitFor(
+          async () => {
+            const res = await fetch(`${one.url}/healthz`);
+            const body = (await res.json()) as { ok: boolean; data?: { busy?: number } };
+            return body.ok && (body.data?.busy ?? 0) >= 1;
+          },
+          { timeoutMs: 10_000, intervalMs: 25 },
+        );
+        if (inSlot) sawBusy = true;
+        const second = await postForm(
+          `${one.url}/pdf/deep-compress`,
+          multipartBody({ preset: 'ebook', file: 0 }, { name: 'b.pdf', bytes: simple }),
+        );
+        if (second.status === 429) {
+          got429 = true;
+          if (!second.body.ok) expect(second.body.error.code).toBe('engine-busy');
+        }
+        await slowPromise;
+      }
+      // The slot counter must be observable at least once, and the cap
+      // must produce a 429 at least once across attempts.
+      expect(sawBusy).toBe(true);
+      expect(got429).toBe(true);
     } finally {
       await one.close();
     }
