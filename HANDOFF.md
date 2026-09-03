@@ -16,9 +16,10 @@ Verify before trusting: `git status` should show only this HANDOFF edit (or noth
 
 ## Next immediate steps (in order — do these first)
 
-1. Confirm CI green on `233e444` (`gh run list --limit 2`; repo SilentKiller4233/localtools). If compose-stack is red, read its log with `gh run view --log-failed`, fix-forward (never amend), push, re-confirm.
-2. **Phase 5 — Image suite (entirely Group A)**: all 14 tools from Section 3.3 (@jsquash/* converters, heic2any, exifr, tesseract.js, svgo, background-remover with the @imgly license re-check deferred to this phase per D-006/D-012, palette k-means, favicon, screenshot annotator, meme, base64). Acceptance: 14.1/14.2 per tool + the EXIF-strip byte-level test (GPS actually gone from output bytes).
-3. Wire image tools into the client ToolRunnerPage pattern (worker offload like pdf-core; new `image-core` package).
+1. Confirm CI green on the latest push (`gh run list --limit 1`; repo SilentKiller4233/localtools). The compose-stack job went through 4 fix-forward rounds this session: (a) engine image missing `tsconfig.base.json`, (b) CLIENT image missing it too — the failure was shared-types building inside the client image, (c) engine runtime stage missing `packages/shared-types/dist`, (d) plain COPY of workspace `node_modules` misses pnpm's per-package symlinks → container booted into `ERR_MODULE_NOT_FOUND 'fastify'` → now uses `pnpm --filter @localtools/engine --prod deploy /pruned` and copies from /pruned. If STILL red: `gh run view --log` → the job now always dumps `docker compose logs engine` (diagnostics step) — read those first.
+2. If compose-stack passes, the Docker stack acceptance (Section 14.7 PDF round trip) is done; update TESTS.md's `Docker stack round trip` row from `pending push` to `PASS` and commit with any other leftovers.
+3. **Phase 5 — Image suite (entirely Group A)**: all 14 tools from Section 3.3 (@jsquash/* converters, heic2any, exifr, tesseract.js, svgo, background-remover with the @imgly license re-check due AT THIS PHASE per D-006, palette k-means, favicon, screenshot annotator, meme, base64). Acceptance: 14.1/14.2 per tool + the EXIF-strip byte-level test (GPS actually gone from output bytes).
+4. Wire image tools into the client ToolRunnerPage pattern (worker offload like pdf-core; new `image-core` package).
 
 ## Blockers / open decisions needing human input
 

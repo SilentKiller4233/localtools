@@ -18,8 +18,9 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @localtools/engine... build
 # Prune to a self-contained production deploy of the engine (pnpm deploy
 # resolves workspace deps into real files — the workspace node_modules
-# symlinks don't survive a plain COPY of node_modules).
-RUN pnpm --filter @localtools/engine --prod deploy /pruned
+# symlinks don't survive a plain COPY of node_modules). --legacy: pnpm v10
+# deploy otherwise requires inject-workspace-packages=true in the workspace.
+RUN pnpm --filter @localtools/engine --prod --legacy deploy /pruned
 
 FROM node:22-bookworm-slim
 ENV NODE_ENV=production
