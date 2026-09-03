@@ -1,14 +1,14 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-03 ~21:40 PKT (UTC+05:00), end of session 7 — Phase 4 COMPLETE (PDF Group B engine, 39/39 tests), pushed as `233e444`; CI status to confirm on open_
+_Last updated: 2026-09-03 ~22:45 PKT (UTC+05:00), end of session 7 — Phase 4 COMPLETE and CI FULLY GREEN (verify ubuntu+windows + compose-stack Docker acceptance), HEAD `f41b560`_
 
 ## Where things stand right now
 
-**Phases 0–4 complete.** Phase 4 (PDF suite Group B) is DONE: all 6 engine endpoints live in `@localtools/engine` behind the full Section 5 control set, 39/39 engine tests passing against the REAL installed native tools, client wired via `engine-client.ts` + `EngineRunnerPage` + real pages for all 8 Group B tool cards. `pnpm verify` fully green (165 pdf-core + 39 engine tests + builds). Committed as `233e444` and pushed on top of `31c388e`.
+**Phases 0–4 complete, CI fully green.** Phase 4 (PDF suite Group B) is DONE end-to-end: 6 engine endpoints in `@localtools/engine` behind the full Section 5 control set, 39/39 engine tests against the REAL native tools, client wired (engine-client + EngineRunnerPage + all 8 tool cards), and the Docker stack acceptance (Section 14.7: compose build → healthz → deep-compress round-trip through the containerized engine → client serves) PASSED as the new `compose-stack` CI job. Six fix-forward commits on top of `31c388e` (Phase 4 `233e444` + five CI fixes ending `f41b560`).
 
 ## Last thing done
 
-Phase 4 commit `233e444` pushed to origin/main (51 files). CI is running — the `verify` matrix should pass (it's the same command that ran green locally); **the new `compose-stack` job runs for the FIRST TIME** (Docker build of the engine image + healthz gate + deep-compress round-trip through the container). If it fails, fix-forward on a new commit — do not amend. This HANDOFF rewrite is the session's final repo action.
+Compose-stack CI saga resolved: five fix-forwards (tsconfig.base.json into BOTH Dockerfiles; shared-types dist in the runtime image; `pnpm deploy --prod --legacy` for a self-contained image — plain COPY of pnpm-workspace node_modules misses per-package symlinks, container died on `ERR_MODULE_NOT_FOUND 'fastify'`; runtime COPYs matching deploy's FLAT layout; in-container 0.0.0.0 bind via LOCALTOOLS_ENGINE_HOST with host-side loopback enforced by compose's 127.0.0.1:8787:8787 mapping). Run 33785873711: all three jobs green. TESTS.md Docker row → PASS. This HANDOFF rewrite is the session's final repo action.
 
 ## In-progress / uncommitted work
 
@@ -16,10 +16,9 @@ Verify before trusting: `git status` should show only this HANDOFF edit (or noth
 
 ## Next immediate steps (in order — do these first)
 
-1. Confirm CI green on the latest push (`gh run list --limit 1`; repo SilentKiller4233/localtools). The compose-stack job went through 4 fix-forward rounds this session: (a) engine image missing `tsconfig.base.json`, (b) CLIENT image missing it too — the failure was shared-types building inside the client image, (c) engine runtime stage missing `packages/shared-types/dist`, (d) plain COPY of workspace `node_modules` misses pnpm's per-package symlinks → container booted into `ERR_MODULE_NOT_FOUND 'fastify'` → now uses `pnpm --filter @localtools/engine --prod deploy /pruned` and copies from /pruned. If STILL red: `gh run view --log` → the job now always dumps `docker compose logs engine` (diagnostics step) — read those first.
-2. If compose-stack passes, the Docker stack acceptance (Section 14.7 PDF round trip) is done; update TESTS.md's `Docker stack round trip` row from `pending push` to `PASS` and commit with any other leftovers.
-3. **Phase 5 — Image suite (entirely Group A)**: all 14 tools from Section 3.3 (@jsquash/* converters, heic2any, exifr, tesseract.js, svgo, background-remover with the @imgly license re-check due AT THIS PHASE per D-006, palette k-means, favicon, screenshot annotator, meme, base64). Acceptance: 14.1/14.2 per tool + the EXIF-strip byte-level test (GPS actually gone from output bytes).
-4. Wire image tools into the client ToolRunnerPage pattern (worker offload like pdf-core; new `image-core` package).
+1. CI is GREEN on `f41b560` (all three jobs: verify ubuntu + windows + compose-stack — the Docker stack acceptance PASSED, Section 14.7 PDF round trip through the containerized engine). Nothing to confirm; go straight to Phase 5.
+2. **Phase 5 — Image suite (entirely Group A)**: all 14 tools from Section 3.3 (@jsquash/* converters, heic2any, exifr, tesseract.js, svgo, background-remover with the @imgly license re-check due AT THIS PHASE per D-006, palette k-means, favicon, screenshot annotator, meme, base64). Acceptance: 14.1/14.2 per tool + the EXIF-strip byte-level test (GPS actually gone from output bytes).
+3. Wire image tools into the client ToolRunnerPage pattern (worker offload like pdf-core; new `image-core` package).
 
 ## Blockers / open decisions needing human input
 
@@ -52,4 +51,7 @@ None blocking. Non-blocking:
 - LibreOffice's first conversion after boot takes ~10s (cold profile) — engine testTimeout is 60s; the 429 test polls `/healthz` (`busy` counter) for determinism instead of fixed sleeps.
 - `py` on this host = `C:\Users\mshah\AppData\Local\Programs\Python\Launcher\py.EXE`; `python` = uv cpython 3.11 (no weasyprint). LOCALTOOLS_PYTHON_PATH override exists if needed.
 - Engine `/healthz` now returns `{ status, busy, capacity }` — busy = current subprocess count (used by tests; safe to expose, no names).
+- **pnpm-workspace Docker images**: never COPY workspace node_modules directly — pnpm hoists per-package deps via symlinks that don't survive; use `pnpm --filter <pkg> --prod --legacy deploy /pruned` (v10 needs --legacy without inject-workspace-packages) and COPY from the deploy dir. The deploy layout is FLAT (package.json + dist/ + node_modules at the deploy root).
+- **Compose "unhealthy" was a crash**: `docker compose up -d --wait` reports a dead container as unhealthy ~30s later; the ci.yml now always dumps `docker compose logs engine` (if: always()) — that's how the ERR_MODULE_NOT_FOUND was found. Add log-dump steps to any container CI on day one.
+- **In-container bind must be 0.0.0.0** — a 127.0.0.1 bind inside a container namespace is unreachable through the published port. Section 5.1's loopback guarantee is enforced host-side by the 127.0.0.1:8787:8787 compose mapping; LOCALTOOLS_ENGINE_HOST controls the in-container bind.
 - Prior sessions' pdf-lib/pdfjs/qpdf gotchas all remain valid (see pdf-document-processing skill + earlier HANDOFFs in git history).
