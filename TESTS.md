@@ -97,3 +97,21 @@ CI job (compose-stack) because the dev host has no Docker (D-015).
 | Security: concurrency cap → 429               | automated (local) | PASS         | 1-slot engine; /healthz busy counter for deterministic polling                                                          |
 | Security: expose-refusal + bearer 401         | automated (local) | PASS         | Boot refuses LOCALTOOLS_EXPOSE without ≥32-char token; auth via fastify-plugin                                          |
 | Docker stack round trip                       | automated (CI)    | pending push | compose-stack job: build, healthz gate, deep-compress through container                                                 |
+
+## Status: Phase 5 (Image suite — entirely Group A)
+
+Section 15 Phase 5 acceptance: "Section 14.1/14.2 tests pass for every Image tool; EXIF-stripping test specifically verifies GPS/metadata is actually removed from output bytes."
+
+| Check | Kind | Result | Notes |
+| --- | --- | --- | --- |
+| image-core suite (65 tests) | automated (local) | PASS | 14.1 happy/malformed/empty/oversized per tool family; real codecs/wasm/ONNX |
+| Format converter (png/jpeg/webp/avif/bmp) | automated (local) | PASS | Container-sniffed outputs; BMP round-trips; gif/tiff honest unsupported |
+| **EXIF strip byte-level acceptance** | automated (local) | PASS | No APP1/APP2/COM markers in ANY output byte; no "GPS"/"Exif" strings; exifr re-read finds nothing; dimensions preserved (no re-encode) |
+| Compressor / resizer / batch | automated (local) | PASS | Quality presets; max-dimension never upscales; batch 50-cap + fail-loud |
+| HEIC → JPG/PNG | automated (local) | PASS | libheif-wasm via heic-decode; verified in Node (heic2any rejected: needs window) |
+| Background remover | automated (local) | PASS | D-016 path: u2netp ONNX (Apache-2.0), real inference verified — object fixture: alpha 255 center / 0 corner, fg ratio 0.141; flat-color input → honest near-zero fg |
+| Image OCR | automated (local) | PASS | tesseract.js in Node; reads rendered bitmap-font text |
+| Palette / favicon / base64 / svg / meme / annotator | automated (local) | PASS | ICO container structure asserted; blur verified as real pixel averaging; data-URI round-trips byte-identical |
+| Client wiring | automated (local) | PASS | image worker bridge + all 14 tool pages; initial JS 78.1KB gzipped (budget 250KB) |
+| Safari/WebKit WASM quirks | manual | pending | Scheduled for Phase 12 with the other suite checks (Section 13) |
+

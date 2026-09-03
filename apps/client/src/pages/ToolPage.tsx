@@ -2,6 +2,7 @@ import { Badge, Button, Card } from '@localtools/ui';
 import { ArrowLeft } from 'lucide-react';
 import { badgeLabel, getTool } from '../lib/tool-registry';
 import { pdfToolPage } from './ToolPageSpec';
+import { imageToolPage } from './ImagePageSpec';
 import en from '../i18n/en.json';
 
 const UI = en.ui;
@@ -30,6 +31,12 @@ export function ToolPage({ toolId }: { toolId: string }) {
   // PDF Group A (worker) + Group B (engine) tools carry real pages.
   if (tool.suite === 'pdf') {
     const real = pdfToolPage(tool);
+    if (real !== null) return real;
+  }
+
+  // Image suite Group A tools carry real pages (image worker).
+  if (tool.suite === 'image' && tool.group === 'a') {
+    const real = imageToolPage(tool);
     if (real !== null) return real;
   }
 

@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-03, after Phase 4 — PDF suite (Group B) engine complete_
+_Last updated: 2026-09-04, after Phase 5 — Image suite complete_
 
 ## What this project is
 
@@ -8,14 +8,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 4 of 15 (Section 15)
+- Phases complete: 5 of 15 (Section 15)
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
 - Media suite: not started (design direction + shell only; 18 tools registered, incl. the single Group C downloader; TTS/audiobook assigned Phase 9 per D-012)
-- Image suite: not started (design direction + shell only; 14 tools registered)
+- Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
 - Text & Dev suite: not started (design direction + shell only; 30 tools registered)
 - Desktop app (Tauri): not started (placeholder `apps/desktop/README.md` only)
 - Docker Compose target: engine Dockerfile now real (multi-stage bookworm-slim + ghostscript/tesseract/libreoffice/pip-weasyprint, non-root, healthcheck); stack acceptance runs as the CI `compose-stack` job (dev host has no Docker — D-015)
-- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 39 engine) + build
+- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 39 engine + 65 image-core) + build
 
 ## What has been built so far
 
@@ -41,6 +41,12 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - PWA: `manifest.webmanifest`, versioned service worker with precache+runtime caching, generated icon set; offline-reload acceptance **OFFLINE_RELOAD_PASS** (logged in TESTS.md)
 - Lighthouse 12 baseline: perf 82 / a11y 100 / best-practices 100 / SEO 91 (PWA category removed upstream — acceptance reinterpreted per D-012). Bundle 63.9KB gzipped at Phase 2.
 
+**Phase 5 — Image suite (14/14 Group A tools, complete)**
+
+- `@localtools/image-core` with the D-017 codec layer (@jsquash WASM codecs in Node via manual binary init; browser self-initializes) + HEIC via libheif-wasm (`heic-decode`) — all dual-environment.
+- Tools: format converter (png/jpeg/webp/avif via codecs, hand-rolled BMP both ways, honest gif/tiff unsupported), compressor (quality presets, PNG lossless-only stated honestly), resizer (exact/percent/max-dimension, aspect lock, box-average downscale), batch runner (50-file cap, fail-loud), HEIC→JPG/PNG, base64 data-URI both ways (25MB cap), favicon generator (real ICO container + 16/32/180/192/512 PNGs + snippet), palette extractor (in-house k-means), EXIF viewer + **byte-genuine stripper** (drops APP segments; the 14.1-style acceptance asserts no EXIF/GPS markers anywhere in output bytes), SVG optimizer (svgo, viewBox kept), meme generator (built-in 5×7 bitmap font, stroke-under-ink two-pass), screenshot annotator (box/arrow/mosaic-blur — blur is real pixel averaging), image OCR (tesseract.js, lazy traineddata), background remover (D-016: onnxruntime + Apache-2.0 u2netp, lazy-download + cache, verified real inference: object fixture → alpha mask with fg ratio 0.141, center 255/corner 0).
+- Client: `image.worker.ts` + `image-worker-client.ts` (same frozen bridge pattern as pdf) + `ImagePageSpec.tsx` with real pages for all 14 tools (GPS warning in EXIF viewer, size-stat renderers, palette swatches, OCR text view). Initial JS: **78.1KB gzipped** (budget 250KB).
+
 **Phase 4 — PDF suite Group B (6/6 endpoints, complete)**
 
 - `@localtools/engine` (Fastify 5): request harness owning the full Section 5 control set — multipart size caps (stream-level, envelope-mapped 413), `file-type` magic-byte validation, fresh internal names in per-request temp dirs (finally-removal + 5-min sweeper), zod option schemas shared with the client, subprocess concurrency cap → 429, anonymous-id logging (never filenames). Subprocess runner: spawn argument arrays ONLY (`shell:false` hardcoded), SIGTERM→SIGKILL (+ taskkill /T on Windows).
@@ -61,7 +67,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## What's left
 
-- Phase 5 — Image suite (all Group A) + EXIF-stripping byte-level test
+- Phase 6 — Text & Dev suite (all Group A)
 - Phase 6 — Text & Dev suite (all Group A)
 - Phase 7 — Media conversion (ffmpeg Group B) + ffprobe sanity checks
 - Phase 8 — Media downloader (Group C) with full Section 5.8 SSRF set from the start
@@ -71,7 +77,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Key architectural decisions made so far
 
-D-015 (Phase 4: OCR fallback, LibreOffice from-PDF filters, WeasyPrint launcher/GTK, Docker-stack-in-CI) plus earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); **D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node**.
+D-016 (background-removal license: AGPL-only @imgly rejected → onnxruntime + Apache-2.0 u2netp) and D-017 (@jsquash Node init contract) plus D-015 and earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); **D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node**.
 
 ## Known issues / tech debt
 

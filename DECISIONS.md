@@ -321,3 +321,53 @@ Verified against installed source/typings (pdfjs-dist 6.3.289,
   back to WeasyPrint for JS-heavy pages (spec Section 4.1: opt-in only).
   The renderer runner (`scripts/playwright-pdf.mjs`) loads only
   `file://` URLs — no arbitrary network fetch.
+
+### D-016 — Phase 5: background-removal licensing outcome — ONNX Runtime Web + permissive ONNX model (spec fallback)
+
+Spec Section 4.3 named `@imgly/background-removal` (AGPL-3.0/commercial
+dual license) with an explicit fallback if terms were unacceptable, and
+D-006 deferred the re-check to this phase. Verified 2026-09-03 against the
+package's own LICENSE.md + README (v1.7.0): the library is **AGPL-3.0
+only** — "free for use under the AGPL License; contact support@img.ly for
+other licensing options" — i.e. permissive use requires a paid commercial
+license. LocalTools is MIT (D-001) and 100% self-hostable-by-others;
+embedding an AGPL library in the client bundle would copyleft the entire
+distributed app. **Rejected; taking the spec's fallback path**: the
+background remover is built on `onnxruntime-web` (MIT) + a
+permissively-licensed U2Net-family ONNX model (Apache-2.0/MIT upstreams,
+e.g. u2net/U2Netp model files), the same lazy-download + local-cache
+pattern the spec uses for whisper models (Section 10) and the same
+privacy-first posture (model weights fetched once, inference fully
+client-side). Notes:
+
+- Model files are downloaded lazily on first tool use, cached in the
+  app's local data dir; nothing leaves the machine at inference time.
+- The one-time model download is the tool's "one-time setup" badge story
+  (Section 9), mirroring how the spec already treats lazy downloads.
+- If model quality proves insufficient in practice, candidates with
+  permissive licenses (MODNet-family Apache-2.0 exports) can be swapped
+  without touching the tool contract.
+
+### D-017 — Phase 5: @jsquash codecs in Node — manual WASM init, per-package layouts and export shapes
+
+Spiked before writing any tool code (the D-14 lesson). All four
+@jsquash codecs work in Node/vitest WITHOUT fetch or bundler tricks,
+but each needs explicit WASM init with a binary loaded from disk:
+
+- **`@jsquash/png` 3.1.1** — `init(<Buffer>)` from `@jsquash/png/decode.js`
+  - `.../encode.js`; single wasm at `codec/pkg/squoosh_png_bg.wasm`;
+    `decode`/`encode` are NAMED exports on the public index.
+- **`@jsquash/jpeg` 1.6.0 / `webp` 1.5.0 / `avif` 2.1.1** — `init()` takes a
+  COMPILED `WebAssembly.Module` (utils.js instantiates it via
+  `instantiateWasm`), with SEPARATE dec/enc wasm files
+  (`codec/dec/*_dec.wasm`, `codec/enc/*_enc.wasm`); `decode`/`encode` are
+  DEFAULT exports on the inner `decode.js`/`encode.js`.
+- Wasm files resolve via `createRequire().resolve('@jsquash/<pkg>/package.json')`
+  - relative join — works under pnpm's store layout and vitest.
+- **In the browser Worker, no manual init is needed at all** — the same
+  public API self-initializes by fetching the wasm relative to
+  `import.meta.url` (Vite bundles/urls it). The Node init path is test/dev
+  - any future server-side use only, mirroring how D-014 handled canvas.
+- image-core therefore exposes an env-detecting `codecs.ts` loader:
+  Node → read + `WebAssembly.Module`/Buffer init once per process;
+  browser → direct pass-through of the public API.
