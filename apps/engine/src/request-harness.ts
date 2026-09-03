@@ -87,23 +87,22 @@ export class GroupBRequestHarness {
         });
       }
 
-      // ── 4. Per-request temp dir + fresh internal names ─────────────
-      temp = await TempDir.create();
-      const inputFiles: InputFile[] = [];
-      for (const [i, v] of validated.entries()) {
-        const path = await temp.write(`input-${String(i)}-${randomUUID()}.${v.ext}`, v.bytes);
-        inputFiles.push({ path, displayName: v.displayName, kind: v.kind, ext: v.ext });
-      }
-
-      // ── 5. Concurrency-capped execution ────────────────────────────
-      // The limiter wraps the WHOLE per-request pipeline from temp-dir
-      // creation through the tool run (Section 5.2 caps per-request
-      // processing, not just the subprocess instant) — so a request holds
-      // a slot for its entire processing lifetime, deterministically
-      // observable via /healthz busy on any host, native tools or not.
+      // ── 4+5. Per-request temp dir, writes, and tool run — all inside the
+      // concurrency limiter (Section 5.2 caps per-request processing): a
+      // request holds a slot from its first temp write through the tool's
+      // completion, deterministically observable via /healthz busy on any
+      // host, native tools or not.
       const result = await this.limiter.run(async () => {
-        if (temp === undefined) throw new EngineToolError('internal', 'Temp dir missing.');
-        const requestTemp: TempDir = temp;
+        const requestTemp = await TempDir.create();
+        temp = requestTemp;
+        const inputFiles: InputFile[] = [];
+        for (const [i, v] of validated.entries()) {
+          const path = await requestTemp.write(
+            `input-${String(i)}-${randomUUID()}.${v.ext}`,
+            v.bytes,
+          );
+          inputFiles.push({ path, displayName: v.displayName, kind: v.kind, ext: v.ext });
+        }
         const ctx: GroupBContext = {
           config: this.config,
           temp: requestTemp,

@@ -163,10 +163,29 @@ async function resolveWeasyprint(): Promise<{ exe: string; args: string[] } | un
   const launcher = join(REPO_ROOT, 'apps', 'engine', 'scripts', 'weasyprint-launcher.py');
   if (IS_WIN && (await exists(launcher))) {
     const python = envPath('LOCALTOOLS_PYTHON_PATH') ?? 'py';
-    return { exe: python, args: [launcher] };
+    if (await probeCommand(python, [launcher, '--version'])) {
+      return { exe: python, args: [launcher] };
+    }
+    return undefined; // launcher exists but no interpreter can run weasyprint
   }
+  // Fallback probe: python -m weasyprint must actually work (hosts without
+  // it must surface tool-unavailable, not tool-failed).
   const python = envPath('LOCALTOOLS_PYTHON_PATH') ?? (IS_WIN ? 'python' : 'python3');
-  return { exe: python, args: ['-m', 'weasyprint'] };
+  if (await probeCommand(python, ['-m', 'weasyprint', '--version'])) {
+    return { exe: python, args: ['-m', 'weasyprint'] };
+  }
+  return undefined;
+}
+
+/**
+ * True when `exe args...` exits 0 within a short probe. Used to turn
+ * "missing native dependency" into tool-unavailable instead of a confusing
+ * runtime failure mid-request. Arg arrays only (Section 5.3).
+ */
+async function probeCommand(exe: string, args: string[]): Promise<boolean> {
+  const { runSubprocess } = await import('./subprocess.js');
+  const result = await runSubprocess(exe, args, { timeoutMs: 10_000 });
+  return !result.spawnFailed && !result.timedOut && result.code === 0;
 }
 
 let cached: Promise<ToolPaths> | undefined;
