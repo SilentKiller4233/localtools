@@ -12,14 +12,44 @@
     }
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json",
+    "build": "tsc --project tsconfig.build.json",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "echo 'no tests yet' && exit 0"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@localtools/eslint-config": "workspace:*",
+    "@types/csso": "^5.0.3",
+    "@types/html-minifier-terser": "^7.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.2",
+    "@types/papaparse": "^5.3.15",
+    "@types/qrcode": "^1.5.5",
+    "@types/spark-md5": "^3.0.4",
     "eslint": "^9.15.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.0.0",
+    "@localtools/image-core": "workspace:*",
+    "bwip-js": "^4.0.0",
+    "cronstrue": "^2.0.0",
+    "csso": "^5.0.5",
+    "diff": "^9.0.0",
+    "fast-xml-parser": "^5.0.0",
+    "fflate": "^0.8.0",
+    "html-minifier-terser": "^7.2.0",
+    "htmlparser2": "^10.0.0",
+    "js-yaml": "^4.1.0",
+    "jsqr": "^1.4.0",
+    "marked": "^16.0.0",
+    "papaparse": "^5.4.1",
+    "pdf-lib": "^1.17.1",
+    "prettier": "^3.3.3",
+    "qrcode": "^1.5.4",
+    "spark-md5": "^3.0.2",
+    "terser": "^5.36.0",
+    "ulid": "^2.0.0"
   }
 }

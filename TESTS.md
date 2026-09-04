@@ -114,3 +114,27 @@ Section 15 Phase 5 acceptance: "Section 14.1/14.2 tests pass for every Image too
 | Palette / favicon / base64 / svg / meme / annotator | automated (local) | PASS    | ICO container structure asserted; blur verified as real pixel averaging; data-URI round-trips byte-identical                                                        |
 | Client wiring                                       | automated (local) | PASS    | image worker bridge + all 14 tool pages; initial JS 78.1KB gzipped (budget 250KB)                                                                                   |
 | Safari/WebKit WASM quirks                           | manual            | pending | Scheduled for Phase 12 with the other suite checks (Section 13)                                                                                                     |
+
+## Status: Phase 6 (Text & Dev suite — entirely Group A)
+
+Section 15 Phase 6 acceptance: "Section 14.1 tests pass for every tool; do not skip tests just because the tools are simple." All 30 Section 3.4 tools plus zip/unzip (Section 3.5) are implemented in `@localtools/devtext-core` (172 tests), wired to the client through a dedicated devtext worker + text-first runner pages.
+
+| Check                                      | Kind              | Result  | Notes                                                                                                                      |
+| ------------------------------------------ | ----------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| devtext-core suite (172 tests)             | automated (local) | PASS    | 14.1 happy/malformed/empty/oversized per tool family; oversized via `maxChars`/`maxBytes` seams (D-019)                    |
+| JSON / YAML / CSV / XML formatters         | automated (local) | PASS    | Round-trips, error positions, validate mode; committed malformed fixtures (prettier-ignored — intentionally unparseable)   |
+| Base64 (text+file) / URL / JWT             | automated (local) | PASS    | UTF-8 round-trips; JWT decode/inspect ONLY — signature explicitly NOT verified (spec wording honored; note surfaced in UI) |
+| Hash generator + file hash checker         | automated (local) | PASS    | Known digests for md5/sha-1/sha-256/sha-512 (Web Crypto + spark-md5)                                                       |
+| UUID / ULID / case / slug / lorem / unit   | automated (local) | PASS    | crypto-randomUUID; ULID 26-char sortable; 9 case kinds; NFKD slug; 8 unit categories incl. temperature affine + KB/KiB     |
+| Password / passphrase generator            | automated (local) | PASS    | Rejection-sampled uniform chars (crypto); entropy bits + strength band; diceware-style passphrase estimate                 |
+| Regex tester / text diff / minify-beautify | automated (local) | PASS    | Zero-length-loop guard; jsdiff reuse; csso/terser/html-minifier-terser + prettier exact per spec Section 4.4               |
+| Markdown ↔ HTML + Markdown → PDF           | automated (local) | PASS    | marked + D-018 serializer; pdf-lib typesetting paginates long content, WinAnsi-sanitized                                   |
+| Color converter / palette / gradient       | automated (local) | PASS    | In-house oklch (CSS Color 4 matrices) — hsl/hex round-trips verified against reference values                              |
+| Cron explainer / timestamp converter       | automated (local) | PASS    | cronstrue; s/ms auto-detect by magnitude; IANA timezones (Karachi vs UTC asserted)                                         |
+| QR generate + scan (round-trip)            | automated (local) | PASS    | In-house 1-bit PNG encoder (D-019, fflate zlibSync gotcha); generate→decode→scan round-trip + committed qr.png fixture     |
+| Barcode generator                          | automated (local) | PASS    | bwip-js toSVG (dual Node/browser entry); 9 formats; format-content mismatch → clear invalid-input                          |
+| Fake data generator                        | automated (local) | PASS    | @faker-js/faker seeded reproducibility; synthetic-data note carried in every result                                        |
+| Zip / unzip                                | automated (local) | PASS    | fflate; path-traversal entry names rejected (security test); 5000-entry + total-size caps                                  |
+| Sitemap/robots + OG preview                | automated (local) | PASS    | No network ever (Group A) — URL structural validation only; meta-tag parser + form builder                                 |
+| Client wiring (30 tool pages)              | automated (local) | PASS    | devtext worker bridge + DevTextRunner frame; initial JS 86.28KB gzipped (budget 250KB); heavy libs lazy-chunked            |
+| Safari/WebKit checks                       | manual            | pending | Scheduled for Phase 12 with the other suites (Section 13)                                                                  |

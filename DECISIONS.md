@@ -371,3 +371,42 @@ but each needs explicit WASM init with a binary loaded from disk:
 - image-core therefore exposes an env-detecting `codecs.ts` loader:
   Node → read + `WebAssembly.Module`/Buffer init once per process;
   browser → direct pass-through of the public API.
+
+### D-018 — Phase 6: HTML→Markdown without turndown (in-house serializer over htmlparser2)
+
+The spec's Markdown ↔ HTML tool needs both directions. Markdown→HTML uses
+`marked` (GFM) as specced. For HTML→Markdown the ecosystem default is
+`turndown`, but turndown requires a live browser DOM (it calls
+`isBlock`, `childNodes`, `innerHTML` etc. on real HTMLElements); in the
+Node test runtime and inside a Web Worker there is no DOM implementation
+without a heavyweight shim (jsdom is ~10MB and drags in many deps —
+violates the small/fast principle). Chosen instead: a small in-house
+block/inline serializer over **htmlparser2's** DOM (already a dependency
+for the XML tool family), which runs identically in Node, browser, and
+Worker with zero extra dependencies. Covers headings, emphasis, links,
+images, lists (nested + ordered), blockquotes, fenced code, tables, hr.
+Clearly-scoped fallback: input with no tags passes through as text;
+comment-only HTML is rejected as empty-input (comments are not content).
+
+### D-019 — Phase 6: QR PNG + barcode rendering without canvas (bwip-js SVG; in-house 1-bit PNG encoder)
+
+- **Barcode generation** uses `bwip-js`'s `toSVG()` — the one rendering
+  interface shared by both the Node and browser entries (`toBuffer` is
+  Node-only, `toCanvas` is browser-only). SVG output is dual-environment
+  by construction and stays out of the bundle's canvas requirements.
+- **QR PNG output** (downloads must be a real image) is produced by a
+  ~60-line in-house 1-bit grayscale PNG encoder over `qrcode`'s module
+  matrix (deflate via fflate). Gotcha discovered during implementation:
+  fflate's `deflateSync` is **RAW deflate (RFC 1951)** — PNG IDAT requires
+  **zlib format (RFC 1950)**, i.e. fflate's `zlibSync`; with the former
+  every PNG decoder rejects the stream. Both QR round-trip
+  (generate→decode through image-core's real PNG codec) and QR-scan of
+  the committed fixture verify this end-to-end in tests.
+- **QR scanning** decodes through `@localtools/image-core`'s `decodeAuto`
+  (already a workspace dependency — D-017 codec layer) and runs jsQR on
+  the RGBA pixels; zero new decode dependencies.
+- **Oversized-input seams**: pure-text tools take an optional
+  `maxChars` (default 5,000,000) and byte tools an optional `maxBytes`
+  parameter so the Section 14.1 "oversized → rejected before processing"
+  tests can exercise the cap without allocating 500MB fixtures — same
+  seam pattern as pdf-core's `maxBytes` (D-013).

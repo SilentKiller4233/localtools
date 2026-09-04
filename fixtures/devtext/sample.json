@@ -1,0 +1,8 @@
+{
+  "name": "localtools",
+  "suite": 4,
+  "tools": ["json", "yaml"],
+  "nested": {
+    "ok": true
+  }
+}

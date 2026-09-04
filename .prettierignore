@@ -5,3 +5,9 @@ node_modules/
 coverage/
 apps/desktop/src-tauri/
 packages/ui/stitch-reference/
+# Intentionally-malformed devtext fixtures (Section 14.1 error-path inputs):
+# these are NOT valid JSON/YAML by design, so Prettier cannot parse them.
+fixtures/devtext/malformed.json
+fixtures/devtext/malformed.yaml
+fixtures/devtext/malformed.csv
+fixtures/devtext/malformed.xml
