@@ -1,57 +1,52 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-03 ~22:45 PKT (UTC+05:00), end of session 7 — Phase 4 COMPLETE and CI FULLY GREEN (verify ubuntu+windows + compose-stack Docker acceptance), HEAD `f41b560`_
+_Last updated: 2026-09-04 ~03:20 PKT (UTC+05:00), end of session 8 — Phase 5 COMPLETE (Image suite, 14/14 tools, 65/65 tests), pushed as `ad50494`; CI status to confirm on open_
 
 ## Where things stand right now
 
-**Phases 0–4 complete, CI fully green.** Phase 4 (PDF suite Group B) is DONE end-to-end: 6 engine endpoints in `@localtools/engine` behind the full Section 5 control set, 39/39 engine tests against the REAL native tools, client wired (engine-client + EngineRunnerPage + all 8 tool cards), and the Docker stack acceptance (Section 14.7: compose build → healthz → deep-compress round-trip through the containerized engine → client serves) PASSED as the new `compose-stack` CI job. Six fix-forward commits on top of `31c388e` (Phase 4 `233e444` + five CI fixes ending `f41b560`).
+**Phases 0–5 complete.** Phase 5 (Image suite, entirely Group A) is DONE end-to-end: all 14 tools implemented in `@localtools/image-core` (65/65 tests against REAL codecs/wasm/ONNX inference), wired into client pages via a dedicated image worker (`image.worker.ts` + `image-worker-client.ts`, same frozen bridge pattern as pdf). `pnpm verify` fully green locally (165 pdf + 39 engine + 65 image tests + builds; initial JS 78.1KB gzipped, budget 250KB). Committed as `ad50494` on top of `24852a4` and pushed.
 
 ## Last thing done
 
-Compose-stack CI saga resolved: five fix-forwards (tsconfig.base.json into BOTH Dockerfiles; shared-types dist in the runtime image; `pnpm deploy --prod --legacy` for a self-contained image — plain COPY of pnpm-workspace node_modules misses per-package symlinks, container died on `ERR_MODULE_NOT_FOUND 'fastify'`; runtime COPYs matching deploy's FLAT layout; in-container 0.0.0.0 bind via LOCALTOOLS_ENGINE_HOST with host-side loopback enforced by compose's 127.0.0.1:8787:8787 mapping). Run 33785873711: all three jobs green. TESTS.md Docker row → PASS. This HANDOFF rewrite is the session's final repo action.
+Phase 5 commit `ad50494` pushed (44 files: image-core src/tests/fixtures, client worker + ImagePageSpec, docs D-016/D-017 + SUMMARY/TESTS). CI is running — the verify matrix runs the image suite for the first time on CI runners: **the background-remover test downloads the u2netp model (4.5MB) from HuggingFace on first run** (~30s) and OCR lazily fetches tesseract traineddata; both have generous testTimeouts (120-180s) but CI network latency is the risk. If the background test fails on download, make the test skip-if-unreachable (honest `unavailable` marker, like the engine's 503 pattern) rather than raising the timeout forever.
 
 ## In-progress / uncommitted work
 
-Verify before trusting: `git status` should show only this HANDOFF edit (or nothing if already committed as a docs commit). If CI on `233e444` shows the compose-stack job red, likely suspects in order: (1) `pip3 install --break-system-packages weasyprint` on node:22-bookworm-slim (bookworm needs the flag — it's there; if pip is missing install python3-pip is present), (2) LibreOffice apt package pull size/time (timeout-minutes: 30 on the job), (3) `docker compose up -d --wait` healthcheck timing. Everything else in the stack was validated locally as far as possible without Docker.
+Verify before trusting: `git status` should be clean (this HANDOFF rewrite rides in the next docs commit if CI is green; if CI is red, fix-forward first). The working set includes committed-pending only.
 
 ## Next immediate steps (in order — do these first)
 
-1. CI is GREEN on `f41b560` (all three jobs: verify ubuntu + windows + compose-stack — the Docker stack acceptance PASSED, Section 14.7 PDF round trip through the containerized engine). Nothing to confirm; go straight to Phase 5.
-2. **Phase 5 — Image suite (entirely Group A)**: all 14 tools from Section 3.3 (@jsquash/* converters, heic2any, exifr, tesseract.js, svgo, background-remover with the @imgly license re-check due AT THIS PHASE per D-006, palette k-means, favicon, screenshot annotator, meme, base64). Acceptance: 14.1/14.2 per tool + the EXIF-strip byte-level test (GPS actually gone from output bytes).
-3. Wire image tools into the client ToolRunnerPage pattern (worker offload like pdf-core; new `image-core` package).
+1. Confirm CI green on `ad50494` (`gh run list --limit 1`; repo SilentKiller4233/localtools). Watch compose-stack too (unchanged code, should pass) and the verify matrix (image suite first CI run — see the model-download note above). Fix-forward if red, never amend.
+2. **Phase 6 — Text & Dev suite (entirely Group A, 30 tools)**: JSON/YAML/CSV/XML formatters-converters, base64, URL, JWT decoder, hashes (Web Crypto + spark-md5), UUID/ULID, regex tester, text diff (reuse `diff`), CSS/JS/HTML minify-beautify, Markdown ↔ HTML + Markdown→PDF, color converter, gradient, cron parser (cronstrue), timestamp, case converter, slug, lorem, QR (qrcode + jsQR), barcode, password generator, fake data (faker), unit converter, zip/unzip (fflate), file hash, sitemap/robots, OG preview. New `devtext-core` package, same harness + worker pattern (pdf/image are the templates). Acceptance: 14.1 per tool — mechanical but do NOT skip tests because the tools are simple (spec says this explicitly).
+3. Wire into client (devtext worker + pages via the same ToolRunnerPage-family pattern).
 
 ## Blockers / open decisions needing human input
 
 None blocking. Non-blocking:
 
-- Classic PAT (repo+workflow scopes) transited chat ~5 sessions ago — rotate before Phase 15's public flip.
-- Context7 MCP still NOT connected — verify version-sensitive APIs from installed `.d.ts`/source (this is how D-014/D-015 were done).
-- @imgly/background-removal license re-check is due AT Phase 5 start (D-006 deferral); if unacceptable, fall back to ONNX Runtime Web + U2Net per spec.
-- Composio GitHub integration still unused (plain git+PAT works); note the deviation if it persists.
-- Discord webhook confirmed WORKING by the user this session — ping at session end is expected going forward.
+- **Discord webhook STILL dead** (HTTP 401 "Invalid Webhook Token" re-verified end of session 7). The user said it was fixed but never provided the new URL — ask again; if none, log-and-skip per protocol.
+- Classic PAT rotation still pending (needed before Phase 15's public flip).
+- Context7 MCP still NOT connected — verify APIs from installed `.d.ts`/source (D-014/D-015/D-017 were done this way).
+- Composio GitHub integration still unused (git+PAT works).
+- Safari/WebKit quirks on @jsquash/onnxruntime/tesseract wasm in Workers — scheduled for Phase 12 (noted in TESTS.md).
 
 ## Environment / local state notes
 
-- Working dir: `D:\random projects vibecoded\QOL tools` (spaces — always quote). Windows 11, bash (MSYS). pnpm 10.34.5, Node 22.
-- **Native tools installed this session (dev host)**: Ghostscript 10.07.1 → repo-local `gs10.07.1/` (installer extracted to cwd — gitignored); Tesseract 5.4.0 → `C:\Program Files\Tesseract-OCR\` (+eng tessdata); LibreOffice 26.8.0.3 → `C:\Program Files\LibreOffice\` (use `soffice.com`, NOT `soffice.exe`); GTK3 runtime → repo-local `GTK3-Runtime Win64/` (gitignored; installed elevated with `/VERYSILENT` — the user approved UAC); WeasyPrint 69.0 → pip-installed in the Hermes venv python (`py` finds it; bare `python` on PATH resolves to a uv python WITHOUT it).
-- `gs10.07.1/` + `GTK3-Runtime Win64/` are gitignored (`gs10.*/` + `GTK3-Runtime*/`) — never commit them.
-- Engine tool-path resolution derives the repo root from `import.meta.url` (works under vitest/turbo where cwd ≠ repo root).
-- Engine tsconfigs split: `tsconfig.json` (src+test, noEmit) vs `tsconfig.build.json` (src→dist) — same pattern as pdf-core. Client consumes shared-types' `dist/` — **rebuild `@localtools/shared-types` after changing its src before client typecheck**.
+- Working dir: `D:\random projects vibecoded\QOL tools` (spaces — quote paths). Windows 11, bash (MSYS). pnpm 10.34.5, Node 22.
+- Dev-host native tools (Phase 4): Ghostscript repo-local `gs10.07.1/`, Tesseract 5.4, LibreOffice 26.8 (`soffice.com`), GTK3 repo-local `GTK3-Runtime Win64/`, WeasyPrint via `py` launcher. Both repo-local dirs gitignored.
+- **Image model cache**: `u2netp.onnx` (4.57MB, Apache-2.0) is pre-cached at `%LOCALAPPDATA%/Temp/localtools-models/u2netp.onnx` — the background-remover test finds it there via beforeAll; do NOT delete. Source: `huggingface.co/baby2008/u2net-onnx` (the rembg GitHub main-branch URL is dead — release assets only, which don't include the model).
+- image-core tsconfigs split like pdf-core: `tsconfig.json` (src+test noEmit) / `tsconfig.build.json` (src→dist). Client consumes `dist/` — **rebuild image-core after changing its src before client typecheck**.
 - Turbo caches `test` aggressively — `pnpm test --force` to prove tests ran.
-- pnpm filter builds: `pnpm --filter @localtools/engine... build`.
+- Image fixtures at `fixtures/image/`: sample.png/jpg/webp/heic + **sample-with-exif.jpg (real GPS 33°41′N 73°04′E)** + sample-object.png (white square on dark, for background-remover assertions) + malformed/empty pairs.
 
 ## Useful context / gotchas discovered this session
 
-- **LibreOffice PDF import is Draw by default** — from-PDF conversions MUST pin `--infilter=writer_pdf_import` (Word) / `impress_pdf_import` (PowerPoint) AND use the explicit OOXML export filter (`docx:MS Word 2007 XML`, `pptx:Impress MS PowerPoint 2007 XML`); bare `docx` or `writer8` exports produce INVALID renamed-ODF files (test's odg sniff catches this). **PDF→Excel is impossible on stock LibreOffice** (pdfimport.xcd only has draw/impress/writer imports) — the engine rejects it with a clear error. Every soffice invocation gets an isolated profile via `-env:UserInstallation` (file:// URL into the request temp dir) to dodge the single-instance profile lock.
-- **WeasyPrint on Windows**: PATH alone is NOT enough for GTK — cffi's libgobject dlopen fails 0x7e on transitive deps; `os.add_dll_directory()` is required. The engine spawns `apps/engine/scripts/weasyprint-launcher.py` (does the add_dll_directory + runs weasyprint's CLI main) via the Windows `py` launcher. Page size/margins go through a per-request `@page { size; margin }` user stylesheet passed with `-s` (the CLI's `-s` is STYLESHEETS, not page size).
-- **Fastify plugins are encapsulated by default** — hooks registered inside a plain plugin NEVER fire on root routes. Wrap with `fastify-plugin` (headers/auth both hit this; tests caught it as missing CSP headers + auth never rejecting).
-- **@fastify/multipart with attachFieldsToBody: true** wraps text fields as `{ value, type: 'field' }` — extract `.value` before JSON.parse. Its stream-level fileSize rejection throws a Fastify error that must be mapped to our JSON envelope via setErrorHandler.
-- **Python-based str.replace file edits silently fail on CRLF files** (this session's recurring trap — several "applied" patches weren't). Use the `patch` tool, then verify with a grep before trusting.
-- `body.error.code` assertions in tests: check for `undefined` guards — the multipart Fastify error shape has no envelope until setErrorHandler maps it.
-- LibreOffice's first conversion after boot takes ~10s (cold profile) — engine testTimeout is 60s; the 429 test polls `/healthz` (`busy` counter) for determinism instead of fixed sleeps.
-- `py` on this host = `C:\Users\mshah\AppData\Local\Programs\Python\Launcher\py.EXE`; `python` = uv cpython 3.11 (no weasyprint). LOCALTOOLS_PYTHON_PATH override exists if needed.
-- Engine `/healthz` now returns `{ status, busy, capacity }` — busy = current subprocess count (used by tests; safe to expose, no names).
-- **pnpm-workspace Docker images**: never COPY workspace node_modules directly — pnpm hoists per-package deps via symlinks that don't survive; use `pnpm --filter <pkg> --prod --legacy deploy /pruned` (v10 needs --legacy without inject-workspace-packages) and COPY from the deploy dir. The deploy layout is FLAT (package.json + dist/ + node_modules at the deploy root).
-- **Compose "unhealthy" was a crash**: `docker compose up -d --wait` reports a dead container as unhealthy ~30s later; the ci.yml now always dumps `docker compose logs engine` (if: always()) — that's how the ERR_MODULE_NOT_FOUND was found. Add log-dump steps to any container CI on day one.
-- **In-container bind must be 0.0.0.0** — a 127.0.0.1 bind inside a container namespace is unreachable through the published port. Section 5.1's loopback guarantee is enforced host-side by the 127.0.0.1:8787:8787 compose mapping; LOCALTOOLS_ENGINE_HOST controls the in-container bind.
-- Prior sessions' pdf-lib/pdfjs/qpdf gotchas all remain valid (see pdf-document-processing skill + earlier HANDOFFs in git history).
+- **@jsquash encoders return ArrayBuffer, NOT Uint8Array** (D-017): every encode path must normalize (`out instanceof Uint8Array ? out : new Uint8Array(out)`) or downstream sniffers see garbage (`bytes[0]` undefined on ArrayBuffer). This silently broke convert→re-decode chains until the sniffer mystery was traced.
+- **@jsquash Node init contract (D-017)**: png → `init(<ArrayBuffer>)` from `codec/pkg/squoosh_png_bg.wasm`, named exports; jpeg/webp/avif → `init(new WebAssembly.Module(bytes))` from separate `codec/dec|enc` wasm files, DEFAULT exports on the inner `decode.js`/`encode.js` (not re-exported through index). Resolve paths via `createRequire().resolve('@jsquash/<pkg>/package.json')`. Buffer's `.buffer` may be SharedArrayBuffer-backed — copy into a fresh ArrayBuffer for WebAssembly APIs.
+- **heic2any is browser-only** (hard `window` reference at import). `heic-decode` (libheif-js wasm, ISC) works in Node AND browser: API is `one({ buffer })` (NOT `{ data }`) returning RGBA.
+- **onnxruntime-node**: `InferenceSession.create(bytes)`, feed via `new ort.Tensor('float32', data, [1,3,320,320])`; u2netp input name is discoverable via `session.inputNames` (falls back to `'input.1'`). Output is `[1,1,320,320]` sigmoid mask. Inference on 64×64: ~700ms.
+- **Solid-color images give near-zero u2net foreground** — legitimate (no salient object); the spec's edge-case note ("UI must not imply a guaranteed perfect cutout") maps to the tool's hint copy.
+- **vitest 4 + tesseract.js**: OCR works in Node; the lazy traineddata download makes first-run slow (testTimeout 120s). Bitmap-font OCR: tesseract reads blocky 5×7 font text fine at 512px canvas ("HELL" for "HELLO" — accept partial reads in tests, don't chase perfect glyph rendering).
+- **eslint no-unnecessary-type-assertion on Record<string,unknown> → specific option types**: tsc accepts the cast, eslint flags it as unnecessary when the param accepts the wider type — drop the cast.
+- **`process.versions` under @types/node is non-optional** — `typeof process !== 'undefined' && process.versions.node` triggers no-unnecessary-condition; read through a widened view (`(globalThis as { process?: … }).process`).
+- Prior sessions' gotchas all remain: LibreOffice from-PDF filters, WeasyPrint launcher/GTK, fastify-plugin encapsulation, pnpm-deploy Docker images, Python str.replace fails on CRLF (use the patch tool), `.mjs` files are parsed raw (no TS).
