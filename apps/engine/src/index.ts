@@ -16,6 +16,7 @@ import { loadConfig, type EngineConfig } from './config.js';
 import { SubprocessLimiter } from './limiter.js';
 import { startTempSweeper } from './temp-dirs.js';
 import { registerPdfGroupBRoutes } from './routes/pdf-group-b.js';
+import { registerMediaGroupBRoutes } from './routes/media-group-b.js';
 import { bearerAuthPlugin } from './auth.js';
 import { securityHeadersPlugin } from './headers.js';
 import { ENGINE_ERROR_MESSAGES } from './errors.js';
@@ -111,6 +112,7 @@ export async function createServer(override?: {
   });
 
   registerPdfGroupBRoutes(app, config, limiter);
+  registerMediaGroupBRoutes(app, config, limiter);
 
   return app;
 }

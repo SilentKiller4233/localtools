@@ -61,6 +61,14 @@ export interface ToolPaths {
   weasyprint: { exe: string; args: string[] } | undefined;
   /** Whether Playwright rendering is enabled on this host (opt-in). */
   playwrightEnabled: boolean;
+  /** ffmpeg + ffprobe executables (Media suite Group B engine). */
+  ffmpeg: FfmpegPaths;
+}
+
+/** ffmpeg/ffprobe pair (Phase 7 media Group B). */
+export interface FfmpegPaths {
+  ffmpeg: string;
+  ffprobe: string;
 }
 
 /**
@@ -73,6 +81,7 @@ export async function resolveToolPaths(): Promise<ToolPaths> {
   const { tesseract, tessdata } = await resolveTesseract();
   const ocrmypdf = await resolveOcrmypdf();
   const weasyprint = await resolveWeasyprint();
+  const ffmpeg = await resolveFfmpeg();
   return {
     gs,
     soffice,
@@ -81,7 +90,53 @@ export async function resolveToolPaths(): Promise<ToolPaths> {
     ocrmypdf,
     weasyprint,
     playwrightEnabled: process.env['LOCALTOOLS_PLAYWRIGHT_ENABLED'] === 'true',
+    ffmpeg,
   };
+}
+
+/**
+ * ffmpeg/ffprobe resolution (Phase 7):
+ *  1. LOCALTOOLS_FFMPEG_PATH / LOCALTOOLS_FFPROBE_PATH env overrides
+ *  2. repo-local portable build (ffmpeg-<ver> dir, gitignored like Ghostscript)
+ *  3. Docker/dev defaults (/usr/bin/ffmpeg, /usr/local/bin/ffmpeg)
+ *  4. PATH lookup (surfaced as tool-unavailable on ENOENT at call time)
+ */
+async function resolveFfmpeg(): Promise<FfmpegPaths> {
+  const ffmpegOverride = envPath('LOCALTOOLS_FFMPEG_PATH');
+  const ffprobeOverride = envPath('LOCALTOOLS_FFPROBE_PATH');
+  if (ffmpegOverride !== undefined) {
+    return {
+      ffmpeg: ffmpegOverride,
+      ffprobe: ffprobeOverride ?? join(ffmpegOverride, '..', 'ffprobe'),
+    };
+  }
+  if (ffprobeOverride !== undefined) {
+    return { ffmpeg: 'ffmpeg', ffprobe: ffprobeOverride };
+  }
+  // Repo-local portable build: ffmpeg-n<ver>-latest-win64-gpl-<ver>/bin.
+  const { readdir } = await import('node:fs/promises');
+  try {
+    const entries = await readdir(REPO_ROOT);
+    const dir = entries
+      .filter((e) => e.startsWith('ffmpeg-'))
+      .sort()
+      .at(-1);
+    if (dir !== undefined) {
+      const bin = join(REPO_ROOT, dir, 'bin');
+      const exe = IS_WIN ? 'ffmpeg.exe' : 'ffmpeg';
+      const probe = IS_WIN ? 'ffprobe.exe' : 'ffprobe';
+      if ((await exists(join(bin, exe))) && (await exists(join(bin, probe)))) {
+        return { ffmpeg: join(bin, exe), ffprobe: join(bin, probe) };
+      }
+    }
+  } catch {
+    // fall through to fixed defaults + PATH
+  }
+  if (await exists('/usr/bin/ffmpeg'))
+    return { ffmpeg: '/usr/bin/ffmpeg', ffprobe: '/usr/bin/ffprobe' };
+  if (await exists('/usr/local/bin/ffmpeg'))
+    return { ffmpeg: '/usr/local/bin/ffmpeg', ffprobe: '/usr/local/bin/ffprobe' };
+  return { ffmpeg: 'ffmpeg', ffprobe: 'ffprobe' };
 }
 
 async function resolveGs(): Promise<string> {

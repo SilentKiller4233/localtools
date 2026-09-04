@@ -4,6 +4,7 @@
 #   - Ghostscript (deep compress / PDF-A / deep repair, PDF render for OCR)
 #   - Tesseract-OCR + English tessdata (OCR; OCRmyPDF rides with pip)
 #   - LibreOffice (Office ↔ PDF conversion)
+#   - ffmpeg (Media suite Group B — conversion/compress/trim/GIF/subtitles)
 #   - WeasyPrint via pip (HTML→PDF) + GTK3 runtime (its native deps)
 # Every native tool is invoked as a subprocess with argument arrays
 # (Section 5.3); nothing here links against engine code.
@@ -33,6 +34,7 @@ RUN apt-get update \
     tesseract-ocr \
     tesseract-ocr-eng \
     libreoffice \
+    ffmpeg \
     python3 \
     python3-pip \
   && pip3 install --no-cache-dir --break-system-packages weasyprint \

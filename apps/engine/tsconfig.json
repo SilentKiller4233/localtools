@@ -1,6 +1,6 @@
 {
   "extends": "../../tooling/tsconfig/node.json",
-  "include": ["src", "test"],
+  "include": ["src", "test", "scripts"],
   "compilerOptions": {
     "types": ["node"],
     "noEmit": true

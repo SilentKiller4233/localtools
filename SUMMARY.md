@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-05, after Phase 6 — Text & Dev suite complete_
+_Last updated: 2026-09-05, after Phase 7 — Media conversion suite complete_
 
 ## What this project is
 
@@ -8,14 +8,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 6 of 15 (Section 15)
+- Phases complete: 7 of 15 (Section 15)
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
-- Media suite: not started (design direction + shell only; 18 tools registered, incl. the single Group C downloader; TTS/audiobook assigned Phase 9 per D-012)
+- Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader → Phase 8; STT/auto-captions/TTS/audiobook → Phase 9; ffmpeg.wasm small-clip path deferred (D-021)**
 - Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
 - Text & Dev suite: **complete — all 30 Group A tools + zip/unzip (Section 3.5) implemented in `@localtools/devtext-core` (172/172 tests), worker-offloaded client pages wired**
 - Desktop app (Tauri): not started (placeholder `apps/desktop/README.md` only)
-- Docker Compose target: engine Dockerfile now real (multi-stage bookworm-slim + ghostscript/tesseract/libreoffice/pip-weasyprint, non-root, healthcheck); stack acceptance runs as the CI `compose-stack` job (dev host has no Docker — D-015)
-- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 39 engine + 65 image-core + 172 devtext-core) + build — all green
+- Docker Compose target: engine Dockerfile real (multi-stage bookworm-slim + ghostscript/tesseract/libreoffice/ffmpeg/pip-weasyprint, non-root, healthcheck); stack acceptance runs as the CI `compose-stack` job incl. a media round-trip (dev host has no Docker — D-015)
+- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 82 engine + 65 image-core + 172 devtext-core) + build — all green
 
 ## What has been built so far
 
@@ -59,6 +59,18 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - QR/barcode/fake/zip/webdev: QR SVG + real PNG (D-019: in-house 1-bit PNG encoder — fflate zlibSync, NOT deflateSync) + jsQR scan via image-core decode reuse; bwip-js toSVG (dual Node/browser) for 9 barcode formats; faker (seeded, synthetic-note); fflate zip/unzip with traversal-name rejection; sitemap.xml/robots.txt generator (no network, structural URL validation only); OG preview (meta-tag parser + form builder + visual card).
 - Client: `devtext.worker.ts` + `devtext-worker-client.ts` (frozen bridge, same pattern as pdf/image) + `DevTextRunner` text-first frame + per-tool pages for all 30 tools. Initial JS **86.28KB gzipped** (budget 250KB); faker/prettier/pdf-lib/bwip-js are lazy worker chunks.
 
+**Phase 7 — Media conversion suite (14/14 Group B tools, complete)**
+
+- `apps/engine` media layer: `routes/media-group-b.ts` (14 endpoints under `/media/*`, all through the Phase 4 request harness — no new security surface) + `media-tools.ts` (ffmpeg/ffprobe subprocess functions; argument arrays only, SIGTERM→SIGKILL + taskkill /T timeout discipline inherited from `subprocess.ts`). ffmpeg resolution in `tool-paths.ts`: env override → repo-local `ffmpeg-<ver>/bin` portable build (gitignored, like Ghostscript) → Docker apt paths → PATH.
+- Tools: video format converter (mp4/webm/mov/mkv/avi — libx264 / libvpx-vp9), video compressor (CRF 28/23/20 small/balanced/high-quality + optional maxrate/bufsize cap), video trimmer (lossless `-c copy` default with keyframe-slop-labeled mode; re-encode for exact cuts), merge/concat (concat demuxer + re-encode, video or audio, mixed kinds rejected), extract audio (mp3/wav/flac/ogg/aac/m4a), video→GIF (palettegen+paletteuse two-pass, width/fps options), GIF→video (silent-GIF anullsrc pairing), audio converter, audio compressor (target bitrate), audio trimmer (stream copy), loudness normalize (loudnorm EBU R128, audio or video's track — video stream-copied), burn subtitles (libass via engine-escaped filter path, .srt/.vtt), resolution/aspect changer (resize/crop/pad with aspect computation, mod-2 clamps, yuv420p).
+- **Section 14.5 in-engine**: every conversion route probes its OUTPUT with ffprobe and asserts the container tag matches the request (some also codec/dimensions/bitrate) before returning — "ffmpeg exited 0" alone never satisfies a route.
+- Shared zod schemas in `packages/shared-types/src/media-engine.ts` (same single-source contract as pdf-engine.ts): 14 request schemas, timecode union (seconds or HH:MM:SS.mmm).
+- Upload sniffing extended (`upload-validation.ts`): audio/video extension maps, GIF kind, structural SRT cue-block + WebVTT header sniffs (subtitles have no magic bytes).
+- Fixtures `fixtures/media/` (self-generated by `apps/engine/scripts/generate-media-fixtures.ts` — D-022, license-clear by construction): sample-short.mp4 (3s testsrc+440Hz), sample-short.mp3, sample.gif, malformed.mp4 (40% truncation), sample.srt, sample.vtt.
+- Engine tests: 43 (Section 14.1 per tool incl. malformed/empty/oversized; 14.5 ffprobe sanity: webm=VP9, compress bitrate ordering, trim durations, 64k audio band, GIF width, 160×120/9:16/1:1 dimension checks; 14.4-style shell-discipline regressions) — all running against the REAL ffmpeg on this host (BtbN n9.0 GPL static, SHA-256-verified, D-020).
+- Client: `MediaPageSpec.tsx` real pages for all 14 Group B tool cards via `EngineRunnerPage` (multi-file merge/burn order-hint contract; `buildOptions` now receives the selected-file count); `ToolPage` dispatches media Group B; ffmpeg.wasm deferred (D-021).
+- Docker: `apt ffmpeg` added to the engine image; CI compose-stack job now runs a media round-trip (`/media/audio-convert` mp3→wav through the container).
+
 **Phase 4 — PDF suite Group B (6/6 endpoints, complete)**
 
 - `@localtools/engine` (Fastify 5): request harness owning the full Section 5 control set — multipart size caps (stream-level, envelope-mapped 413), `file-type` magic-byte validation, fresh internal names in per-request temp dirs (finally-removal + 5-min sweeper), zod option schemas shared with the client, subprocess concurrency cap → 429, anonymous-id logging (never filenames). Subprocess runner: spawn argument arrays ONLY (`shell:false` hardcoded), SIGTERM→SIGKILL (+ taskkill /T on Windows).
@@ -79,7 +91,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## What's left
 
-- Phase 7 — Media conversion (ffmpeg Group B) + ffprobe sanity checks
+- ffmpeg.wasm small-clip browser path (Group A; deferred per D-021 — schedule after Phase 9)
 - Phase 8 — Media downloader (Group C) with full Section 5.8 SSRF set from the start
 - Phase 9 — Speech-to-text (whisper.cpp WASM) + auto-captions **+ Piper TTS + PDF→audiobook (assigned here per D-012)**
 - Phase 10 — Tauri desktop shell + sidecar + lazy downloads
@@ -87,11 +99,11 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Key architectural decisions made so far
 
-D-018 (HTML→Markdown in-house serializer — turndown needs a live DOM), D-019 (bwip-js SVG + in-house 1-bit PNG encoder for QR; fflate zlib-not-deflate gotcha), D-016 (background-removal license: AGPL-only @imgly rejected → onnxruntime + Apache-2.0 u2netp) and D-017 (@jsquash Node init contract) plus D-015 and earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); **D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node**.
+D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as Ghostscript), D-021 (ffmpeg.wasm small-clip path deferred, not dropped — routing design recorded for its implementing phase), D-022 (media fixtures self-generated → license-clear by construction), D-023 (merge re-encodes; trim lossless-by-default), plus D-018/D-019 (devtext serializer + QR PNG encoder), D-016 (background-removal: onnxruntime + Apache-2.0 u2netp), D-017 (@jsquash Node init), D-015 and earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL/GPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node.
 
 ## Known issues / tech debt
 
-- Engine has zero Section 5 controls yet (by design until Phases 4/7/8; see D-002) — never expose past localhost.
+- Engine's full Section 5 control set covers the PDF (Phase 4) and media (Phase 7) Group B endpoints; the Group C downloader adds its Section 5.8 SSRF set in Phase 8 — until then never expose past localhost (D-002).
 - `apps/desktop` contains no code yet (README placeholder only).
 - CI is green on `main`; workflow remains untested against PRs/tags until later phases exercise them.
 - PWA/offline + worker-offload checks are not yet part of `pnpm verify` (manual scripts today); wiring them in is scheduled for Phase 13.
@@ -104,8 +116,16 @@ D-018 (HTML→Markdown in-house serializer — turndown needs a live DOM), D-019
 pnpm install          # pnpm-lock.yaml is committed
 pnpm dev              # client → http://localhost:5173 ; engine health → http://127.0.0.1:8787/healthz
 pnpm build            # all workspaces (client build also copies /pdfjs/* and /wasm/qpdf.wasm assets)
-pnpm verify           # format + lint + typecheck + 441 tests (165 pdf + 39 engine + 65 image + 172 devtext) + build gate
+pnpm verify           # format + lint + typecheck + 484 tests (165 pdf + 82 engine + 65 image + 172 devtext) + build gate
 
+# Phase 7 surface: every Media Group B tool card is live at #/tool/<id> —
+# video/audio convert, compress, trim, merge, extract-audio, GIF, subtitles,
+# loudness, resolution — each POSTs to the engine's /media/* endpoints.
+# The engine needs ffmpeg/ffprobe: it auto-detects the repo-local
+# ffmpeg-n9.0-latest-win64-gpl-9.0/ portable build (gitignored); on other
+# hosts set LOCALTOOLS_FFMPEG_PATH or install ffmpeg on PATH. Docker ships
+# apt ffmpeg inside the engine image.
+#
 # Phase 3 acceptance surface: every PDF Group A tool is live at #/tool/<id> —
 # drop a PDF, set options, run; processing happens in the Web Worker.
 # Worker-offload check (Section 14.5): build, then:

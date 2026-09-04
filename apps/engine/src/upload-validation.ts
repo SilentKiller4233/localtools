@@ -11,7 +11,20 @@ import { fileTypeFromBuffer } from 'file-type';
 import { EngineToolError } from './errors.js';
 
 /** Logical kinds the Group B tools accept. */
-export type AcceptedKind = 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'doc' | 'xls' | 'ppt' | 'html';
+export type AcceptedKind =
+  | 'pdf'
+  | 'docx'
+  | 'xlsx'
+  | 'pptx'
+  | 'doc'
+  | 'xls'
+  | 'ppt'
+  | 'html'
+  | 'video'
+  | 'audio'
+  | 'gif'
+  | 'srt'
+  | 'vtt';
 
 export interface SniffedFile {
   kind: AcceptedKind;
@@ -35,6 +48,38 @@ function cfbKind(bytes: Uint8Array): AcceptedKind | undefined {
   return undefined;
 }
 
+/** Audio extensions file-type knows (flac/mp3/ogg/m4a/aac/wav etc.). */
+const AUDIO_EXTS: ReadonlySet<string> = new Set([
+  'mp3',
+  'wav',
+  'flac',
+  'ogg',
+  'oga',
+  'aac',
+  'm4a',
+  'opus',
+  'wma',
+  'aiff',
+  'aif',
+  'amr',
+]);
+
+/** Video extensions file-type knows (mp4/webm/mov/mkv/avi etc.). */
+const VIDEO_EXTS: ReadonlySet<string> = new Set([
+  'mp4',
+  'm4v',
+  'webm',
+  'mov',
+  'mkv',
+  'avi',
+  'wmv',
+  'flv',
+  'mpg',
+  'mpeg',
+  '3gp',
+  'ts',
+]);
+
 async function sniffKind(bytes: Uint8Array): Promise<SniffedFile | undefined> {
   if (bytes.byteLength < 16) return undefined;
   const ft = await fileTypeFromBuffer(bytes);
@@ -54,7 +99,11 @@ async function sniffKind(bytes: Uint8Array): Promise<SniffedFile | undefined> {
         return { kind: 'xlsx', ext: 'xlsm' };
       case 'pptm':
         return { kind: 'pptx', ext: 'pptm' };
+      case 'gif':
+        return { kind: 'gif', ext: 'gif' };
       default:
+        if (AUDIO_EXTS.has(ft.ext)) return { kind: 'audio', ext: ft.ext };
+        if (VIDEO_EXTS.has(ft.ext)) return { kind: 'video', ext: ft.ext };
         return undefined;
     }
   }
@@ -65,16 +114,21 @@ async function sniffKind(bytes: Uint8Array): Promise<SniffedFile | undefined> {
     }
     return undefined;
   }
-  // HTML structural sniff
+  // Subtitle structural sniff: WebVTT header or SRT cue-block shape.
   const head = new TextDecoder('utf-8', { fatal: false })
-    .decode(bytes.slice(0, 256))
-    .trimStart()
-    .toLowerCase();
+    .decode(bytes.slice(0, 2048))
+    .replace(/^\uFEFF/, '');
+  if (/^WEBVTT(\s|\n|$)/m.test(head.slice(0, 64))) return { kind: 'vtt', ext: 'vtt' };
+  if (/^\s*\d+\s*\n\d{1,2}:\d{2}:\d{2}[,.]\d{1,3}\s*-->\s*/m.test(head)) {
+    return { kind: 'srt', ext: 'srt' };
+  }
+  // HTML structural sniff
+  const htmlHead = head.trimStart().toLowerCase();
   if (
-    head.startsWith('<!doctype html') ||
-    head.startsWith('<html') ||
-    head.startsWith('<head') ||
-    head.startsWith('<body')
+    htmlHead.startsWith('<!doctype html') ||
+    htmlHead.startsWith('<html') ||
+    htmlHead.startsWith('<head') ||
+    htmlHead.startsWith('<body')
   ) {
     return { kind: 'html', ext: 'html' };
   }

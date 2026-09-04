@@ -4,6 +4,7 @@ import { badgeLabel, getTool } from '../lib/tool-registry';
 import { pdfToolPage } from './ToolPageSpec';
 import { imageToolPage } from './ImagePageSpec';
 import { devTextToolPage } from './DevTextPageSpec';
+import { mediaToolPage } from './MediaPageSpec';
 import en from '../i18n/en.json';
 
 const UI = en.ui;
@@ -44,6 +45,12 @@ export function ToolPage({ toolId }: { toolId: string }) {
   // Text & Dev suite (Group A, devtext worker) carries real pages.
   if (tool.suite === 'devtext') {
     const real = devTextToolPage(tool);
+    if (real !== null) return real;
+  }
+
+  // Media suite Group B (ffmpeg engine) tools carry real pages (Phase 7).
+  if (tool.suite === 'media' && tool.group === 'b') {
+    const real = mediaToolPage(tool);
     if (real !== null) return real;
   }
 

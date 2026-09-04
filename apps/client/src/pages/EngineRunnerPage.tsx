@@ -28,8 +28,9 @@ export interface EngineRunnerPageProps {
   optionsPanel?: ReactNode;
   /** Disabled-reason or undefined when ready. */
   validate?: () => string | undefined;
-  /** Serialize options into the engine request body. */
-  buildOptions: () => Record<string, unknown>;
+  /** Serialize options into the engine request body. Receives the count of
+   * selected files so multi-file tools can reference every index. */
+  buildOptions: (fileCount: number) => Record<string, unknown>;
   /** Engine endpoint path, e.g. '/pdf/deep-compress'. */
   endpoint: string;
   /** Multiple allowed (office to-pdf) vs single. */
@@ -81,7 +82,7 @@ export function EngineRunnerPage({
       setProgress((p) => (p === undefined ? 5 : Math.min(90, p + 7)));
     }, 400);
     try {
-      const options = buildOptions();
+      const options = buildOptions(fileList.length);
       const files = await runEngineTool(endpoint, options, fileList);
       setProgress(100);
       setOutputs(

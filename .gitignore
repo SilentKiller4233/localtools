@@ -41,3 +41,5 @@ apps/desktop/src-tauri/gen/
 # Docker image installs these via apt inside the image — Section 11)
 gs10.*/
 GTK3-Runtime*/
+ffmpeg-n*/
+ffmpeg-*/

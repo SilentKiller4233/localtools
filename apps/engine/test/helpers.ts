@@ -104,3 +104,27 @@ export async function readFixture(name: string): Promise<Uint8Array> {
   const { readFile } = await import('node:fs/promises');
   return new Uint8Array(await readFile(fixturePath(name)));
 }
+
+/** Path to a committed MEDIA fixture (fixtures/media — Phase 7). */
+export function mediaFixturePath(name: string): string {
+  const here = fileURLToPath(new URL('.', import.meta.url));
+  return resolve(here, '../../..', 'fixtures/media', name);
+}
+
+export async function readMediaFixture(name: string): Promise<Uint8Array> {
+  const { readFile } = await import('node:fs/promises');
+  return new Uint8Array(await readFile(mediaFixturePath(name)));
+}
+
+/** Multipart body with MULTIPLE file parts (merge/subtitle tools). */
+export function multiFileBody(
+  options: Record<string, unknown>,
+  files: { name: string; bytes: Uint8Array }[],
+): FormData {
+  const form = new FormData();
+  form.append('options', JSON.stringify(options));
+  for (const f of files) {
+    form.append('files', new Blob([f.bytes]), f.name);
+  }
+  return form;
+}

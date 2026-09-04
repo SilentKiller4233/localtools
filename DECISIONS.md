@@ -410,3 +410,88 @@ comment-only HTML is rejected as empty-input (comments are not content).
   parameter so the Section 14.1 "oversized → rejected before processing"
   tests can exercise the cap without allocating 500MB fixtures — same
   seam pattern as pdf-core's `maxBytes` (D-013).
+
+## Phase 7 — Media conversion suite (Group B)
+
+### D-020 — ffmpeg build variant: BtbN GPL static build, subprocess boundary **[required-by-CI]**
+
+Section 4.2 offers two variants: an LGPL-only build (no x264/x265) to
+keep the whole stack LGPL-simple, or a standard GPL static build with the
+specific binary component documented as GPL (the same subprocess-boundary
+reasoning already used for Ghostscript in D-001). Chosen: **GPL static
+build** (`BtbN/FFmpeg-Builds` `ffmpeg-n9.0-latest-win64-gpl-9.0.zip`,
+SHA-256-verified against the release's `checksums.sha256`) because:
+
+- The tool list explicitly needs H.264/H.265-grade encoding quality
+  (libx264/libx265 are GPL); the LGPL-only alternative would force
+  noticeably worse encoders for the most-used formats (mp4/mov/mkv/avi).
+- ffmpeg is invoked strictly as an **executed subprocess with argument
+  arrays** (Section 5.3) — never linked, never bundled into the shipped
+  JS/Rust code — so its license obligations attach to the separate binary
+  distribution, not to LocalTools (MIT). This is the exact pattern
+  Stirling-PDF and OCRmyPDF's dependency chain use for Ghostscript.
+- The Docker image uses Debian's `apt ffmpeg` (same reasoning, GPL
+  component inside the image); the desktop app will lazy-download the
+  same BtbN build family at first use (Section 10 flow), keeping the repo
+  itself free of GPL binaries.
+
+Dev-host install: repo-local `ffmpeg-n9.0-latest-win64-gpl-9.0/`
+(gitignored via `ffmpeg-*/`, exactly like `gs10.07.1/`), auto-detected by
+`resolveFfmpeg()` in `apps/engine/src/tool-paths.ts` (env overrides
+`LOCALTOOLS_FFMPEG_PATH`/`LOCALTOOLS_FFPROBE_PATH` win first). The engine
+never requires it on PATH.
+
+### D-021 — ffmpeg.wasm small-clip browser path: DEFERRED (not dropped)
+
+Section 3.2 defines a Group A in-browser path (ffmpeg.wasm) for small
+clips (default 50MB threshold): trim + format-convert with no engine
+call. **Deferred to a later phase** as the conservative, spec-consistent
+choice:
+
+- Section 15 assigns Phase 7 the ffmpeg-backed **Group B** conversion
+  suite only; the ffmpeg.wasm path is listed under Group A but no phase
+  in Section 15 names it explicitly (it is not part of Phase 9's
+  speech-to-text Group A scope either). Deferring keeps Phase 7 exactly
+  scoped to its acceptance criteria.
+- ffmpeg.wasm is a large WASM payload (tens of MB) with Safari/WebKit
+  memory quirks the spec itself flags (Section 13) — building it well
+  needs its own verification pass, not a bolt-on.
+- Routing decision recorded for the implementing phase: the same tool
+  cards (video-trimmer, video-converter) will dispatch by file size
+  (<50MB → wasm worker path, ≥50MB or wasm-unavailable → engine path
+  with a clear UI indication, per the "do not silently degrade"
+  requirement). No partial wiring exists today: all 14 media Group B
+  cards route straight to the engine endpoints.
+
+Revisit trigger: after Phase 9 (or whenever Group A media work is
+scheduled), before Phase 13's CI finalization.
+
+### D-022 — Phase 7 media fixtures: self-generated, license-clear by construction
+
+Section 14.2 requires `sample-short.mp4` / `sample-short.mp3` /
+`malformed.mp4` / `sample.srt` to be "small, short, license-clear". All
+four are **self-generated** (fixture script
+`apps/engine/scripts/generate-media-fixtures.ts`, same committed-first
+contract as pdf/devtext): the mp4 is ffmpeg's synthetic `testsrc` video
+pattern + a 440Hz sine tone; the mp3 is the same tone; `malformed.mp4`
+is the mp4 truncated at 40% (mid-moov); the srt/vtt are hand-written
+text timed inside the 3s window. Nothing is downloaded or attributed —
+provenance is the generator itself. A `sample.gif` (testsrc via palette
+path) supports gif-to-video. Side effect worth recording: the synthetic
+testsrc pattern is so compressible that CRF 20 vs 28 spans only ~28–43
+kbps on the 3s 320x240 fixture, so the 14.5 bitrate sanity checks assert
+preset ORDERING (high-quality > balanced > small bitrate on identical
+input) rather than absolute thresholds.
+
+### D-023 — Video merge re-encodes (no concat -c copy), lossless trim stays opt-in
+
+The concat demuxer with `-c copy` requires bit-identical codec
+parameters across inputs; heterogeneous user clips are the common case,
+so **merge always re-encodes** (balanced preset) for correctness — the
+speed/quality tradeoff is documented in the tool's UI. **Trim** keeps the
+spec's lossless stream-copy default (`-ss` before `-i` + `-c copy`) with
+an explicit re-encode mode for exact cut points, honoring Section 3.2's
+"lossless stream-copy where the codec allows, for speed" while the cut-
+on-keyframe slop (~up to a GOP) is stated in the mode's label.
+loudnorm runs single-pass dynamic mode (corrective quality for half the
+passes of two-pass on typical material).

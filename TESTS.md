@@ -138,3 +138,26 @@ Section 15 Phase 6 acceptance: "Section 14.1 tests pass for every tool; do not s
 | Sitemap/robots + OG preview                | automated (local) | PASS    | No network ever (Group A) — URL structural validation only; meta-tag parser + form builder                                 |
 | Client wiring (30 tool pages)              | automated (local) | PASS    | devtext worker bridge + DevTextRunner frame; initial JS 86.28KB gzipped (budget 250KB); heavy libs lazy-chunked            |
 | Safari/WebKit checks                       | manual            | pending | Scheduled for Phase 12 with the other suites (Section 13)                                                                  |
+
+## Status: Phase 7 (Media conversion suite — Group B, ffmpeg)
+
+Section 15 Phase 7 acceptance: "Section 14.1/14.4/14.5 (ffprobe sanity check) pass for every conversion/compression/trim/GIF/subtitle/normalize tool." All 14 Section 3.2 Group B tools are engine endpoints (`/media/*`) behind the full Section 5 control set (the Phase 4 request harness — no new security surface), running real ffmpeg/ffprobe subprocesses with argument arrays, hard timeouts (SIGTERM→SIGKILL + taskkill /T on Windows), and per-route output probing (14.5). 43 engine tests against the real installed ffmpeg (BtbN n9.0 GPL static, D-020; apt ffmpeg in Docker). ffmpeg.wasm browser path deferred — D-021.
+
+| Check                                        | Kind              | Result  | Notes                                                                                                           |
+| -------------------------------------------- | ----------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| Media engine suite (43 tests)                | automated (local) | PASS    | 14.1 happy/malformed/empty/oversized per tool; oversized via tiny-cap engine seam                               |
+| Video convert (mp4/webm/mov/mkv/avi)         | automated (local) | PASS    | ffprobe-verified containers + VP9-in-webm codec check (14.5)                                                    |
+| Video compress (small/balanced/high-quality) | automated (local) | PASS    | CRF 28/23/20 presets; bitrate ordering asserted (14.5; D-022 ordering rationale)                                |
+| Video trim (lossless + re-encode)            | automated (local) | PASS    | Lossless `-c copy` default; duration ≈ requested window; keyframe slop tolerated on lossless                    |
+| Media merge (video+audio)                    | automated (local) | PASS    | concat demuxer + re-encode (D-023); ~2× duration verified; kind-mismatch rejected                               |
+| Extract audio / audio convert (6 formats)    | automated (local) | PASS    | mp3/wav/flac containers + codec names verified via ffprobe (14.5)                                               |
+| Video → GIF / GIF → video                    | automated (local) | PASS    | palettegen+paletteuse path; output width matches request (14.5); GIF→mp4 h264 stream verified                   |
+| Audio compress / trim                        | automated (local) | PASS    | 64kbps request lands in the 40–90k band (14.5); trim duration ≈ window                                          |
+| Loudness normalize (audio + video track)     | automated (local) | PASS    | loudnorm EBU R128; video-in → video-out with audio stream intact                                                |
+| Burn subtitles (.srt)                        | automated (local) | PASS    | libass render through escaped filter path; role-swapped inputs rejected (video vs subtitle)                     |
+| Resolution/aspect changer (resize/crop/pad)  | automated (local) | PASS    | 160×120 exact, 9:16 pad ratio ±0.05, 1:1 crop — all ffprobe-verified (14.5)                                     |
+| 5.3 regressions (shell discipline)           | automated (local) | PASS    | Hostile filename (`; rm -rf /`) processes via fresh internal name; hostile enum → invalid-option, never a shell |
+| Client wiring (14 tool pages)                | automated (local) | PASS    | EngineRunnerPage + MediaPageSpec; multi-file merge/burn contract (file-order hint); typecheck green             |
+| ffmpeg/ffprobe sanity on host                | automated (local) | PASS    | Every conversion probed via ffprobe in-engine — "exit 0" alone never satisfies a route                          |
+| Docker media round-trip                      | automated (CI)    | PASS    | compose-stack job exercises /media/audio-convert through the containerized apt-ffmpeg engine                    |
+| Safari/WebKit checks                         | manual            | pending | Scheduled for Phase 12 with the other suites (Section 13)                                                       |

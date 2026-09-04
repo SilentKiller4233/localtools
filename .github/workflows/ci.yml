@@ -73,6 +73,26 @@ jobs:
             });
           "
 
+      - name: Media round trip (ffmpeg Group B through the container)
+        run: |
+          set -euo pipefail
+          # Phase 7: one real media Group B tool through the containerized
+          # apt-ffmpeg engine — convert the committed mp3 fixture to wav.
+          REPLY=$(curl -fsS -X POST http://127.0.0.1:8787/media/audio-convert \
+            -F 'options={"file":0,"format":"wav"}' \
+            -F 'files=@fixtures/media/sample-short.mp3;filename=tone.mp3')
+          echo "$REPLY" | node -e "
+            let s=''; process.stdin.on('data',c=>s+=c).on('end',()=>{
+              const r = JSON.parse(s);
+              if (!r.ok) { console.error('media engine returned error', r.error); process.exit(1); }
+              const f = r.data.files[0];
+              if (!f || f.ext !== 'wav' || f.data.length < 100) {
+                console.error('bad media output'); process.exit(1);
+              }
+              console.log('MEDIA_STACK_PASS', f.data.length, 'b64 chars');
+            });
+          "
+
       - name: Client serves
         run: |
           set -euo pipefail
