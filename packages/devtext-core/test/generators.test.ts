@@ -146,7 +146,10 @@ describe('password-generator — Section 14.1', () => {
       useSymbols: false,
     });
     expect(r.value).toMatch(/^[a-z]+$/);
-    // uniform sampling: all 26 letters appear in a 500-char run
+    // Coverage sanity on the longest allowed run: length clamps at 128,
+    // and P(all 26 letters in 128 uniform draws) ≈ 0.84 — demanding all
+    // 26 made this test a ~1-in-6 flake (it fired on an ubuntu CI run).
+    // ≥24 distinct letters holds with probability ≈ 1 − 4e-5.
     const long = generatePassword({
       kind: 'password',
       length: 500,
@@ -154,7 +157,8 @@ describe('password-generator — Section 14.1', () => {
       useDigits: false,
       useSymbols: false,
     });
-    expect(new Set(long.value).size).toBe(26);
+    expect(long.value).toHaveLength(128);
+    expect(new Set(long.value).size).toBeGreaterThanOrEqual(24);
   });
 
   it('happy: passphrase words + separator + entropy', () => {
