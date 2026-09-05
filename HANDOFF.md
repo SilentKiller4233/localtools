@@ -1,6 +1,6 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-05 ~03:20 PKT (UTC+05:00), end of session 10 — Phase 7 COMPLETE (Media conversion suite, 14/14 Group B tools, 43/43 media tests, 484/484 total); CI on `41a3835` was RED (4 tests expected-200-got-422 on both runners) → fix-forwarded as `c88d80d` — **confirm run on `c88d80d` first thing**_
+_Last updated: 2026-09-05 ~03:45 PKT (UTC+05:00), end of session 10 — Phase 7 COMPLETE (Media conversion suite, 14/14 Group B tools, 43/43 media tests, 484/484 total); CI sequence: `41a3835` RED (ffprobe degradation bug) → fix-forward `c88d80d` (media green, compose-stack green, but a latent Phase-6 test flake fired) → fix-forward `a8b196c` (deflake) — **confirm run on `a8b196c` first thing**_
 
 ## Where things stand right now
 
@@ -8,15 +8,18 @@ _Last updated: 2026-09-05 ~03:20 PKT (UTC+05:00), end of session 10 — Phase 7 
 
 ## Last thing done
 
-**CI fix-forward `c88d80d`**: on `41a3835`, both verify runners failed 4 tests (burn-subtitles happy path, resolution-change ×3) with expected-200-got-422 — the exact routes that ffprobe the INPUT before running ffmpeg. Root cause: CI runners have no ffmpeg, `probeMedia` swallowed the ffprobe spawn-ENOENT as "unparseable" (`result.code !== 0` is true when code is `null`), and `probeDimensions` turned `undefined` into a misleading `tool-failed` (422) instead of the documented honest 503 `tool-unavailable` degradation. Fix: `probeMedia` now throws `tool-unavailable`/`tool-timeout` itself on `spawnFailed`/`timedOut`. Verified locally BOTH ways: fake-ffmpeg env (`LOCALTOOLS_FFMPEG_PATH`/`LOCALTOOLS_FFPROBE_PATH` pointing at nonexistent exes) → those suites degrade to 503 (4/4, 4/4), and real-ffmpeg run stays 43/43. Never amended; `41a3835` stays in history.
+**Two CI fix-forwards after the Phase 7 commit (never amended; `41a3835` → `c88d80d` → `a8b196c`):**
+
+1. `c88d80d` — on `41a3835`, both verify runners failed 4 tests (burn-subtitles happy path, resolution-change ×3) with expected-200-got-422 — the exact routes that ffprobe the INPUT before running ffmpeg. Root cause: CI runners have no ffmpeg; `probeMedia` swallowed the ffprobe spawn-ENOENT as "unparseable" (`result.code !== 0` is true when code is `null`), and `probeDimensions` turned `undefined` into a misleading `tool-failed` (422) instead of the documented honest 503 `tool-unavailable` degradation. Fix: `probeMedia` now throws `tool-unavailable`/`tool-timeout` itself on `spawnFailed`/`timedOut`. Verified locally BOTH ways: fake-ffmpeg env (nonexistent exe paths) → those suites degrade to 503 (4/4, 4/4), real-ffmpeg run stays 43/43. On `c88d80d`: media tests green, compose-stack green.
+2. `a8b196c` — `c88d80d`'s ubuntu run surfaced a LATENT PHASE-6 FLAKE (not caused by Phase 7): devtext `generators.test.ts` asserted all 26 letters appear in a "500-char" password run, but `generatePassword` clamps length at 128 — the run was 128 chars, where P(all 26 letters) ≈ 0.84 → a 1-in-6 flake that finally fired. Verified by exact inclusion-exclusion math (P(miss) = 0.16 at n=128) and a 5M-draw distribution check (generator itself is uniform). Fix (test-side only): assert the clamp (length 128) + ≥24 distinct letters (P(fail) ≈ 4e-5). devtext 172/172 locally.
 
 ## In-progress / uncommitted work
 
-This HANDOFF.md update (docs-only). **Confirm CI on `c88d80d` is green, commit this file as the close-out docs commit (`docs: close out session 10 — Phase 7 …`), push — that is the literal last repo action of the session.** If CI is red again: fix-forward again, never amend.
+This HANDOFF.md update (docs-only). **Confirm CI on `a8b196c` is green, commit this file as the close-out docs commit (`docs: close out session 10 — Phase 7 …`), push — that is the literal last repo action of the session.** If CI is red again: fix-forward again, never amend.
 
 ## Next immediate steps (in order — do these first)
 
-1. **Confirm CI green on `c88d80d`** (run was in-flight at session end). Then commit+push this HANDOFF.
+1. **Confirm CI green on `a8b196c`** (run was in-flight at session end). Then commit+push this HANDOFF.
 2. **Phase 8 — Media downloader (Group C, highest-risk phase, do not rush)**: yt-dlp integration with the FULL Section 5.8 SSRF-prevention set implemented from the start (scheme validation, private/loopback/link-local IP blocking incl. 169.254.169.254, per-redirect-hop checking, yt-dlp sandboxing flags, hard wall-clock timeout, output-size monitoring, metadata-sanitized filenames, downloader-specific rate limit, unsupported-site rejection with NO raw-fetch fallback). Acceptance: every Section 14.4 Group C test + the mocked-target integration test (14.2) + manual review that no URL reaches an outbound request without passing the checks. yt-dlp is NOT installed on the dev host yet — standalone per-OS executable, repo-local + gitignored (like ffmpeg/gs).
 3. **Phase 9 — Speech-to-text**: whisper.cpp WASM + lazy model download + auto-captions; **+ Piper TTS + PDF→audiobook (assigned Phase 9 per D-012)**. ffmpeg.wasm small-clip path (D-021) can ride here or later — routing design recorded in D-021.
 4. Standing rules unchanged: commit per phase, `pnpm verify` before "done", prettier ANY doc before commit, SUMMARY/TESTS/DECISIONS updated at phase end, HANDOFF rewrite literal-last.
@@ -43,6 +46,7 @@ None blocking. Non-blocking:
 ## Useful context / gotchas discovered this session
 
 - **CI runners have no ffmpeg — every media happy-path test MUST degrade to the honest 503 `tool-unavailable`, never 422.** The first push failed exactly there: `probeMedia` treated spawn-ENOENT as "unparseable input". Any future engine code that probes input BEFORE running the main tool must surface `spawnFailed` as `tool-unavailable` (see `c88d80d`).
+- **Statistical assertions must account for input clamping**: the password-generator test asked for length 500 but the generator clamps at 128 — "all 26 letters in 128 draws" is only ~0.84 likely, a 1-in-6 flake that fired on ubuntu CI after passing 4+ earlier runs. Rule: for any randomized assertion, compute the actual failure probability from the ACTUAL input the code will process (post-clamp), and keep it < 1e-4 (see `a8b196c`).
 - **`*/` inside a block comment terminates it early** — a doc comment containing `ffmpeg-*/bin` produced TS1005 "unterminated regex" parse errors pointing at the WRONG lines (the comment body). If tsc reports parse errors in a region that looks fine, grep for `*/` inside comments.
 - **BtbN's `latest` release tag changed naming** — the old `ffmpeg-n7.1-latest-win64-gpl.zip` pattern 404s now; current is `ffmpeg-n9.0-latest-win64-gpl-9.0.zip` (version-suffixed twice). Query the GitHub API for the asset list before scripting downloads; verify SHA-256 against the release's `checksums.sha256`.
 - **Synthetic fixtures compress extremely well**: testsrc at CRF 20 vs 28 spans only ~28–43 kbps on a 3s 320x240 clip — absolute bitrate thresholds for 14.5 checks are dishonest on it; assert preset ORDERING instead (documented in D-022).
