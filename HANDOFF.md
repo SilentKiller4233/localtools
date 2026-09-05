@@ -1,10 +1,10 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-05 ~03:45 PKT (UTC+05:00), end of session 10 — Phase 7 COMPLETE (Media conversion suite, 14/14 Group B tools, 43/43 media tests, 484/484 total); CI sequence: `41a3835` RED (ffprobe degradation bug) → fix-forward `c88d80d` (media green, compose-stack green, but a latent Phase-6 test flake fired) → fix-forward `a8b196c` (deflake) — **confirm run on `a8b196c` first thing**_
+_Last updated: 2026-09-05 ~03:55 PKT (UTC+05:00), FINAL — end of session 10. Phase 7 COMPLETE (Media conversion suite, 14/14 Group B tools, 43/43 media tests, 484/484 total). **CI GREEN end-to-end: `a8b196c` (run 33986740382) and the close-out `f3c7fd4` (run 33986914478) both success.** Working tree clean, all pushed. Session fully finalized — nothing outstanding._
 
 ## Where things stand right now
 
-**Phases 0–7 complete.** Phase 7 (Media suite Group B, ffmpeg) is DONE end-to-end: all 14 Section 3.2 conversion/compression/trim/merge/extract/GIF/normalize/subtitle/resolution tools are engine endpoints under `/media/*` (`apps/engine/src/routes/media-group-b.ts` + `media-tools.ts`), running through the Phase 4 request harness unchanged (full Section 5 control set — no new security surface). Every conversion route enforces the **Section 14.5 ffprobe sanity check in-engine** (output container/codec/dimensions/bitrate must match the request — "exit 0" alone never satisfies a route). 43 new engine tests against the REAL ffmpeg, all passing; `pnpm verify` fully green locally (484 tests: 165 pdf + 82 engine + 65 image + 172 devtext). Client wired: `MediaPageSpec.tsx` real pages for all 14 tool cards; `EngineRunnerPage.buildOptions` now receives the selected-file count (multi-file merge/burn). Committed as `41a3835` (pushed), then **CI-red fix-forward `c88d80d`** (pushed; details below).
+**Phases 0–7 complete.** Phase 7 (Media suite Group B, ffmpeg) is DONE end-to-end: all 14 Section 3.2 conversion/compression/trim/merge/extract/GIF/normalize/subtitle/resolution tools are engine endpoints under `/media/*` (`apps/engine/src/routes/media-group-b.ts` + `media-tools.ts`), running through the Phase 4 request harness unchanged (full Section 5 control set — no new security surface). Every conversion route enforces the **Section 14.5 ffprobe sanity check in-engine** (output container/codec/dimensions/bitrate must match the request — "exit 0" alone never satisfies a route). 43 new engine tests against the REAL ffmpeg, all passing; `pnpm verify` fully green locally (484 tests: 165 pdf + 82 engine + 65 image + 172 devtext). Client wired: `MediaPageSpec.tsx` real pages for all 14 tool cards; `EngineRunnerPage.buildOptions` now receives the selected-file count (multi-file merge/burn). Commit chain this session: `41a3835` (phase) → `c88d80d` (CI fix 1) → `a8b196c` (CI fix 2) → `f3c7fd4` (docs close-out, CI green run 33986914478).
 
 ## Last thing done
 
@@ -15,14 +15,13 @@ _Last updated: 2026-09-05 ~03:45 PKT (UTC+05:00), end of session 10 — Phase 7 
 
 ## In-progress / uncommitted work
 
-This HANDOFF.md update (docs-only). **Confirm CI on `a8b196c` is green, commit this file as the close-out docs commit (`docs: close out session 10 — Phase 7 …`), push — that is the literal last repo action of the session.** If CI is red again: fix-forward again, never amend.
+None — working tree is clean, everything pushed through `f3c7fd4`, CI green (run 33986914478). The only thing after this edit is committing the finalized HANDOFF itself (docs-only, no code).
 
 ## Next immediate steps (in order — do these first)
 
-1. **Confirm CI green on `a8b196c`** (run was in-flight at session end). Then commit+push this HANDOFF.
-2. **Phase 8 — Media downloader (Group C, highest-risk phase, do not rush)**: yt-dlp integration with the FULL Section 5.8 SSRF-prevention set implemented from the start (scheme validation, private/loopback/link-local IP blocking incl. 169.254.169.254, per-redirect-hop checking, yt-dlp sandboxing flags, hard wall-clock timeout, output-size monitoring, metadata-sanitized filenames, downloader-specific rate limit, unsupported-site rejection with NO raw-fetch fallback). Acceptance: every Section 14.4 Group C test + the mocked-target integration test (14.2) + manual review that no URL reaches an outbound request without passing the checks. yt-dlp is NOT installed on the dev host yet — standalone per-OS executable, repo-local + gitignored (like ffmpeg/gs).
-3. **Phase 9 — Speech-to-text**: whisper.cpp WASM + lazy model download + auto-captions; **+ Piper TTS + PDF→audiobook (assigned Phase 9 per D-012)**. ffmpeg.wasm small-clip path (D-021) can ride here or later — routing design recorded in D-021.
-4. Standing rules unchanged: commit per phase, `pnpm verify` before "done", prettier ANY doc before commit, SUMMARY/TESTS/DECISIONS updated at phase end, HANDOFF rewrite literal-last.
+1. **Phase 8 — Media downloader (Group C, highest-risk phase, do not rush)**: yt-dlp integration with the FULL Section 5.8 SSRF-prevention set implemented from the start (scheme validation, private/loopback/link-local IP blocking incl. 169.254.169.254, per-redirect-hop checking, yt-dlp sandboxing flags, hard wall-clock timeout, output-size monitoring, metadata-sanitized filenames, downloader-specific rate limit, unsupported-site rejection with NO raw-fetch fallback). Acceptance: every Section 14.4 Group C test + the mocked-target integration test (14.2) + manual review that no URL reaches an outbound request without passing the checks. yt-dlp is NOT installed on the dev host yet — standalone per-OS executable, repo-local + gitignored (like ffmpeg/gs). The dev host rate-limited GitHub API calls this session — batch them.
+2. **Phase 9 — Speech-to-text**: whisper.cpp WASM + lazy model download + auto-captions; **+ Piper TTS + PDF→audiobook (assigned Phase 9 per D-012)**. ffmpeg.wasm small-clip path (D-021) can ride here or later — routing design recorded in D-021.
+3. Standing rules unchanged: commit per phase, `pnpm verify` before "done", prettier ANY doc before commit, SUMMARY/TESTS/DECISIONS updated at phase end, HANDOFF rewrite literal-last.
 
 ## Blockers / open decisions needing human input
 
