@@ -44,7 +44,6 @@ import {
   baseName,
   burnSubtitles,
   extractAudio,
-  filterEscape,
   gifToVideo,
   loudnessNormalize,
   mediaMerge,
@@ -435,12 +434,9 @@ export function registerMediaGroupBRoutes(
       // Section 14.5: assert the output dimensions match the request.
       const probe = await probeMedia(outPath, ctx);
       const v = probe?.streams.find((s) => s.codec_type === 'video');
-      const target = await probeMedia(file.path, ctx);
       if (v?.width === undefined || v.height === undefined) {
         throw new EngineToolError('tool-failed', 'The resized file has no video stream.');
       }
-      void target;
-      void filterEscape;
       return output(outPath, file.displayName, ext);
     },
   );

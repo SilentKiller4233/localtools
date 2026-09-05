@@ -109,7 +109,9 @@ export function filterEscape(p: string): string {
   return p.replace(/([\\:])/g, '\\$1');
 }
 
-/** Probe a media file. Returns undefined when ffprobe cannot parse it. */
+/** Probe a media file. Returns undefined when ffprobe cannot parse it.
+ * A missing ffprobe binary surfaces as tool-unavailable (the honest 503
+ * degradation contract), never as a misleading tool-failed. */
 export async function probeMedia(path: string, ctx: RunCtx): Promise<ProbeResult | undefined> {
   const paths = await ff();
   // -show_format/-show_streams as JSON; exit 3 on unparseable input.
@@ -118,6 +120,15 @@ export async function probeMedia(path: string, ctx: RunCtx): Promise<ProbeResult
     ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', path],
     { timeoutMs: Math.min(ctx.timeoutMs, 30_000) },
   );
+  if (result.spawnFailed) {
+    throw new EngineToolError(
+      'tool-unavailable',
+      'This tool needs a component that isn’t installed on this device.',
+    );
+  }
+  if (result.timedOut) {
+    throw new EngineToolError('tool-timeout', 'The operation took too long and was stopped.');
+  }
   if (result.code !== 0 || result.stdout.trim().length === 0) return undefined;
   try {
     return JSON.parse(result.stdout) as ProbeResult;

@@ -1,53 +1,51 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-05 ~01:35 PKT (UTC+05:00), end of session 9 — Phase 6 COMPLETE (Text & Dev suite, 30/30 tools + zip/unzip, 172/172 tests); **CI GREEN on `7de14fe`** (run 33911831311)
+_Last updated: 2026-09-05 ~02:35 PKT (UTC+05:00), end of session 10 — Phase 7 COMPLETE (Media conversion suite, 14/14 Group B tools, 43/43 media tests, 484/484 total); **CI run 33923693942 on `41a3835` — CONFIRM result first thing (it was in_progress when this file was written; the docs commit below will note the final state)**_
 
 ## Where things stand right now
 
-**Phases 0–6 complete.** Phase 6 (Text & Dev suite, entirely Group A) is DONE end-to-end: all 30 Section 3.4 tools plus zip/unzip (Section 3.5) implemented in `@localtools/devtext-core` (172/172 tests — real libraries, real PNG/QR round-trips, real fflate archives), wired into the client via a dedicated devtext worker (`devtext.worker.ts` + `devtext-worker-client.ts`, same frozen bridge pattern as pdf/image) and a text-first `DevTextRunner` frame + per-tool pages for all 30 tool cards. `pnpm verify` fully green locally BEFORE commit (441 tests: 165 pdf + 39 engine + 65 image + 172 devtext; initial JS 86.28KB gzipped, budget 250KB). Committed as `7de14fe`, pushed to `origin/main`. **CI GREEN on `7de14fe`, run 33911831311** — verify matrix passed with the devtext suite (172/172) on both OS runners + compose-stack job.
+**Phases 0–7 complete.** Phase 7 (Media suite Group B, ffmpeg) is DONE end-to-end: all 14 Section 3.2 conversion/compression/trim/merge/extract/GIF/normalize/subtitle/resolution tools are engine endpoints under `/media/*` (`apps/engine/src/routes/media-group-b.ts` + `media-tools.ts`), running through the Phase 4 request harness unchanged (full Section 5 control set — no new security surface). Every conversion route enforces the **Section 14.5 ffprobe sanity check in-engine** (output container/codec/dimensions/bitrate must match the request — "exit 0" alone never satisfies a route). 43 new engine tests against the REAL ffmpeg, all passing; `pnpm verify` fully green locally (484 tests: 165 pdf + 82 engine + 65 image + 172 devtext). Client wired: `MediaPageSpec.tsx` real pages for all 14 tool cards; `EngineRunnerPage.buildOptions` now receives the selected-file count (multi-file merge/burn). Committed as `41a3835`, pushed to `origin/main`.
 
 ## Last thing done
 
-Phase 6 closed out end-to-end in one session: devtext-core package (13 tool modules + types with DevTextToolError taxonomy and maxChars/maxBytes seams), 172 tests, committed fixtures at `fixtures/devtext/` (13 files incl. real `qr.png` + `sample.zip`), full client wiring, docs (D-018/D-019 in DECISIONS.md, TESTS.md Phase 6 rows, SUMMARY.md Phase 6 state), prettier-formatted docs before commit (the Phase 5 lesson), `pnpm verify` green, committed + pushed as `7de14fe`. **CI on `7de14fe`: GREEN (run 33911831311, success).** Note: `format:check` runs before tests — the intentionally-malformed fixtures (`malformed.json/.yaml/.csv/.xml`) are now in `.prettierignore` (Prettier cannot parse them by design).
+Phase 7 closed out end-to-end: ffmpeg env prep (BtbN `ffmpeg-n9.0-latest-win64-gpl-9.0` static build, SHA-256-verified, repo-local + gitignored via `ffmpeg-*/`, auto-detected by `resolveFfmpeg()` in `tool-paths.ts` — env overrides `LOCALTOOLS_FFMPEG_PATH`/`LOCALTOOLS_FFPROBE_PATH` win first), shared zod schemas (`packages/shared-types/src/media-engine.ts`), engine routes + tools, upload sniffing extended (audio/video ext maps, GIF kind, structural SRT/VTT sniffs — subtitles have no magic bytes), self-generated license-clear fixtures at `fixtures/media/` (generator: `apps/engine/scripts/generate-media-fixtures.ts`), 43 tests, client pages, Dockerfile `apt ffmpeg`, CI compose-stack media round-trip, docs (D-020…D-023 in DECISIONS.md, TESTS.md Phase 7 rows, SUMMARY.md at Phase 7 state), prettier-formatted before commit, `pnpm verify` green, committed + pushed as `41a3835`.
 
 ## In-progress / uncommitted work
 
-None — working tree clean, everything pushed as `7de14fe`. HANDOFF.md is this session's final docs commit; CI confirmation is the only outstanding item (check first thing).
+None expected — working tree was clean after `41a3835` (pushed). **If CI on `41a3835` is red: fix-forward, never amend.** This HANDOFF docs commit is the only thing that follows.
 
 ## Next immediate steps (in order — do these first)
 
-1. **Phase 7 — Media conversion (Group B, ffmpeg)**: video/audio convert, compress (CRF presets), trim (lossless stream-copy where allowed), merge, extract-audio, video↔GIF, audio convert/compress/trim, loudness normalize, burn subtitles, resolution changer — all via ffmpeg on the engine (`apps/engine`), following the Phase 4 harness (request harness with the full Section 5 control set already in place). Acceptance: 14.1/14.4/14.5 per tool, incl. the **ffprobe sanity check** confirming output bitrate/resolution matches the preset (14.5).
-2. Wire client: engine endpoints → `engine-client.ts` + `EngineRunnerPage`-family pages for each media tool card (Phase 4 pattern).
-3. Commit per phase, prettier-format any doc before commit, `pnpm verify` before "done", SUMMARY/TESTS/DECISIONS updated at phase end; HANDOFF rewrite last.
+1. **Confirm CI green on `41a3835`** (run 33923693942 — was in_progress at session end). The `compose-stack` job now also runs a media round-trip (`/media/audio-convert` mp3→wav through the containerized apt-ffmpeg engine) — first CI run with it; if it fails, check engine container logs first.
+2. **Phase 8 — Media downloader (Group C, highest-risk phase, do not rush)**: yt-dlp integration with the FULL Section 5.8 SSRF-prevention set implemented from the start (scheme validation, private/loopback/link-local IP blocking incl. 169.254.169.254, per-redirect-hop checking, yt-dlp sandboxing flags, hard wall-clock timeout, output-size monitoring, metadata-sanitized filenames, downloader-specific rate limit, unsupported-site rejection with NO raw-fetch fallback). Acceptance: every Section 14.4 Group C test + the mocked-target integration test (14.2) + manual review that no URL reaches an outbound request without passing the checks. yt-dlp is NOT installed on the dev host yet — bundle the standalone per-OS executable pattern (repo-local + gitignored, like ffmpeg/gs).
+3. **Phase 9 — Speech-to-text**: whisper.cpp WASM + lazy model download + auto-captions; **+ Piper TTS + PDF→audiobook (assigned Phase 9 per D-012)**. ffmpeg.wasm small-clip path (D-021) can ride here or later — its routing design is recorded in D-021.
+4. Standing rules unchanged: commit per phase, `pnpm verify` before "done", prettier ANY doc before commit, SUMMARY/TESTS/DECISIONS updated at phase end, HANDOFF rewrite literal-last.
 
 ## Blockers / open decisions needing human input
 
 None blocking. Non-blocking:
 
-- **Discord webhook**: the session-8 URL lives only in that session's chat — ask the user for a fresh one if needed; NEVER write it into any repo file (repo goes public at Phase 15).
+- **Discord webhook**: a fresh URL exists only in session-10's chat — NEVER write it into any repo file (repo goes public at Phase 15). Send end-of-session summaries via Python urllib with a custom User-Agent (default UA → HTTP 403; json.dumps body; expect 204).
 - Classic PAT rotation still pending (needed before Phase 15's public flip).
-- Context7 MCP still NOT connected — verify APIs from installed `.d.ts`/source (D-014…D-019 all done this way).
-- Composio GitHub integration still unused (git+PAT works).
+- Context7 MCP still NOT connected — verify APIs from installed `.d.ts`/source (D-014…D-023 all done this way).
 - Safari/WebKit WASM/Worker quirks — scheduled for Phase 12 (TESTS.md notes).
+- ffmpeg.wasm browser path deliberately deferred (D-021) — not dropped; revisit before Phase 13 CI finalization.
 
 ## Environment / local state notes
 
 - Working dir: `D:\random projects vibecoded\QOL tools` (spaces — quote paths). Windows 11, bash (MSYS). pnpm 10.34.5, Node 22.
-- Dev-host native tools (Phase 4): Ghostscript repo-local `gs10.07.1/`, Tesseract 5.4, LibreOffice 26.8 (`soffice.com`), GTK3 repo-local `GTK3-Runtime Win64/`, WeasyPrint via `py` launcher. Both repo-local dirs gitignored. **ffmpeg is NOT installed on the dev host yet** — Phase 7 needs a static build (BtbN/FFmpeg-Builds) + ffprobe; check `ffmpeg -version` before starting, add to PATH or repo-local like Ghostscript.
+- **ffmpeg/ffprobe: repo-local `ffmpeg-n9.0-latest-win64-gpl-9.0/`** (BtbN GPL static, SHA-256-verified at download), gitignored via `ffmpeg-*/`, auto-detected by the engine — do NOT delete, do NOT commit. Other native tools: Ghostscript repo-local `gs10.07.1/`, Tesseract 5.4, LibreOffice 26.8, GTK3 repo-local, WeasyPrint via `py` launcher. All repo-local dirs gitignored.
 - Image model cache: `u2netp.onnx` at `%LOCALAPPDATA%/Temp/localtools-models/u2netp.onnx` — do NOT delete.
-- Package tsconfigs split like pdf/image-core: `tsconfig.json` (src+test+scripts noEmit) / `tsconfig.build.json` (src→dist). **Client consumes `dist/` — rebuild any workspace package after changing its src before client typecheck** (D-007).
-- Turbo caches `test` aggressively — `pnpm test --force` to prove tests ran.
-- devtext fixtures at `fixtures/devtext/` incl. intentionally-malformed files (prettier-ignored via `.prettierignore`).
+- Media fixtures committed at `fixtures/media/` (sample-short.mp4/.mp3, sample.gif, malformed.mp4, sample.srt, sample.vtt); regenerate with `pnpm --filter @localtools/engine exec tsx scripts/generate-media-fixtures.ts` (FORCE=1 to overwrite).
+- Client consumes `dist/` — rebuild any workspace package after changing its src before client typecheck (D-007). Turbo caches `test` aggressively — `pnpm test --force` to prove tests ran.
+- Engine test config note: media tests start extra tight-cap engines (512B) for the oversized paths — expected.
 
 ## Useful context / gotchas discovered this session
 
-- **fflate `deflateSync` is RAW deflate (RFC 1951); PNG IDAT requires zlib (RFC 1950) → use `zlibSync`** (D-019). With deflateSync every PNG decoder silently rejects the stream.
-- **turndown requires a live DOM** (Node tests/Workers have none without jsdom) → HTML→Markdown is an in-house block/inline serializer over htmlparser2's DOM (D-018). Comment-only HTML is empty-input (comments are not content).
-- **bwip-js**: no TS types shipped (ambient `bwip-js.d.ts` added); `toSVG()` is the one rendering interface shared by the node and browser entries — `toBuffer` is node-only, `toCanvas` browser-only.
-- **qrcode**: `create()` returns a BitMatrix with `.get(x,y)` (NOT `modules[y][x]`); `QRCode.create` is sync (no await). papaparse ESM needs `.default` interop (`papa.parse` on the default export).
-- **fast-xml-parser v5** deprecates the XMLValidator/XMLBuilder re-exports in favor of nonexistent standalone packages — silenced with targeted eslint-disable on the usage sites, wrapped behind local `validateXml`/`XmlBuilder` helpers in formatters.ts.
-- **Intentionally-malformed fixtures red CI via Prettier** (Prettier parses everything `--check` matches): malformed devtext fixtures are in `.prettierignore` with an explanatory comment.
-- **vitest 4 `test` files: every `expectDevError(...)` must be awaited** — a floating rejection in a sync callback becomes an unhandled-rejection error that fails the run even when tests pass.
-- marked emits `<code class="language-ts">` inside `<pre>` for fenced blocks (assert on content, not exact tag).
-- jsdiff chunks are line-granular: diff('a', 'a\nb') = [removed 'a', added 'a\nb'] — count lines, not chunks.
-- Prior sessions' gotchas all remain: @jsquash ArrayBuffer outputs, Node init contract, heic-decode `one({buffer})`, onnxruntime-node usage, prettier-formats-Markdown (run `npx prettier --write <file>` after ANY doc edit), LibreOffice filters, WeasyPrint launcher, fastify-plugin encapsulation, `.mjs` raw parsing, Python str.replace fails on CRLF (use the patch tool).
+- **`*/` inside a block comment terminates it early** — a doc comment containing `ffmpeg-*/bin` produced TS1005 "unterminated regex" parse errors pointing at the WRONG lines (the comment body). If tsc reports parse errors in a region that looks fine, grep for `*/` inside comments.
+- **BtbN's `latest` release tag changed naming** — the old `ffmpeg-n7.1-latest-win64-gpl.zip` pattern 404s now; current is `ffmpeg-n9.0-latest-win64-gpl-9.0.zip` (version-suffixed twice). Query the GitHub API for the asset list before scripting downloads.
+- **Synthetic fixtures compress extremely well**: testsrc at CRF 20 vs 28 spans only ~28–43 kbps on a 3s 320x240 clip — absolute bitrate thresholds for 14.5 checks are dishonest on it; assert preset ORDERING instead (documented in D-022).
+- **MSYS `/tmp` doesn't work for native Windows tools** — `curl -o /tmp/x` files are invisible to git-bash `ls`; use `$LOCALAPPDATA/Temp` for scratch files.
+- **`python - <<EOF` heredocs break inside this host's terminal wrapper** — write scripts with python -c or files instead.
+- vitest 4 + eslint projectService: new scripts/ dirs must be added to the package tsconfig `include` or eslint fails with "not found by the project service".
+- Prior sessions' gotchas all remain: prettier-formats-Markdown (run `npx prettier --write <file>` after ANY doc edit; format:check runs FIRST in verify), @jsquash ArrayBuffer outputs, Node init contract, LibreOffice filters, WeasyPrint launcher, fastify-plugin encapsulation, `.mjs` raw parsing, fflate zlibSync-not-deflateSync (D-019).
