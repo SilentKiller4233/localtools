@@ -93,6 +93,27 @@ jobs:
             });
           "
 
+      - name: Downloader SSRF round trip (Group C through the container)
+        run: |
+          set -euo pipefail
+          # Phase 8: the downloader's SSRF guard through the containerized
+          # engine. A private-IP URL must be rejected with the blocked-host
+          # taxonomy BEFORE any outbound request — no live-site fetch ever
+          # happens in CI (D-026), this proves the guard runs in Docker.
+          REPLY=$(curl -sS -X POST http://127.0.0.1:8787/downloader/metadata \
+            -H 'content-type: application/json' \
+            -d '{"url":"http://192.168.1.1/video"}')
+          echo "$REPLY" | node -e "
+            let s=''; process.stdin.on('data',c=>s+=c).on('end',()=>{
+              const r = JSON.parse(s);
+              if (r.ok || r.error.code !== 'blocked-host') {
+                console.error('downloader SSRF check failed', JSON.stringify(r));
+                process.exit(1);
+              }
+              console.log('DOWNLOADER_SSRF_PASS');
+            });
+          "
+
       - name: Client serves
         run: |
           set -euo pipefail

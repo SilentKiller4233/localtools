@@ -63,6 +63,8 @@ export interface ToolPaths {
   playwrightEnabled: boolean;
   /** ffmpeg + ffprobe executables (Media suite Group B engine). */
   ffmpeg: FfmpegPaths;
+  /** yt-dlp executable (Media suite Group C downloader, Phase 8). */
+  ytdlp: string;
 }
 
 /** ffmpeg/ffprobe pair (Phase 7 media Group B). */
@@ -82,6 +84,7 @@ export async function resolveToolPaths(): Promise<ToolPaths> {
   const ocrmypdf = await resolveOcrmypdf();
   const weasyprint = await resolveWeasyprint();
   const ffmpeg = await resolveFfmpeg();
+  const ytdlp = await resolveYtDlp();
   return {
     gs,
     soffice,
@@ -91,7 +94,39 @@ export async function resolveToolPaths(): Promise<ToolPaths> {
     weasyprint,
     playwrightEnabled: process.env['LOCALTOOLS_PLAYWRIGHT_ENABLED'] === 'true',
     ffmpeg,
+    ytdlp,
   };
+}
+
+/**
+ * yt-dlp resolution (Phase 8), same order as ffmpeg (Section 5.3):
+ *  1. LOCALTOOLS_YTDLP_PATH env override
+ *  2. repo-local portable build (yt-dlp-<tag>/yt-dlp[.exe], gitignored)
+ *  3. Docker/apt default (/usr/bin/yt-dlp, /usr/local/bin/yt-dlp)
+ *  4. PATH lookup (surfaced as tool-unavailable on ENOENT at call time)
+ */
+async function resolveYtDlp(): Promise<string> {
+  const override = envPath('LOCALTOOLS_YTDLP_PATH');
+  if (override !== undefined) return override;
+  // Repo-local portable install: yt-dlp-<tag>/yt-dlp.exe (win) or yt-dlp.
+  const { readdir } = await import('node:fs/promises');
+  try {
+    const entries = await readdir(REPO_ROOT);
+    const dir = entries
+      .filter((e) => /^yt-dlp-\d/.test(e))
+      .sort()
+      .at(-1);
+    if (dir !== undefined) {
+      const exe = IS_WIN ? 'yt-dlp.exe' : 'yt-dlp';
+      const candidate = join(REPO_ROOT, dir, exe);
+      if (await exists(candidate)) return candidate;
+    }
+  } catch {
+    // fall through to fixed defaults + PATH
+  }
+  if (await exists('/usr/bin/yt-dlp')) return '/usr/bin/yt-dlp';
+  if (await exists('/usr/local/bin/yt-dlp')) return '/usr/local/bin/yt-dlp';
+  return 'yt-dlp';
 }
 
 /**

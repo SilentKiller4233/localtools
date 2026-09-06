@@ -5,6 +5,7 @@ import { pdfToolPage } from './ToolPageSpec';
 import { imageToolPage } from './ImagePageSpec';
 import { devTextToolPage } from './DevTextPageSpec';
 import { mediaToolPage } from './MediaPageSpec';
+import { DownloaderPage } from './DownloaderPage';
 import en from '../i18n/en.json';
 
 const UI = en.ui;
@@ -52,6 +53,11 @@ export function ToolPage({ toolId }: { toolId: string }) {
   if (tool.suite === 'media' && tool.group === 'b') {
     const real = mediaToolPage(tool);
     if (real !== null) return real;
+  }
+
+  // Media suite Group C (yt-dlp downloader) — Phase 8.
+  if (tool.suite === 'media' && tool.group === 'c') {
+    return <DownloaderPage key={tool.id} tool={tool} />;
   }
 
   // Everything else: the designed placeholder until its phase lands.

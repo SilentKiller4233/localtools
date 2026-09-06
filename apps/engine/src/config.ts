@@ -36,6 +36,17 @@ export interface EngineConfig {
   fileTimeoutSeconds: number;
   /** Max concurrent subprocess invocations before 429 (Section 5.2/13). */
   maxConcurrentSubprocesses: number;
+  /* Group C downloader limits (Section 5.8) — separate from the above */
+  /** Wall-clock cap for a whole download operation (default 10min). */
+  downloadTimeoutSeconds: number;
+  /** Hard output-size cap in bytes (default 4GB, Section 8 practical cap). */
+  maxDownloadSizeBytes: number;
+  /** Duration cap in seconds (default 3h, Section 8 practical cap). */
+  maxDownloadDurationSeconds: number;
+  /** Downloader requests allowed per window per client (5.8 separate limit). */
+  downloaderRateLimit: number;
+  /** Downloader rate-limit window in seconds. */
+  downloaderRateWindowSeconds: number;
 }
 
 export function loadConfig(): EngineConfig {
@@ -63,6 +74,11 @@ export function loadConfig(): EngineConfig {
     maxRequestSize: envInt('LOCALTOOLS_MAX_REQUEST_SIZE', 1_073_741_824),
     fileTimeoutSeconds: envInt('LOCALTOOLS_FILE_TIMEOUT_SECONDS', 60),
     maxConcurrentSubprocesses: envInt('LOCALTOOLS_MAX_CONCURRENT_SUBPROCESSES', 2),
+    downloadTimeoutSeconds: envInt('LOCALTOOLS_DOWNLOAD_TIMEOUT_SECONDS', 600),
+    maxDownloadSizeBytes: envInt('LOCALTOOLS_MAX_DOWNLOAD_SIZE', 4_294_967_296),
+    maxDownloadDurationSeconds: envInt('LOCALTOOLS_MAX_DOWNLOAD_DURATION_SECONDS', 10_800),
+    downloaderRateLimit: envInt('LOCALTOOLS_DOWNLOADER_RATE_LIMIT', 6),
+    downloaderRateWindowSeconds: envInt('LOCALTOOLS_DOWNLOADER_RATE_WINDOW_SECONDS', 300),
   };
 }
 
@@ -78,6 +94,11 @@ export function testConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     maxRequestSize: 1_073_741_824,
     fileTimeoutSeconds: 60,
     maxConcurrentSubprocesses: 2,
+    downloadTimeoutSeconds: 600,
+    maxDownloadSizeBytes: 4_294_967_296,
+    maxDownloadDurationSeconds: 10_800,
+    downloaderRateLimit: 6,
+    downloaderRateWindowSeconds: 300,
     ...overrides,
   };
 }

@@ -28,6 +28,12 @@ RUN pnpm --filter @localtools/engine --prod --legacy deploy /pruned
 FROM node:22-bookworm-slim
 ENV NODE_ENV=production
 WORKDIR /app
+# Native tools (all invoked as subprocesses with argument arrays —
+# Section 5.3; nothing links against engine code):
+#   ghostscript, tesseract-ocr + eng, libreoffice, ffmpeg — apt
+#   weasyprint + yt-dlp — pip (yt-dlp's pip wheel is the same code as
+#   the official standalone exe; ~+40MB image impact, documented in
+#   DECISIONS.md D-025 and README at Phase 14)
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ghostscript \
@@ -37,7 +43,7 @@ RUN apt-get update \
     ffmpeg \
     python3 \
     python3-pip \
-  && pip3 install --no-cache-dir --break-system-packages weasyprint \
+  && pip3 install --no-cache-dir --break-system-packages weasyprint yt-dlp \
   && apt-get purge -y python3-pip \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/*

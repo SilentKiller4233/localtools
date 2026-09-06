@@ -54,6 +54,12 @@ export const ENGINE_ERROR_TEXT: Record<string, string> = {
   'tool-unavailable':
     'This tool needs a component that isn’t installed. On the desktop app it downloads on first use; on Docker it ships with the image.',
   'engine-busy': 'The processing engine is busy — try again in a moment.',
+  'unsupported-site':
+    'This site isn’t supported by the downloader — try a link from a supported video or audio platform.',
+  'blocked-host': 'This link points at a private or local network address, which is not allowed.',
+  'rate-limited': 'Too many downloads in a short time — wait a moment and try again.',
+  'too-long': 'This item is longer than the downloader’s duration cap.',
+  'download-too-large': 'The download exceeded the size cap and was stopped — nothing was kept.',
   unauthorized: 'This request is not authorized.',
   internal: 'The operation failed unexpectedly. Please try again.',
 };
@@ -64,6 +70,41 @@ export function decodeEngineFile(f: EngineFileOut): Uint8Array {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
   return bytes;
+}
+
+/**
+ * Call a downloader (Group C) engine endpoint — JSON body, no file
+ * parts. Returns the parsed data payload; throws EngineCallError with
+ * the engine's taxonomy codes on failure.
+ */
+export async function runEngineJson<T>(
+  endpoint: string,
+  body: Record<string, unknown>,
+): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${engineBaseUrl()}${endpoint}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new EngineCallError(
+      'engine-unreachable',
+      'The local processing engine isn’t running. Start it with the desktop app or `docker compose up`.',
+    );
+  }
+  let parsed: { ok: boolean; data?: unknown; error?: { code: string; message: string } };
+  try {
+    parsed = (await res.json()) as typeof parsed;
+  } catch {
+    throw new EngineCallError('internal', 'The engine returned an unreadable response.');
+  }
+  if (!parsed.ok || parsed.error !== undefined) {
+    const code = parsed.error?.code ?? 'internal';
+    throw new EngineCallError(code, ENGINE_ERROR_TEXT[code] ?? parsed.error?.message ?? '');
+  }
+  return (parsed as { ok: true; data: T }).data;
 }
 
 export interface EngineClientFile {

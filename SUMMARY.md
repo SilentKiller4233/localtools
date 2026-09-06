@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-05, after Phase 7 — Media conversion suite complete_
+_Last updated: 2026-09-06, after Phase 8 — Media downloader suite complete_
 
 ## What this project is
 
@@ -8,14 +8,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 7 of 15 (Section 15)
+- Phases complete: 8 of 15 (Section 15)
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
-- Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader → Phase 8; STT/auto-captions/TTS/audiobook → Phase 9; ffmpeg.wasm small-clip path deferred (D-021)**
+- Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); STT/auto-captions/TTS/audiobook → Phase 9; ffmpeg.wasm small-clip path deferred (D-021)**
 - Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
 - Text & Dev suite: **complete — all 30 Group A tools + zip/unzip (Section 3.5) implemented in `@localtools/devtext-core` (172/172 tests), worker-offloaded client pages wired**
 - Desktop app (Tauri): not started (placeholder `apps/desktop/README.md` only)
 - Docker Compose target: engine Dockerfile real (multi-stage bookworm-slim + ghostscript/tesseract/libreoffice/ffmpeg/pip-weasyprint, non-root, healthcheck); stack acceptance runs as the CI `compose-stack` job incl. a media round-trip (dev host has no Docker — D-015)
-- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 82 engine + 65 image-core + 172 devtext-core) + build — all green
+- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 112 engine [82 Group B + 30 downloader] + 65 image-core + 172 devtext-core) + build — all green
 
 ## What has been built so far
 
@@ -71,6 +71,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - Client: `MediaPageSpec.tsx` real pages for all 14 Group B tool cards via `EngineRunnerPage` (multi-file merge/burn order-hint contract; `buildOptions` now receives the selected-file count); `ToolPage` dispatches media Group B; ffmpeg.wasm deferred (D-021).
 - Docker: `apt ffmpeg` added to the engine image; CI compose-stack job now runs a media round-trip (`/media/audio-convert` mp3→wav through the container).
 
+**Phase 8 — Media downloader suite (Group C, complete)**
+
+- `apps/engine` downloader layer: `routes/downloader-group-c.ts` (POST `/downloader/metadata` + `/downloader/download`, JSON bodies, downloader-specific rate limit BEFORE any work, URL-free logging) + `downloader/downloader.ts` (core flow), `downloader/ssrf-guard.ts` (the Section 5.8 set), `downloader/ytdlp.ts` (sandboxed arg builder + subprocess runner with wall-clock timeout, mid-download size watchdog, SIGTERM→SIGKILL + taskkill /T), `downloader/rate-limit.ts` (separate window from the general 429).
+- **SSRF set, all from the first commit (D-027)**: scheme validation (http/https only); initial host resolve+classify before ANY subprocess exists; per-hop enforcement via a loopback-only validating forward proxy (`--proxy` to yt-dlp — every connection incl. redirect hops and CONNECT tunnels re-validates scheme + resolved IPs against loopback/private/link-local/CGNAT/ULA/NAT64/multicast/reserved, 169.254.169.254 covered); yt-dlp sandboxing flags verified against the installed 2026.08.19 binary's --help (`--no-config-locations --no-plugin-dirs --no-remote-components --no-exec --no-cache-dir --socket-timeout 30 --restrict-filenames --windows-filenames`); production extractor set `all,-generic` = no raw-fetch fallback; hard 600s timeout; output-size watchdog; pre-download duration gate (Section 8 cap); remote-metadata filename sanitization; `unsupported-site`/`blocked-host`/`rate-limited`/`too-long`/`download-too-large` error codes.
+- yt-dlp deployment (D-025): repo-local standalone exe (SHA-256-verified release asset, gitignored `yt-dlp-*/`) with ffmpeg-pattern resolution (env → repo-local → Docker → PATH); Docker engine image adds pip yt-dlp (~+40MB); livestreams explicitly unsupported (D-024).
+- Tests: 28 in `downloader.test.ts` + 2 canary — all against the local mock HTTP target (D-026): loopback/private/link-local/metadata-endpoint rejection with zero outbound requests (hit-log asserted), redirect-chain-to-private/metadata/localhost-name blocked at the hop, non-http(s) schemes rejected, production-extractor rejection with ZERO hits (no-open-proxy), oversized drip aborted mid-flight with no file kept, downloader rate limit distinct from engine-busy, malicious-title sanitization, duration gate, happy paths (mp4 ftyp / mp3 ID3 / srt / playlist-items selection) with honest 503 degradation on no-yt-dlp hosts (verified both ways locally).
+- Client: `DownloaderPage.tsx` — URL input (not drop-zone), metadata preview card, format/quality picker + audio-only + subtitles, playlist queue with checkboxes, progress, one-time dismissible legal notice (Section 6) persisted in localStorage; `engine-client.ts` gained `runEngineJson` + Group C error copy; `ToolPage` dispatches media Group C.
+
 **Phase 4 — PDF suite Group B (6/6 endpoints, complete)**
 
 - `@localtools/engine` (Fastify 5): request harness owning the full Section 5 control set — multipart size caps (stream-level, envelope-mapped 413), `file-type` magic-byte validation, fresh internal names in per-request temp dirs (finally-removal + 5-min sweeper), zod option schemas shared with the client, subprocess concurrency cap → 429, anonymous-id logging (never filenames). Subprocess runner: spawn argument arrays ONLY (`shell:false` hardcoded), SIGTERM→SIGKILL (+ taskkill /T on Windows).
@@ -92,7 +100,6 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 ## What's left
 
 - ffmpeg.wasm small-clip browser path (Group A; deferred per D-021 — schedule after Phase 9)
-- Phase 8 — Media downloader (Group C) with full Section 5.8 SSRF set from the start
 - Phase 9 — Speech-to-text (whisper.cpp WASM) + auto-captions **+ Piper TTS + PDF→audiobook (assigned here per D-012)**
 - Phase 10 — Tauri desktop shell + sidecar + lazy downloads
 - Phase 11 — integration polish · Phase 12 — accessibility/responsiveness · Phase 13 — test/CI finalization (incl. wiring PWA/offline + worker-offload checks into `pnpm verify`) · Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010)
@@ -103,7 +110,7 @@ D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as 
 
 ## Known issues / tech debt
 
-- Engine's full Section 5 control set covers the PDF (Phase 4) and media (Phase 7) Group B endpoints; the Group C downloader adds its Section 5.8 SSRF set in Phase 8 — until then never expose past localhost (D-002).
+- Engine's Section 5 control set covers PDF/media Group B (Phase 4/7) and the Group C downloader's Section 5.8 SSRF set (Phase 8). The SSRF guards are proven against the local mock; before Phase 13, consider one adversarial re-review pass (bounty-style) of ssrf-guard.ts.
 - `apps/desktop` contains no code yet (README placeholder only).
 - CI is green on `main`; workflow remains untested against PRs/tags until later phases exercise them.
 - PWA/offline + worker-offload checks are not yet part of `pnpm verify` (manual scripts today); wiring them in is scheduled for Phase 13.
@@ -125,6 +132,12 @@ pnpm verify           # format + lint + typecheck + 484 tests (165 pdf + 82 engi
 # ffmpeg-n9.0-latest-win64-gpl-9.0/ portable build (gitignored); on other
 # hosts set LOCALTOOLS_FFMPEG_PATH or install ffmpeg on PATH. Docker ships
 # apt ffmpeg inside the engine image.
+#
+# Phase 8 surface: the Media suite's Universal Downloader card is live
+# (#/tool/universal-downloader) — paste a link, preview, pick quality,
+# download. The engine auto-detects the repo-local yt-dlp-2026.08.19/
+# portable exe (gitignored); otherwise set LOCALTOOLS_YTDLP_PATH or
+# install yt-dlp on PATH. Docker ships pip yt-dlp in the engine image.
 #
 # Phase 3 acceptance surface: every PDF Group A tool is live at #/tool/<id> —
 # drop a PDF, set options, run; processing happens in the Web Worker.

@@ -495,3 +495,81 @@ an explicit re-encode mode for exact cut points, honoring Section 3.2's
 on-keyframe slop (~up to a GOP) is stated in the mode's label.
 loudnorm runs single-pass dynamic mode (corrective quality for half the
 passes of two-pass on typical material).
+
+## Phase 8 — Media downloader suite (Group C, yt-dlp)
+
+### D-024 — Livestreams: explicitly unsupported (conservative choice, Section 13)
+
+Section 13 allows either bounded max-capture-duration support or
+explicit unsupported with a clear message. Chosen: **explicit
+unsupported**. The engine detects `is_live`/`live_status` in the
+pre-download metadata probe AND in `--max-filesize`-adjacent error
+mapping, and rejects with `unsupported-site` copy that says live
+streams aren't supported — "wait for the stream to finish and download
+the saved copy." Rationale: an unbounded capture is the only path that
+can fill disk indefinitely (Section 13's own concern), a bounded one
+adds a whole timeout/capture UX for a niche case, and the conservative
+spec-consistent reading is to not build it in v1.
+
+### D-025 — yt-dlp deployment: standalone per-OS exe, repo-local (dev) + pip (Docker) **[required-by-CI]**
+
+- **Dev host:** official standalone `yt-dlp.exe` (2026.08.19) from
+  yt-dlp's own GitHub Releases, SHA-256-verified against the release's
+  `SHA2-256SUMS`, installed repo-local under `yt-dlp-2026.08.19/`
+  (gitignored via `yt-dlp-*/`, exactly like `ffmpeg-*/` and `gs10.07.1/`).
+  Resolution order in `tool-paths.ts` mirrors ffmpeg:
+  `LOCALTOOLS_YTDLP_PATH` env → repo-local `yt-dlp-<tag>/` →
+  `/usr/bin|/usr/local/bin` (Docker) → PATH; ENOENT surfaces as the
+  honest 503 `tool-unavailable` (the c88d80d contract).
+- **Docker:** `pip3 install yt-dlp` in the engine image (Section 11
+  allows python3+pip or the static binary). Image-size impact:
+  ~+40MB (the pip wheel + its deps vs the ~18MB static exe is close;
+  pip keeps the image consistent with the apt tooling and lets
+  dependabot-style updates ride the lockfile pipeline in Phase 13).
+  The Docker image size note lands in README at Phase 14 per Section 11.
+
+### D-026 — Downloader tests: local mock HTTP target; production extractors stay disabled **[required-by-CI]**
+
+Section 14.2 mandates the mocked downloader target (never live
+third-party sites in CI — flaky, ToS, rate limits). The mock
+(`apps/engine/test/downloader-mock.ts`) is a plain Node http server on
+127.0.0.1 serving yt-dlp-extractable pages: single `<video>` page,
+two-video page (playlist shape), hostile `<title>` page, redirect
+pages (private IP / cloud-metadata / loopback-name targets), a
+slow-drip oversized body, and a `<track>` subtitle page — backed by
+the committed `fixtures/media/*` bytes. Test-mode design: the engine
+exempts exactly ONE literal `host:port` (the mock) from the loopback
+block via `LOCALTOOLS_DOWNLOADER_MOCK_TARGET`, and the extractor set
+grows `generic,html5` for that mode ONLY. Everything else — including
+`localhost` as a NAME and every other loopback port — falls through to
+the full production validation, so the SSRF tests prove real rejections
+while the happy path still has a fetchable target. The production
+extractor set (`all,-generic`) is itself tested directly: yt-dlp
+rejects the mock URL with `Unsupported URL` and ZERO outbound
+requests (mock hit log asserted empty) — the no-open-proxy rule at
+the layer where it lives.
+
+### D-027 — SSRF enforcement shape: validating forward proxy per request **[required-by-CI]**
+
+The per-redirect-hop requirement (Section 5.8) cannot be met by
+validating only the initial URL — yt-dlp follows redirects, fetches
+fragments from CDNs, and resolves names itself. Design: **the engine
+runs a loopback-only validating forward proxy per request and points
+yt-dlp at it via `--proxy`** (`apps/engine/src/downloader/ssrf-guard.ts`).
+Every connection yt-dlp makes (page, redirect hop, media, fragment)
+is re-validated: scheme (http/https), DNS resolve, and
+classify-against-blocked-ranges (loopback 127/8 + ::1, 10/8,
+172.16/12, 192.168/16, link-local 169.254/16 incl. 169.254.169.254,
+CGNAT, multicast, reserved, v4-mapped, ULA, NAT64 — every A/AAAA
+record must be public). CONNECT tunnels (https) validate before the
+tunnel opens. The initial URL is ALSO validated before any subprocess
+exists (fail-fast, zero requests). yt-dlp sandboxing flags (verified
+against the installed binary's --help, not memory):
+`--no-config-locations --no-plugin-dirs --no-remote-components
+--no-exec --no-cache-dir --socket-timeout 30 --restrict-filenames
+--windows-filenames --no-progress --no-mtime` plus
+`--use-extractors all,-generic` (generic disabled = no raw-fetch
+fallback, Section 5.8's no-open-proxy rule). Hard wall-clock timeout
+(default 600s) with SIGTERM→SIGKILL (+taskkill /T) and an output-size
+watchdog polling the download dir (abort mid-flight → `download-too-large`,
+nothing kept). Argument arrays only (Section 5.3); URLs never logged (5.6).

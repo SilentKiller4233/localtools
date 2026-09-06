@@ -86,3 +86,25 @@ export type {
   BurnSubtitlesRequest,
   ResolutionChangeRequest,
 } from './media-engine.js';
+
+export {
+  DownloadFormatSchema,
+  DownloadItemSchema,
+  DownloadMetadataRequestSchema,
+  DownloadMetadataResponseSchema,
+  DownloadModeSchema,
+  DownloadRequestSchema,
+  DownloadResponseSchema,
+  DOWNLOADER_ERROR_CODES,
+} from './downloader-engine.js';
+export type {
+  DownloadFormat,
+  DownloadItem,
+  DownloadMetadataRequest,
+  DownloadMetadataResponse,
+  DownloadMode,
+  DownloadRequest,
+  DownloadResponse,
+  DownloaderErrorCode,
+  DownloaderLegalNotice,
+} from './downloader-engine.js';
