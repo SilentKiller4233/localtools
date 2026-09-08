@@ -14,6 +14,9 @@ RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY tooling ./tooling
 COPY packages/shared-types ./packages/shared-types
+# pdf-core: the engine's pdf-to-audiobook route imports its loadPdf/
+# extractText (pure-TS, same package the client worker uses — D-031).
+COPY packages/pdf-core ./packages/pdf-core
 COPY apps/engine ./apps/engine
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @localtools/engine... build
