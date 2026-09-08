@@ -114,6 +114,28 @@ jobs:
             });
           "
 
+      - name: Speech round trip (Piper TTS through the container)
+        run: |
+          set -euo pipefail
+          # Phase 9: one real speech Group B tool through the containerized
+          # engine — /opt/piper/piper synthesizes text to a WAV. The voice
+          # model lazy-downloads from HF inside the container on first use
+          # (D-030; ~63MB, Cache-style tmpfs — acceptable for the one CI
+          # round trip) and is digest-verified.
+          REPLY=$(curl -fsS -X POST http://127.0.0.1:8787/media/text-to-speech \
+            -F 'options={"text":"Phase nine speech round trip.","voice":"en_US-lessac-medium","speed":1}')
+          echo "$REPLY" | node -e "
+            let s=''; process.stdin.on('data',c=>s+=c).on('end',()=>{
+              const r = JSON.parse(s);
+              if (!r.ok) { console.error('speech engine returned error', r.error); process.exit(1); }
+              const f = r.data.files[0];
+              if (!f || f.ext !== 'wav' || f.data.length < 100) {
+                console.error('bad speech output'); process.exit(1);
+              }
+              console.log('SPEECH_STACK_PASS', f.data.length, 'b64 chars');
+            });
+          "
+
       - name: Client serves
         run: |
           set -euo pipefail

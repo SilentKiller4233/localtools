@@ -2,7 +2,7 @@
   "name": "localtools",
   "version": "0.0.0",
   "private": true,
-  "description": "LocalTools — self-hosted, open-source, privacy-first quality-of-life toolkit (PDF / Media / Image / Text & Dev suites).",
+  "description": "LocalTools — self-hosted, open-source, privacy-first quality-of-life toolkit (PDF / Media / Image / Text & Dev suites)",
   "license": "MIT",
   "packageManager": "pnpm@10.34.5",
   "pnpm": {
@@ -22,7 +22,7 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test --force && pnpm build"
   },
   "devDependencies": {
     "@localtools/eslint-config": "workspace:*",

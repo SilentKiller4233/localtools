@@ -1,8 +1,7 @@
 {
   "extends": "../../tooling/tsconfig/react.json",
-  "include": ["src"],
+  "include": ["src", "test"],
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src"
+    "noEmit": true
   }
 }

@@ -65,6 +65,8 @@ export interface ToolPaths {
   ffmpeg: FfmpegPaths;
   /** yt-dlp executable (Media suite Group C downloader, Phase 8). */
   ytdlp: string;
+  /** Piper TTS executable (Media speech, Phase 9). */
+  piper: string;
 }
 
 /** ffmpeg/ffprobe pair (Phase 7 media Group B). */
@@ -85,6 +87,7 @@ export async function resolveToolPaths(): Promise<ToolPaths> {
   const weasyprint = await resolveWeasyprint();
   const ffmpeg = await resolveFfmpeg();
   const ytdlp = await resolveYtDlp();
+  const piper = await resolvePiper();
   return {
     gs,
     soffice,
@@ -95,7 +98,38 @@ export async function resolveToolPaths(): Promise<ToolPaths> {
     playwrightEnabled: process.env['LOCALTOOLS_PLAYWRIGHT_ENABLED'] === 'true',
     ffmpeg,
     ytdlp,
+    piper,
   };
+}
+
+/**
+ * Piper TTS resolution (Phase 9, D-030), same order as yt-dlp:
+ *  1. LOCALTOOLS_PIPER_PATH env override
+ *  2. repo-local portable build (piper-<tag>/piper[.exe], gitignored)
+ *  3. Docker image install (/opt/piper/piper — SHA-pinned tarball)
+ *  4. PATH lookup (surfaced as tool-unavailable on ENOENT at call time)
+ */
+async function resolvePiper(): Promise<string> {
+  const override = envPath('LOCALTOOLS_PIPER_PATH');
+  if (override !== undefined) return override;
+  // Repo-local portable install: piper-<tag>/piper.exe (win) or piper.
+  const { readdir } = await import('node:fs/promises');
+  try {
+    const entries = await readdir(REPO_ROOT);
+    const dir = entries
+      .filter((e) => /^piper-\d/.test(e))
+      .sort()
+      .at(-1);
+    if (dir !== undefined) {
+      const exe = IS_WIN ? 'piper.exe' : 'piper';
+      const candidate = join(REPO_ROOT, dir, exe);
+      if (await exists(candidate)) return candidate;
+    }
+  } catch {
+    // fall through to fixed defaults + PATH
+  }
+  if (await exists('/opt/piper/piper')) return '/opt/piper/piper';
+  return 'piper';
 }
 
 /**

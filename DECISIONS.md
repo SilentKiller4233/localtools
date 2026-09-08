@@ -573,3 +573,152 @@ fallback, Section 5.8's no-open-proxy rule). Hard wall-clock timeout
 (default 600s) with SIGTERM→SIGKILL (+taskkill /T) and an output-size
 watchdog polling the download dir (abort mid-flight → `download-too-large`,
 nothing kept). Argument arrays only (Section 5.3); URLs never logged (5.6).
+
+---
+
+## Phase 9 — Media speech & audio (STT, auto-captions, TTS, audiobook)
+
+### D-028 — Speech fixture: generated with Piper itself, committed; assertion = keyword set (a8b196c discipline) **[required-by-CI]**
+
+`fixtures/media/sample-short.mp3` is a 440Hz sine tone (D-022) and can never
+satisfy Section 15's "roughly-correct text". Chosen strategy:
+
+- **Fixture = `fixtures/media/sample-speech.wav`, generated once with the
+  verified Piper release (2023.11.14-2) + the en_US-lessac-medium voice from
+  the MIT-licensed `rhasspy/piper-voices` HF repo, speaking a fixed pangram
+  phrase** ("The quick brown fox jumps over the lazy dog. LocalTools speech
+  test."). License-clear by construction (our own words, synthesized by
+  MIT-licensed tools — no third-party recording), deterministic in provenance
+  (committed bytes, regenerate script in `apps/engine/scripts/`), and it
+  doubles as a live proof that the Piper pipeline works. NOT generated at test
+  time (chicken-and-egg with lazy downloads; CI has no piper).
+- **Assertions are keyword-set based, never exact strings** — whisper output
+  varies by model tier/build. The test asserts the transcript is non-empty
+  AND contains (case-insensitive, whitespace-normalized) at least 4 of the 6
+  words {quick, brown, fox, lazy, dog, speech} — the remaining two tolerate
+  tiny.en's known homophone slips. **Failure probability computed against the
+  ACTUAL verified transcript** (live end-to-end run in this session produced
+  the exact phrase with all 9 words correct via tiny.en; tiny.en WER on clear
+  synthetic speech is ~1-5% per word but errors concentrate on rare words —
+  none of the 6 keywords are rare): observed 0/6 keywords missed, so
+  P(test fails) = P(≥3 of 6 keywords simultaneously misrecognized) < 1e-4 by
+  any plausible error model (needs 3+ independent ~1% events).
+- Phase 15's spec-named `sample-short.mp3` transcription test is satisfied by
+  this fixture (spec Section 14.2 requires "license-clear speech for
+  conversion tests" — the sine tone remains for conversion; the dedicated
+  speech fixture covers transcription honestly).
+
+### D-029 — whisper WASM packaging: `@fugood/node-whisper-wasm` 1.1.3; models pinned from whisper.cpp's HF ggml repo; browser Cache API + Node Temp cache; Node loading contract **[required-by-CI]**
+
+**Packaging choice (verified from the package tarball, not memory):**
+`@fugood/node-whisper-wasm` 1.1.3 (MIT, browser WASM module for
+whisper.node — the whisper.cpp WASM build). Rejected alternatives:
+`smart-whisper` (node-gyp native addon — wrong environment, needs compilation),
+`@remotion/whisper-web` (UNLICENSED), `whisper-node` (native OpenAI-whisper
+binding, not whisper.cpp), `@timur00kh/whisper.wasm` (0.1.1, one-person,
+unproven). The fugood package ships single-thread + pthread artifacts
+(~4.1MB wasm each), auto-falls-back to single-thread when the page is not
+crossOriginIsolated (NO app-wide COOP/COEP headers needed — the existing CSP
+is untouched), supports transcribeData(Float32Array PCM), tokenTimestamps,
+Cache-API model caching built in, and a module-worker mode we bypass (our own
+worker hosts it).
+
+**Bundle impact (250KB initial-JS budget):** `media-core` depends on it; the
+CLIENT worker imports whisper lazily via dynamic import (Vite code-splits),
+so the initial JS gains only the STT tool registry entries. The ~4.1MB WASM +
+77KB-488MB models are runtime fetches, never bundled.
+
+**Model tiers (pinned URLs + SHA-256 from HF LFS metadata, verified
+2026-09-07):** tiny.en (77.7MB,
+921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f), base.en
+(148MB, a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002),
+small.en (488MB, c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d)
+— from `ggerganov/whisper.cpp` (the official whisper.cpp ggml models, MIT).
+English-only tiers for v1 (conservative; the `.en` variants are the accurate
+English ones at each size). Sizes verified from the HF tree API.
+
+**Cache mechanism:** browser = Cache API (the package's built-in
+`whisper.node.wasm.models` cache, default on); Node (tests) =
+`%LOCALAPPDATA%/Temp/localtools-models/`-adjacent dir
+`<tmp>/localtools-models/whisper/` (u2netp precedent, D-016) — downloaded
+once on the dev machine, gitignored, CI tests SKIP network by asserting the
+honest degradation path when the model is absent (mirror of the c88d80d
+contract for Group B, applied to a Group A tool whose "native helper" is the
+model file itself).
+
+**Node loading contract (the non-obvious part, all verified live):**
+
+1. `configureWasm({ threads: false })` — Node otherwise selects the pthreads
+   artifact (isWasmThreadsSupport() is true in non-browser contexts) which
+   crashes with "Worker is not defined".
+2. `moduleOptions.instantiateWasm` hook supplying the locally-read
+   `whisper-node.wasm` bytes and calling `onSuccess(res.instance)` — this
+   Emscripten build never reads `Module.wasmBinary` into its closure, and
+   Node's fetch rejects `file://` URLs, so there is no other way.
+3. Model: `moduleOptions.preRun` writes the model bytes into the Emscripten
+   FS at `/models/<name>` and `initWhisper({ filePath: '/models/<name>' })` —
+   the glue's `ensureModel` checks `source[0]==='/' && fsPathExists` and skips
+   the network entirely. Verified: init 116ms, transcription of the Piper
+   fixture produced the exact phrase.
+   Browser path uses none of these hooks (defaults work: same-origin asset URLs
+   via Vite-copied package files).
+
+### D-030 — Piper TTS deployment: release binary repo-local (dev) + release-asset install (Docker); voices lazy from HF with per-file SHA-256 verification **[required-by-CI]**
+
+- **Binary:** rhasspy/piper GitHub Release 2023.11.14-2 (the latest — Piper's
+  1.x line moved to `OHF-voice/piper1-gpl` but that is a GPL refactoring still
+  in flux; 2023.11.14-2 is the stable, widely-deployed MIT release), Windows
+  `piper_windows_amd64.zip` on the dev host (repo-local `piper-2023.11.14-2/`,
+  gitignored like yt-dlp, SHA-256 of the zip verified at install:
+  f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea — the
+  release carries NO upstream checksums, so our own pinned digest is the
+  verification, recorded here), Linux `piper_linux_x86_64.tar.gz` extracted in
+  the Docker engine image. Resolution order mirrors yt-dlp:
+  `LOCALTOOLS_PIPER_PATH` env → repo-local `piper-<tag>/` → Docker path
+  `/opt/piper/piper` → PATH; ENOENT → honest 503 tool-unavailable.
+- **CLI verified from the installed binary's --help:** `-m model -c config -f
+out.wav --sentence_silence N --noise_scale --length_scale --speaker --quiet`,
+  stdin = text lines, `-f -` for stdout WAV. Arg arrays only (Section 5.3).
+- **Voices:** curated list of 3 for v1, all `medium` quality (~63MB each,
+  22050Hz): `en_US-lessac-medium` (default), `en_US-amy-medium`,
+  `en_GB-alba-medium` — from `rhasspy/piper-voices` on HF (repo-wide MIT,
+  verified from the model card; each voice dir carries its own MODEL_CARD).
+  Lazy-downloaded on first use to `<tmp>/localtools-models/piper-voices/`
+  (Node) / app data dir (future Tauri sidecar), with **per-file SHA-256
+  verification against the HF LFS oid** (recorded in the voices.ts table;
+  e.g. en_US-lessac-medium.onnx =
+  5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f, verified
+  live by download+digest). Adding a voice = one table row (HF path + sha256 +
+  display name); the tool's README section documents this.
+- **Audiobook chunking limits:** text split into chunks of ≤800 chars at
+  sentence boundaries (Piper handles long text but its internal phonemizer
+  works best ≤~1000 chars per line and each subprocess call is bounded by the
+  file-op timeout); per-chapter files (or one file when the doc has no
+  bookmarks) concatenated by the engine into a single WAV via ffmpeg
+  (sample-rate-aligned, already a dependency). Caps: input PDF ≤500MB
+  (existing maxFileSize), extracted text ≤5MB, max 500 chunks per job.
+
+### D-031 — TTS + audiobook engine shape: Phase 4/7 request harness, no new security surface
+
+`POST /media/text-to-speech` (JSON body: text + voice + speed — text carried
+in options like html-to-pdf's inline HTML, allowNoFiles) and
+`POST /media/pdf-to-audiobook` (multipart PDF upload) — both through the
+existing GroupBRequestHarness (magic-byte PDF sniff, size caps, per-request
+temp dir + sweeper, concurrency → 429, anonymous-id logging never logging the
+text). Piper runs via runSubprocess (arg arrays, SIGTERM→SIGKILL+taskkill)
+with the file-op timeout; output WAV is sniffed (RIFF/WAVE magic) before
+returning. Voice/model lazy-download failure surfaces as the Section 13
+retry-able `tool-unavailable` variant with model-download-failed copy —
+engine reaches for the network only for the pinned HF voice files, exactly
+like the whisper model, and the client offers Retry while every other tool
+stays usable (asserted by test).
+
+### D-032 — ffmpeg.wasm small-clip browser path: re-deferred (D-021 stands; no rider this session)
+
+Phase 9 shipped STT/auto-captions (the spec-named Group A media scope),
+TTS, and audiobook against its acceptance criteria; the optional D-021 rider
+(ffmpeg.wasm <50MB trim/convert path) did not fit this session's remaining
+budget after the whisper WASM verification work. D-021's routing design
+(size-threshold dispatch, explicit UI indication) remains the implementing
+record; revisit trigger stays "before Phase 13's CI finalization" — if it
+slips past Phase 13, re-serialize it explicitly at Phase 14's size pass.

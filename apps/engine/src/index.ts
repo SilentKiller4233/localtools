@@ -17,6 +17,7 @@ import { SubprocessLimiter } from './limiter.js';
 import { startTempSweeper } from './temp-dirs.js';
 import { registerPdfGroupBRoutes } from './routes/pdf-group-b.js';
 import { registerMediaGroupBRoutes } from './routes/media-group-b.js';
+import { registerMediaSpeechRoutes } from './routes/media-speech.js';
 import { registerDownloaderRoutes } from './routes/downloader-group-c.js';
 import { bearerAuthPlugin } from './auth.js';
 import { securityHeadersPlugin } from './headers.js';
@@ -114,6 +115,7 @@ export async function createServer(override?: {
 
   registerPdfGroupBRoutes(app, config, limiter);
   registerMediaGroupBRoutes(app, config, limiter);
+  registerMediaSpeechRoutes(app, config, limiter);
   registerDownloaderRoutes(app, config, limiter);
 
   return app;

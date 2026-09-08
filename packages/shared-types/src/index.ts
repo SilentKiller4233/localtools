@@ -68,6 +68,10 @@ export {
   LoudnessNormalizeRequestSchema,
   BurnSubtitlesRequestSchema,
   ResolutionChangeRequestSchema,
+  PiperVoiceId,
+  PIPER_VOICE_LABELS,
+  TextToSpeechRequestSchema,
+  PdfToAudiobookRequestSchema,
 } from './media-engine.js';
 export type {
   VideoContainerValue,
@@ -85,6 +89,9 @@ export type {
   LoudnessNormalizeRequest,
   BurnSubtitlesRequest,
   ResolutionChangeRequest,
+  PiperVoiceIdValue,
+  TextToSpeechRequest,
+  PdfToAudiobookRequest,
 } from './media-engine.js';
 
 export {

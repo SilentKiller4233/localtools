@@ -29,11 +29,15 @@ FROM node:22-bookworm-slim
 ENV NODE_ENV=production
 WORKDIR /app
 # Native tools (all invoked as subprocesses with argument arrays —
-# Section 5.3; nothing links against engine code):
+# Section 5.3; nothing here links against engine code):
 #   ghostscript, tesseract-ocr + eng, libreoffice, ffmpeg — apt
 #   weasyprint + yt-dlp — pip (yt-dlp's pip wheel is the same code as
 #   the official standalone exe; ~+40MB image impact, documented in
 #   DECISIONS.md D-025 and README at Phase 14)
+#   piper (TTS, Phase 9) — GitHub release tarball, SHA-256-pinned
+#   (D-030: no upstream checksums — our pin is the verification).
+#   The tarball extracts to piper/piper + its .so deps, installed at
+#   /opt/piper (the tool-paths resolver checks /opt/piper/piper).
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ghostscript \
@@ -46,7 +50,16 @@ RUN apt-get update \
   && pip3 install --no-cache-dir --break-system-packages weasyprint yt-dlp \
   && apt-get purge -y python3-pip \
   && apt-get autoremove -y \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && mkdir -p /opt/piper \
+  && curl -fsSL -o /tmp/piper.tar.gz \
+    'https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz' \
+  && echo 'a50cb45f355b7af1f6d758c1b360717877ba0a398cc8cbe6d2a7a3a26e225992  /tmp/piper.tar.gz' | sha256sum -c - \
+  && tar -xzf /tmp/piper.tar.gz -C /opt/piper --strip-components=1 \
+  && rm /tmp/piper.tar.gz \
+  && chmod +x /opt/piper/piper \
+  && /opt/piper/piper --version \
+  && rm -rf /tmp/* /var/tmp/*
 # Flat deploy layout: the engine's own package.json + dist at /app root,
 # deps (incl. @localtools/shared-types) inside node_modules.
 COPY --from=build /pruned/node_modules ./node_modules

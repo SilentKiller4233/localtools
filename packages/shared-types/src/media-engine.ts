@@ -176,3 +176,53 @@ export type AudioTrimRequest = z.infer<typeof AudioTrimRequestSchema>;
 export type LoudnessNormalizeRequest = z.infer<typeof LoudnessNormalizeRequestSchema>;
 export type BurnSubtitlesRequest = z.infer<typeof BurnSubtitlesRequestSchema>;
 export type ResolutionChangeRequest = z.infer<typeof ResolutionChangeRequestSchema>;
+
+/* ------------------------------------------------------------------ */
+/* Phase 9 — Media speech & audio (Sections 3.2, 15)                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Piper voice ids the engine ships (D-030). Client dropdowns render the
+ * display labels; the engine resolves the id to a lazy-downloaded,
+ * SHA-256-verified .onnx+.json pair from rhasspy/piper-voices (MIT).
+ */
+export const PiperVoiceId = z.enum([
+  'en_US-lessac-medium',
+  'en_US-amy-medium',
+  'en_GB-alba-medium',
+]);
+export type PiperVoiceIdValue = z.infer<typeof PiperVoiceId>;
+
+/** Human-readable labels per voice (client-side only). */
+export const PIPER_VOICE_LABELS: Readonly<Record<z.infer<typeof PiperVoiceId>, string>> = {
+  'en_US-lessac-medium': 'US English — Lessac (default)',
+  'en_US-amy-medium': 'US English — Amy',
+  'en_GB-alba-medium': 'UK English — Alba',
+};
+
+/**
+ * Text-to-speech (Group B, Phase 9). The text rides in options like
+ * html-to-pdf's inline HTML — no file parts required.
+ */
+export const TextToSpeechRequestSchema = z.object({
+  text: z.string().trim().min(1, 'Enter some text to speak.').max(10_000),
+  voice: PiperVoiceId.default('en_US-lessac-medium'),
+  /** Speaking-rate multiplier (Piper --length_scale; smaller = faster). */
+  speed: z.number().min(0.5).max(2).default(1),
+});
+
+/**
+ * PDF → audiobook (Group B, Phase 9). PDF upload; the engine extracts
+ * text (pdf-core), chunks it (D-030 limits), synthesizes per chunk via
+ * Piper, and concatenates to one WAV via ffmpeg.
+ */
+export const PdfToAudiobookRequestSchema = z.object({
+  file: z.number().int().min(0),
+  voice: PiperVoiceId.default('en_US-lessac-medium'),
+  speed: z.number().min(0.5).max(2).default(1),
+  /** Emit one WAV per detected chapter (PDF outline) instead of one file. */
+  perChapter: z.boolean().default(false),
+});
+
+export type TextToSpeechRequest = z.infer<typeof TextToSpeechRequestSchema>;
+export type PdfToAudiobookRequest = z.infer<typeof PdfToAudiobookRequestSchema>;

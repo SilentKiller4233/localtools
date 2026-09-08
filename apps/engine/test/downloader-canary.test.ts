@@ -19,10 +19,13 @@ const srcDir = resolve(here, '../src');
 describe('downloader outbound-request canary (14.4 / 5.8)', () => {
   it('no fetch()/axios/http.request of user URLs outside the downloader module', async () => {
     // Modules allowed to make outbound HTTP: the SSRF guard's proxy
-    // (that IS the guard) — nothing else may open sockets on request
+    // (that IS the guard), and the pinned-model fetchers — speech/voices.ts
+    // downloads ONLY hardcoded, SHA-256-pinned Hugging Face URLs from a
+    // const table (D-030/D-031); the voice id is a zod enum key, never
+    // user-controlled URL data. Nothing else may open sockets on request
     // data. The engine's other network surface is the Fastify listener
     // itself, which is loopback-bound by config (5.1, tested elsewhere).
-    const allowed = ['ssrf-guard.ts'];
+    const allowed = ['ssrf-guard.ts', 'speech/voices.ts'];
     const { readdir } = await import('node:fs/promises');
     const check = async (dir: string): Promise<void> => {
       for (const e of await readdir(dir, { withFileTypes: true })) {
@@ -57,5 +60,22 @@ describe('downloader outbound-request canary (14.4 / 5.8)', () => {
     expect(ytdlpSrc).toContain("'--proxy'");
     // And the guard is the only supplier of proxy URLs.
     expect(guardSrc).toContain('startValidatingProxy');
+  });
+
+  it('speech/voices.ts fetches ONLY pinned HF URLs (never request data)', async () => {
+    // The allowlist entry above is only safe while every URL handed to
+    // fetch() is built from the const HF_BASE + the pinned VOICES table —
+    // voice ids are zod enum keys, so no user URL can ever reach a socket.
+    const voicesSrc = await readFile(resolve(srcDir, 'speech', 'voices.ts'), 'utf8');
+    // The single fetch() call lives inside fetchVerified; every caller
+    // passes a template literal rooted at the pinned HF_BASE.
+    expect(voicesSrc).toContain('const HF_BASE =');
+    const fetchCalls = [...voicesSrc.matchAll(/\bfetch\s*\(/g)].length;
+    expect(fetchCalls).toBe(1);
+    const callerUrls = [...voicesSrc.matchAll(/fetchVerified\(\s*`([^`]+)`/g)].map((m) => m[1]);
+    expect(callerUrls.length).toBe(2);
+    for (const u of callerUrls) {
+      expect(u?.startsWith('${HF_BASE}/')).toBe(true);
+    }
   });
 });

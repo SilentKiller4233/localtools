@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-06, after Phase 8 — Media downloader suite complete_
+_Last updated: 2026-09-08, after Phase 9 — Media speech & audio complete_
 
 ## What this project is
 
@@ -8,14 +8,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 8 of 15 (Section 15)
+- Phases complete: 9 of 15 (Section 15)
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
-- Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); STT/auto-captions/TTS/audiobook → Phase 9; ffmpeg.wasm small-clip path deferred (D-021)**
+- Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); speech & audio complete — transcribe-media + auto-captions client-side via whisper.cpp WASM (fugood 1.1.3, D-029 dual-environment contract) and text-to-speech + pdf-to-audiobook engine-side via Piper 2023.11.14-2 (D-030/D-031), 18 engine + 17 media-core tests; ffmpeg.wasm small-clip path deferred (D-021/D-032)**
 - Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
 - Text & Dev suite: **complete — all 30 Group A tools + zip/unzip (Section 3.5) implemented in `@localtools/devtext-core` (172/172 tests), worker-offloaded client pages wired**
 - Desktop app (Tauri): not started (placeholder `apps/desktop/README.md` only)
 - Docker Compose target: engine Dockerfile real (multi-stage bookworm-slim + ghostscript/tesseract/libreoffice/ffmpeg/pip-weasyprint, non-root, healthcheck); stack acceptance runs as the CI `compose-stack` job incl. a media round-trip (dev host has no Docker — D-015)
-- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 112 engine [82 Group B + 30 downloader] + 65 image-core + 172 devtext-core) + build — all green
+- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 130 engine [82 Group B + 30 downloader + 18 speech] + 65 image-core + 172 devtext-core + 17 media-core) + build — all green
 
 ## What has been built so far
 
@@ -104,6 +104,15 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - Phase 10 — Tauri desktop shell + sidecar + lazy downloads
 - Phase 11 — integration polish · Phase 12 — accessibility/responsiveness · Phase 13 — test/CI finalization (incl. wiring PWA/offline + worker-offload checks into `pnpm verify`) · Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010)
 
+**Phase 9 — Media speech & audio (STT, auto-captions, TTS, audiobook, complete)**
+
+- `packages/media-core/src/speech.ts`: Group A STT. `@fugood/node-whisper-wasm` 1.1.3 (MIT, whisper.cpp WASM) behind the D-029 dual-environment contract — browser: package defaults (same-origin asset URLs, single-thread auto-fallback without COOP/COEP, Cache-API model caching); Node: `configureWasm({threads:false})` ONE-SHOT guard + `instantiateWasm` hook with locally-read bytes + FS-preseeded model at `/models/<file>` (no network in tests). Model tiers pinned from ggerganov/whisper.cpp with HF LFS SHA-256 (tiny.en 921e4cf8…, base.en a03779c8…, small.en c6138d6d…). WAV decode (16-bit PCM + float, stereo→mono mix) + linear 16kHz resample + SRT/VTT builders (the VTT first-comma replace bug was caught by tests and fixed). Absent/corrupt model in the Temp cache → honest `model-download-failed` with retry copy; never a hidden fetch.
+- `apps/engine` speech layer: `speech/voices.ts` (3 curated MIT voices — en_US-lessac/amy, en_GB-alba, medium ~63MB — lazy-downloaded from rhasspy/piper-voices with per-file SHA-256 verification against HF LFS oids + computed json digests; corrupted cache fails the digest gate and redownloads — tested), `speech/piper-tools.ts` (TTS + audiobook: pdfjs v6 single-parse chapter extraction with a COPIED buffer — pdfjs detaches what it is handed — outline chapters or flat fallback; ≤800-char sentence-boundary chunks, ≤500 chunks, ≤5MB text caps per D-030; per-chunk Piper WAVs concatenated via ffmpeg; RIFF/WAVE output sniff), `routes/media-speech.ts` (`POST /media/text-to-speech` options-only like html-to-pdf, `POST /media/pdf-to-audiobook` PDF upload; both behind the Phase 4 GroupBRequestHarness — no new security surface; Piper text travels via stdin, never argv or logs). `subprocess.ts` gained an optional `stdinData` (pipe-then-close, EPIPE-tolerant). Piper resolution in tool-paths.ts: env → repo-local `piper-<tag>/` (gitignored) → Docker `/opt/piper/piper` → PATH; ENOENT → honest 503.
+- Fixtures: `fixtures/media/sample-speech.wav` — Piper-generated (en_US-lessac-medium) saying "The quick brown fox jumps over the lazy dog. LocalTools speech test." (D-028: the spec's sample-short.mp3 is a 440Hz sine tone that can never satisfy "roughly-correct text"). Committed bytes are the source of truth; regenerate via `apps/engine/scripts/regenerate-speech-fixture.ts`. The exact committed fixture was live-verified to transcribe exactly via tiny.en before committing. Assertions are keyword-set (≥4 of 6 non-rare words), P(fail) < 1e-4 (a8b196c discipline).
+- Tests: 18 engine (`media-speech.test.ts`: TTS/audiobook happy paths with the REAL Piper, zod gates, magic-byte/size/empty gates, no-Piper 503 + /healthz stays alive (Section 13), corrupted-cache retry heals, chunkText limit units) + 17 media-core (`speech.test.ts`: real WASM transcription of the fixture with keyword-set assertions, SRT/VTT builders, WAV decode/stereo/resample units, honest degradation when the model cache is cold — the CI contract).
+- Client: `media.worker.ts` + `media-worker-client.ts` (frozen image-worker bridge pattern; whisper + media-core load lazily inside the worker — Vite code-splits them out of the entry) + `MediaSpeechPageSpec.tsx` (transcribe + captions worker pages; TTS + audiobook engine pages) + ToolPage dispatch. Initial JS 422.82KB raw / **118.96KB gzipped** (budget 250KB gzipped); the 4.1MB whisper WASM + models are lazy chunks/runtime fetches.
+- Docker: engine image installs piper_linux_x86_64.tar.gz from the 2023.11.14-2 release, SHA-256-pinned (a50cb45f… — no upstream checksums, our pin is the verification, D-030) at /opt/piper with a build-time `--version` sanity run; CI compose-stack gained a speech round-trip (text-to-speech through the containerized engine).
+
 ## Key architectural decisions made so far
 
 D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as Ghostscript), D-021 (ffmpeg.wasm small-clip path deferred, not dropped — routing design recorded for its implementing phase), D-022 (media fixtures self-generated → license-clear by construction), D-023 (merge re-encodes; trim lossless-by-default), plus D-018/D-019 (devtext serializer + QR PNG encoder), D-016 (background-removal: onnxruntime + Apache-2.0 u2netp), D-017 (@jsquash Node init), D-015 and earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL/GPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node.
@@ -123,7 +132,7 @@ D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as 
 pnpm install          # pnpm-lock.yaml is committed
 pnpm dev              # client → http://localhost:5173 ; engine health → http://127.0.0.1:8787/healthz
 pnpm build            # all workspaces (client build also copies /pdfjs/* and /wasm/qpdf.wasm assets)
-pnpm verify           # format + lint + typecheck + 484 tests (165 pdf + 82 engine + 65 image + 172 devtext) + build gate
+pnpm verify           # format + lint + typecheck + 519 tests (165 pdf + 130 engine + 65 image + 172 devtext + 17 media-core) + build gate
 
 # Phase 7 surface: every Media Group B tool card is live at #/tool/<id> —
 # video/audio convert, compress, trim, merge, extract-audio, GIF, subtitles,
@@ -138,6 +147,13 @@ pnpm verify           # format + lint + typecheck + 484 tests (165 pdf + 82 engi
 # download. The engine auto-detects the repo-local yt-dlp-2026.08.19/
 # portable exe (gitignored); otherwise set LOCALTOOLS_YTDLP_PATH or
 # install yt-dlp on PATH. Docker ships pip yt-dlp in the engine image.
+#
+# Phase 9 surface: transcribe-media + auto-captions run fully in the
+# browser (whisper WASM + model download on first use, then offline);
+# text-to-speech + pdf-to-audiobook need the engine's Piper (auto-detects
+# the repo-local piper-2023.11.14-2/ dir, gitignored; set
+# LOCALTOOLS_PIPER_PATH otherwise; Docker ships /opt/piper). Voice
+# models lazy-download on first use.
 #
 # Phase 3 acceptance surface: every PDF Group A tool is live at #/tool/<id> —
 # drop a PDF, set options, run; processing happens in the Web Worker.

@@ -33,6 +33,12 @@ export interface RunSubprocessOptions {
   cwd?: string;
   /** Extra env (merged over process.env; never unset PATH). */
   env?: Record<string, string>;
+  /**
+   * Text written to the child's stdin (then closed) for tools that read
+   * their payload from stdin — e.g. Piper's text lines. When unset the
+   * child's stdin stays ignored (the previous behavior).
+   */
+  stdinData?: string;
 }
 
 /**
@@ -63,8 +69,17 @@ export function runSubprocess(
       cwd: opts.cwd,
       env: opts.env === undefined ? process.env : { ...process.env, ...opts.env },
       windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [opts.stdinData === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     });
+
+    if (opts.stdinData !== undefined && child.stdin !== null) {
+      child.stdin.on('error', () => {
+        // EPIPE when the child exits before consuming stdin — its exit
+        // code is the real signal; never fail on this.
+      });
+      child.stdin.write(opts.stdinData);
+      child.stdin.end();
+    }
 
     let stdout = '';
     let stderr = '';

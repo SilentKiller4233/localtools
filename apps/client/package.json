@@ -15,6 +15,7 @@
     "@localtools/pdf-core": "workspace:*",
     "@localtools/shared-types": "workspace:*",
     "@localtools/ui": "workspace:*",
+    "@localtools/media-core": "workspace:*",
     "lucide-react": "^1.34.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -5,6 +5,7 @@ import { pdfToolPage } from './ToolPageSpec';
 import { imageToolPage } from './ImagePageSpec';
 import { devTextToolPage } from './DevTextPageSpec';
 import { mediaToolPage } from './MediaPageSpec';
+import { mediaSpeechPage, mediaSpeechEnginePage } from './MediaSpeechPageSpec';
 import { DownloaderPage } from './DownloaderPage';
 import en from '../i18n/en.json';
 
@@ -51,8 +52,16 @@ export function ToolPage({ toolId }: { toolId: string }) {
 
   // Media suite Group B (ffmpeg engine) tools carry real pages (Phase 7).
   if (tool.suite === 'media' && tool.group === 'b') {
+    const speech = mediaSpeechEnginePage(tool);
+    if (speech !== null) return speech;
     const real = mediaToolPage(tool);
     if (real !== null) return real;
+  }
+
+  // Media suite Group A speech tools (whisper worker) — Phase 9.
+  if (tool.suite === 'media' && tool.group === 'a') {
+    const speech = mediaSpeechPage(tool);
+    if (speech !== null) return speech;
   }
 
   // Media suite Group C (yt-dlp downloader) — Phase 8.

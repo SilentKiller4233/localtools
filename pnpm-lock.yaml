@@ -32,6 +32,9 @@ importers:
       '@localtools/image-core':
         specifier: workspace:*
         version: link:../../packages/image-core
+      '@localtools/media-core':
+        specifier: workspace:*
+        version: link:../../packages/media-core
       '@localtools/pdf-core':
         specifier: workspace:*
         version: link:../../packages/pdf-core
@@ -84,6 +87,9 @@ importers:
       '@fastify/multipart':
         specifier: ^10.1.1
         version: 10.1.1
+      '@localtools/pdf-core':
+        specifier: workspace:*
+        version: link:../../packages/pdf-core
       '@localtools/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -96,6 +102,9 @@ importers:
       file-type:
         specifier: ^22.0.2
         version: 22.0.2
+      pdfjs-dist:
+        specifier: ^6.3.289
+        version: 6.3.289
       zod:
         specifier: ^4.5.4
         version: 4.5.4
@@ -272,16 +281,29 @@ importers:
         version: 4.1.11(@types/node@22.20.1)(vite@6.4.3(@types/node@22.20.1)(terser@5.51.2)(tsx@4.23.12))
 
   packages/media-core:
+    dependencies:
+      '@fugood/node-whisper-wasm':
+        specifier: 1.1.3
+        version: 1.1.3
     devDependencies:
       '@localtools/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.1
       eslint:
         specifier: ^9.15.0
         version: 9.39.5
+      file-type:
+        specifier: ^22.0.2
+        version: 22.0.2
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@22.20.1)(vite@6.4.3(@types/node@22.20.1)(terser@5.51.2)(tsx@4.23.12))
 
   packages/pdf-core:
     dependencies:
@@ -857,6 +879,9 @@ packages:
 
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
+
+  '@fugood/node-whisper-wasm@1.1.3':
+    resolution: {integrity: sha512-4EFo+tkuEyDfn096t7yDG6QOnSy3GUbA0HhUBjre2OjV7/U2a0gUotIjejiwcESAckyAkyVGmN25QCoVR/HGHw==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -3050,6 +3075,8 @@ snapshots:
     dependencies:
       '@fastify/forwarded': 3.0.2
       ipaddr.js: 2.5.0
+
+  '@fugood/node-whisper-wasm@1.1.3': {}
 
   '@humanfs/core@0.19.2':
     dependencies:
