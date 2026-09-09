@@ -48,12 +48,11 @@ RUN apt-get update \
     tesseract-ocr-eng \
     libreoffice \
     ffmpeg \
+    curl \
+    ca-certificates \
     python3 \
     python3-pip \
   && pip3 install --no-cache-dir --break-system-packages weasyprint yt-dlp \
-  && apt-get purge -y python3-pip \
-  && apt-get autoremove -y \
-  && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /opt/piper \
   && curl -fsSL -o /tmp/piper.tar.gz \
     'https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz' \
@@ -62,7 +61,9 @@ RUN apt-get update \
   && rm /tmp/piper.tar.gz \
   && chmod +x /opt/piper/piper \
   && /opt/piper/piper --version \
-  && rm -rf /tmp/* /var/tmp/*
+  && apt-get purge -y python3-pip curl \
+  && apt-get autoremove -y \
+  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 # Flat deploy layout: the engine's own package.json + dist at /app root,
 # deps (incl. @localtools/shared-types) inside node_modules.
 COPY --from=build /pruned/node_modules ./node_modules
