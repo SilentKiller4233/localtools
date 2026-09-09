@@ -98,7 +98,14 @@ fn download_manager_reports_uninstalled_and_envs() {
         env.contains_key("LOCALTOOLS_YTDLP_PATH"),
         "yt-dlp env binding missing in fresh dir (D-033 pre-wiring)"
     );
-    assert!(env["LOCALTOOLS_YTDLP_PATH"].ends_with("yt-dlp.exe"));
+    // The binding value is per-OS (manifest EnvBinding): .exe on Windows,
+    // bare name on Linux.
+    let expected_tail = if cfg!(windows) { "yt-dlp.exe" } else { "yt-dlp" };
+    assert!(
+        env["LOCALTOOLS_YTDLP_PATH"].ends_with(expected_tail),
+        "yt-dlp path {} does not end with {expected_tail}",
+        env["LOCALTOOLS_YTDLP_PATH"]
+    );
     assert!(
         env.contains_key("LOCALTOOLS_FFMPEG_PATH"),
         "ffmpeg env binding missing in fresh dir"
@@ -107,9 +114,10 @@ fn download_manager_reports_uninstalled_and_envs() {
     // the env value is UNCHANGED (same final path), only the file
     // appeared: exactly the no-restart contract.
     let dir = tmp.path().join("yt-dlp");
+    let exe_name = if cfg!(windows) { "yt-dlp.exe" } else { "yt-dlp" };
     std::fs::create_dir_all(dir.join("downloads")).unwrap();
-    std::fs::write(dir.join("downloads").join("yt-dlp.exe"), b"x").unwrap();
-    std::fs::copy(dir.join("downloads").join("yt-dlp.exe"), dir.join("yt-dlp.exe")).unwrap();
+    std::fs::write(dir.join("downloads").join(exe_name), b"x").unwrap();
+    std::fs::copy(dir.join("downloads").join(exe_name), dir.join(exe_name)).unwrap();
     std::fs::write(dir.join(".installed"), b"ok").unwrap();
     let env_after = mgr.tool_env();
     assert_eq!(
