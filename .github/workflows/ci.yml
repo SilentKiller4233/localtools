@@ -173,10 +173,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build the client (frontendDist is compiled into the shell)
+      - name: Build workspace (client needs @localtools/ui etc. built first)
         # tauri::generate_context! embeds ../client/dist at Rust compile
-        # time — cargo build fails without it.
-        run: pnpm --filter @localtools/client build
+        # time — cargo build fails without it. The client's Vite build
+        # resolves workspace packages (@localtools/ui), so run the full
+        # workspace build (turbo orders dependencies) instead of the
+        # client package alone.
+        run: pnpm build
 
       - name: Build the engine bundle (server + prod deps + node runtime)
         run: |
