@@ -199,8 +199,12 @@ fn scoped_temp_dir() -> String {
     base.to_string_lossy().into_owned()
 }
 
-/// Kill an entire process tree: taskkill /T on Windows; process-group
-/// kill via `kill -- -PID` on Unix (children spawned in our group).
+/// Kill an entire process tree: taskkill /T on Windows; on Unix signal
+/// the child's process group (negative pid via libc::kill — the engine
+/// is spawned with process_group(0) so the group id == child pid, and
+/// the whole tree dies with it. Never shell out to `kill`: it's a shell
+/// builtin in most environments and argv parsing of "-<pid>" is
+/// unreliable across implementations — observed as a CI killer).
 fn kill_process_tree(pid: u32) -> Result<(), String> {
     if cfg!(windows) {
         let out = Command::new("taskkill")
@@ -214,17 +218,27 @@ fn kill_process_tree(pid: u32) -> Result<(), String> {
             Ok(())
         }
     } else {
-        // Kill the negative pid (process group) then the pid itself.
-        let _ = Command::new("kill")
-            .arg(format!("-{}", pid))
-            .output();
-        let _ = Command::new("kill")
-            .arg(pid.to_string())
-            .output();
+        kill_tree_unix(pid as i32);
         Ok(())
-        // reaped by Drop of Child handle on next wait
     }
 }
+
+/// Unix tree-kill: SIGTERM the child's process group + pid, wait, then
+/// escalate to SIGKILL. libc's Unix-only surface is cfg-gated so the
+/// crate still builds on Windows.
+#[cfg(unix)]
+fn kill_tree_unix(pid: libc::pid_t) {
+    let _ = unsafe { libc::kill(-pid, libc::SIGTERM) };
+    let _ = unsafe { libc::kill(pid, libc::SIGTERM) };
+    std::thread::sleep(Duration::from_millis(150));
+    let _ = unsafe { libc::kill(-pid, libc::SIGKILL) };
+    let _ = unsafe { libc::kill(pid, libc::SIGKILL) };
+}
+
+/// Windows fallback for the Unix branch (never reached — cfg!(windows)
+/// short-circuits — but keeps the non-unix build sound).
+#[cfg(not(unix))]
+fn kill_tree_unix(_pid: i32) {}
 
 /// Tail helper (also used for the engine-ready diagnostics banner).
 pub fn log_tail(path: &Path, lines: usize) -> String {
