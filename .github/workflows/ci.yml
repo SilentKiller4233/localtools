@@ -197,7 +197,10 @@ jobs:
         run: |
           set -euo pipefail
           cd apps/desktop/src-tauri
-          cargo test sidecar_boots_engine_and_answers_healthz -- --ignored --nocapture
+          # Hard-bounded: a wedged engine can never hang the job (the
+          # runner kills the whole step's tree on orphaned children —
+          # the engine now runs in its own process group, see sidecar.rs).
+          timeout 150s cargo test sidecar_boots_engine_and_answers_healthz -- --ignored --nocapture
           echo SIDECAR_HEALTHZ_PASS
 
       - name: Build the release shell (the AppImage payload binary)

@@ -86,6 +86,19 @@ impl Sidecar {
             .stdout(Stdio::from(log))
             .stderr(Stdio::from(log_err))
             .stdin(Stdio::null());
+        // Own process group on Unix: the engine must be isolatable and
+        // killable as a tree (kill -- -PID targets the group leader —
+        // meaningless unless the child leads its own group), and it
+        // must never share the spawner's group (CI runners manage their
+        // step's process tree as a group; a long-lived child inside it
+        // wedges their cleanup — observed live: GitHub's runner shut
+        // the whole job down when the smoke test's engine shared
+        // cargo's group).
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            cmd.process_group(0);
+        }
         for (k, v) in engine_env {
             cmd.env(k, v);
         }
