@@ -12,6 +12,8 @@ import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Badge, Button, Card, DropZone, ProgressBar } from '@localtools/ui';
 import { isEngineCallError, runEngineTool, type EngineClientFile } from '../lib/engine-client';
+import { toolForEndpoint } from '../lib/desktop-bridge';
+import { ToolDownloadPrompt } from './ToolDownloadPrompt';
 import { badgeLabel } from '../lib/tool-registry';
 import type { RegisteredTool } from '../lib/tool-registry';
 import en from '../i18n/en.json';
@@ -57,6 +59,9 @@ export function EngineRunnerPage({
   const [progress, setProgress] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const [outputs, setOutputs] = useState<OutputFile[] | undefined>(undefined);
+  // Phase 10: when the engine answers tool-unavailable and the desktop
+  // shell can supply the missing helper, offer the one-time download.
+  const [downloadFor, setDownloadFor] = useState<string | undefined>(undefined);
 
   const disabledReason =
     fileList.length === 0 ? 'Select a file first' : (validate?.() ?? undefined);
@@ -92,6 +97,17 @@ export function EngineRunnerPage({
         })),
       );
     } catch (err) {
+      if (isEngineCallError(err) && err.code === 'tool-unavailable') {
+        // Spec line 362 + Section 13: in the desktop shell, offer the
+        // one-time pinned download for the helper this endpoint needs;
+        // in a browser, keep the honest engine-unavailable copy.
+        const toolId = await toolForEndpoint(endpoint);
+        if (toolId !== undefined) {
+          setDownloadFor(toolId);
+          setError(undefined);
+          return;
+        }
+      }
       const message = isEngineCallError(err)
         ? err.message
         : 'The operation failed. Please try again.';
@@ -155,6 +171,21 @@ export function EngineRunnerPage({
           ) : null}
 
           {optionsPanel ?? null}
+
+          {downloadFor !== undefined ? (
+            <ToolDownloadPrompt
+              toolId={downloadFor}
+              onInstalled={() => {
+                // Helper landed — the next Run just works (engine env
+                // overrides point at the final path already).
+                setDownloadFor(undefined);
+              }}
+              onDismiss={() => {
+                setDownloadFor(undefined);
+                setError('This tool needs a component that isn’t installed.');
+              }}
+            />
+          ) : null}
 
           {busy ? <ProgressBar percent={progress ?? 5} label={`Processing ${tool.name}`} /> : null}
 

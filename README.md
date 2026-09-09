@@ -45,6 +45,44 @@ The engine binds to loopback only. Exposing beyond localhost requires both
 `LOCALTOOLS_EXPOSE=true` and a ≥32-char `LOCALTOOLS_AUTH_TOKEN`, enforced at boot
 (Section 5.1). See [.env.example](.env.example).
 
+## Desktop app (Tauri) — install & first run
+
+The desktop build wraps the same web client in a native window and runs the
+processing engine as a local, loopback-only background process — no terminal
+needed for anything below.
+
+**First launch after install — per-OS "unsigned app" bypass (one time):**
+
+The installers are not yet code-signed (signing is a Phase 15 item), so each OS
+shows a one-time warning on first launch. These are the exact steps to get
+past each one:
+
+- **Windows:** the installer or app may trigger Microsoft Defender
+  SmartScreen — "Windows protected your PC". Click **More info**, then
+  **Run anyway**. This appears once; the app then launches normally.
+- **macOS:** Gatekeeper blocks apps from unidentified developers. In Finder,
+  **right-click (or Control-click) the app → Open → Open** in the dialog
+  ("LocalTools" can't be verified…). Alternatively System Settings →
+  Privacy & Security → **Open Anyway**. Once opened this way, subsequent
+  launches are normal.
+- **Linux (AppImage):** AppImages need the executable bit — in your file
+  manager, right-click the AppImage → Properties → Permissions → check
+  "Allow executing file as program", or in a terminal `chmod +x
+LocalTools_*.AppImage` (a one-time step, not a security warning).
+
+**On first use of a tool that needs a native helper** (video download,
+PDF↔Office conversion, deep compression, OCR, media conversion,
+text-to-speech…), the app shows a friendly one-time prompt like
+_"Downloading videos needs yt-dlp — a small one-time download (~30MB) that
+keeps working offline afterwards."_ Downloads are URL-pinned and
+SHA-256-verified, cached in the app's local data directory, and never need
+re-downloading. Everything else keeps working while a download runs, and a
+failed download can always be retried.
+
+If you skip or lose a download, just run the tool again — the prompt comes
+back. In Docker deployments the same helpers ship inside the engine image
+instead.
+
 ## Roadmap
 
 15 phases per PROJECT_SPEC Section 15, from scaffold through v1.0.0 release.

@@ -30,9 +30,12 @@ desktop.ini
 # Vite / dev caches
 .vite/
 
-# Rust / Tauri build artifacts (Phase 10+)
+# Rust / Tauri build artifacts (Phase 10)
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/
+# The bundled engine copy (built by apps/desktop/scripts/build-engine-dist.mjs,
+# never committed — 119MB with node_modules)
+apps/desktop/src-tauri/engine-dist/
 
 # Native tool caches used at runtime (never part of the repo)
 .cache/

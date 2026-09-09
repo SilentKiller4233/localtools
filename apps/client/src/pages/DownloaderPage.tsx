@@ -15,6 +15,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, Field, Input, ProgressBar } from '@localtools/ui';
 import { isEngineCallError, runEngineJson } from '../lib/engine-client';
+import { toolForEndpoint } from '../lib/desktop-bridge';
+import { ToolDownloadPrompt } from './ToolDownloadPrompt';
 import { badgeLabel } from '../lib/tool-registry';
 import type { RegisteredTool } from '../lib/tool-registry';
 import type {
@@ -53,6 +55,9 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
   const [subLang, setSubLang] = useState('en');
   const [queue, setQueue] = useState<number[]>([]); // playlist indexes (1-based items)
   const [outputs, setOutputs] = useState<OutputFile[] | undefined>(undefined);
+  // Phase 10: one-time yt-dlp download prompt when the engine answers
+  // tool-unavailable in the desktop shell.
+  const [downloadFor, setDownloadFor] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     try {
@@ -85,6 +90,14 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
       setPreview(data);
       setFormatId(data.item.formats.length > 0 ? 'best' : 'best');
     } catch (err) {
+      if (isEngineCallError(err) && err.code === 'tool-unavailable') {
+        const toolId = await toolForEndpoint('/downloader/metadata');
+        if (toolId !== undefined) {
+          setDownloadFor(toolId);
+          setError(undefined);
+          return;
+        }
+      }
       setError(engineMessage(err));
     } finally {
       setPreviewing(false);
@@ -114,6 +127,14 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
       setProgress(100);
       setOutputs(data.files.map((f) => ({ name: f.name, bytes: decodeB64(f.data) })));
     } catch (err) {
+      if (isEngineCallError(err) && err.code === 'tool-unavailable') {
+        const toolId = await toolForEndpoint('/downloader/download');
+        if (toolId !== undefined) {
+          setDownloadFor(toolId);
+          setError(undefined);
+          return;
+        }
+      }
       setError(engineMessage(err));
     } finally {
       clearInterval(ticker);
@@ -201,6 +222,19 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
             <p className="lt-tool-error" role="alert">
               {error}
             </p>
+          ) : null}
+
+          {downloadFor !== undefined ? (
+            <ToolDownloadPrompt
+              toolId={downloadFor}
+              onInstalled={() => {
+                setDownloadFor(undefined);
+              }}
+              onDismiss={() => {
+                setDownloadFor(undefined);
+                setError('The downloader needs a component that isn’t installed.');
+              }}
+            />
           ) : null}
 
           {preview !== undefined && item !== undefined ? (

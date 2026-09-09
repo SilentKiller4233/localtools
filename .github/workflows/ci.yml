@@ -144,3 +144,62 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down -v
+
+  desktop-build:
+    # Phase 10 acceptance (Section 14.7): build the Tauri shell on Linux,
+    # then prove the engine sidecar boots and answers /healthz — no GUI
+    # click-through in CI (that's the owner's manual checklist, TESTS.md).
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Linux desktop build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libssl-dev
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the client (frontendDist is compiled into the shell)
+        # tauri::generate_context! embeds ../client/dist at Rust compile
+        # time — cargo build fails without it.
+        run: pnpm --filter @localtools/client build
+
+      - name: Build the engine bundle (server + prod deps + node runtime)
+        run: |
+          set -euo pipefail
+          export LOCALTOOLS_DESKTOP_NODE="$(which node)"
+          node apps/desktop/scripts/build-engine-dist.mjs
+
+      - name: Build the Tauri shell (debug — proves the full compile+bundle)
+        run: cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+      - name: Shell smoke tests (mock-server download pipeline + manifest pins)
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+      - name: Sidecar boot + healthz smoke (the real engine, headless)
+        run: |
+          set -euo pipefail
+          cd apps/desktop/src-tauri
+          cargo test sidecar_boots_engine_and_answers_healthz -- --ignored --nocapture
+          echo SIDECAR_HEALTHZ_PASS
+
+      - name: Build the release shell (the AppImage payload binary)
+        run: |
+          set -euo pipefail
+          cargo build --release --manifest-path apps/desktop/src-tauri/Cargo.toml
+          ls -la apps/desktop/src-tauri/target/release/localtools-desktop
+          echo TAURI_RELEASE_BUILD_PASS

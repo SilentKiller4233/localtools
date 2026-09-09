@@ -37,7 +37,18 @@ export function isEngineCallError(err: unknown): err is EngineCallError {
 
 /** Resolve the engine base URL for this environment. */
 function engineBaseUrl(): string {
-  // Docker/prod: same origin behind the reverse proxy path; dev: direct.
+  // Desktop shell: the bridge reports the sidecar port (Phase 10).
+  // Docker/prod web: same origin behind the reverse proxy path; dev:
+  // direct localhost. The client NEVER holds an auth token in
+  // persistent storage (Section 5.1) — none is needed for loopback.
+  const bridge = (globalThis as { __LOCALTOOLS__?: { invoke(c: string): Promise<unknown> } })
+    .__LOCALTOOLS__;
+  if (bridge !== undefined) {
+    // The shell injects the port before this module loads (bridge.js
+    // sets window.__LOCALTOOLS_ENGINE_PORT__); this stays sync.
+    const port = (window as { __LOCALTOOLS_ENGINE_PORT__?: number }).__LOCALTOOLS_ENGINE_PORT__;
+    if (port !== undefined) return `http://127.0.0.1:${String(port)}`;
+  }
   if (import.meta.env.DEV) return 'http://127.0.0.1:8787';
   return '/engine';
 }

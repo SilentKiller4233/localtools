@@ -722,3 +722,137 @@ budget after the whisper WASM verification work. D-021's routing design
 (size-threshold dispatch, explicit UI indication) remains the implementing
 record; revisit trigger stays "before Phase 13's CI finalization" — if it
 slips past Phase 13, re-serialize it explicitly at Phase 14's size pass.
+
+### D-033 — Phase 10 desktop shell: sidecar is a restricted spawned process, not a Tauri `externalBin` sidecar
+
+**Sidecar-vs-spawned-process choice.** Tauri's `externalBin` mechanism
+expects a single static binary renamed per-target at build time
+(`engine-x86_64-pc-windows-msvc.exe`). The LocalTools engine is a
+Fastify/Node _application_ with a `node_modules` tree — not a single
+binary. Bundling it via pkg/nexe/sea would fork the runtime away from
+the tested Node 22 LTS line (D-003) and re-validate the entire engine.
+Instead the shell spawns the engine as a **restricted child process**:
+`std::process::Command` with a minimal env (PATH, SystemRoot, TEMP/TMP
+pointed at a scoped `localtools-engine` dir, LOCALAPPDATA + our
+LOCALTOOLS_* overrides only), cwd pinned to the bundle dir, stdout/
+stderr to a log file, stdin null. Section 5.4 posture: no elevation ever
+requested; the engine itself binds 127.0.0.1 only (config.ts refuses
+anything else without LOCALTOOLS_EXPOSE, which the shell never sets).
+Kill discipline mirrors the engine's own subprocess runner: taskkill
+/T /F on Windows (process tree), process-group kill on Unix. Version
+pins (verified live from crates.io + installed source, 2026-09-09, not
+memory): Rust stable 1.98.1 via rustup 1.29.1 (MSVC host triple — VS
+2022 Build Tools VCTools workload installed this session and
+link-verified with a hello-world cargo build), tauri crate 2.11.x
+(crates.io max 2.11.5), tauri-build 2.6.x, tauri-plugin-single-instance
+2.4.x, @tauri-apps/cli 2.11.4 (npm). The client never imports
+@tauri-apps/api: the shell injects `window.__LOCALTOOLS__` (invoke-only
+bridge, apps/desktop/src-tauri/bridge.js + apps/client/src/lib/
+desktop-bridge.ts) so the client bundle stays browser-buildable and
+its entry size is untouched. Engine env overrides use the EXISTING
+tool-paths.ts resolution order #1 (LOCALTOOLS_*_PATH) — the shell
+pre-points them at the final install paths so absent tools surface the
+honest 503 tool-unavailable (spawn ENOENT) and, once downloaded, the
+very next request succeeds without an engine restart (the override
+string was already correct; only the file behind it appears).
+
+### D-034 — Lazy-download doctrine extended to the desktop: URL-pinned + SHA-256-verified for every artifact, extraction probed live per format
+
+Every artifact in `apps/desktop/src-tauri/src/manifest.rs` carries its
+exact URL + pinned SHA-256, each digest verified live this session
+(2026-09-09): official checksums where they exist (yt-dlp SHA2-256SUMS,
+BtbN checksums.sha256 — both cross-matching the repo-local dev installs
+D-020/D-025), and download+sha256sum where no upstream checksum ships
+(Piper — D-030 doctrine; Ghostscript, Tesseract, LibreOffice MSI,
+7-Zip bootstrap chain, qpdf, eng.traineddata). The Ghostscript digest
+also matches scoop's ghostscript.json pin for the same release asset
+(independent cross-check). **Extraction, all probed live before
+writing the code:** Ghostscript gs10080w64.exe is a 7z SFX (extracted
+by full 7z.exe — the scoop pattern); Tesseract 5.5.3's setup exe is an
+**NSIS** container (7z lists tesseract.exe at the archive root; NOT
+Inno Setup — innoextract 1.9 rejects it, which is why the earlier
+innoextract plan was dropped); the Tesseract payload ships NO
+traineddata files, so eng.traineddata (tessdata_fast) is a separate
+SingleFile artifact into tessdata/ — verified by a real OCR round trip
+(fixture rendered text: "Page 1 - LocalTools fixture"); LibreOffice MSI
+extracts via `msiexec /a <msi> /qn TARGETDIR=<dir>` (administrative
+install — NO elevation, verified by a real headless PDF conversion from
+the extracted tree; the earlier Inno/zip plans were wrong for this
+format); the 7z bootstrap is 7zr.exe → 7z2409-x64.exe → full 7z.exe
+(also probed live: 7zr alone cannot read the GS SFX). Layout:
+<app_data>/localtools-tools/<tool-id>/ with a `.installed` marker
+written only after every current-OS artifact downloaded, digest-
+verified, and extracted — a half-finished install never looks complete.
+Failed downloads surface retryable errors (network-error /
+checksum-mismatch with the file discarded); the client keeps the
+Section 13 isolation contract (rest of the app stays usable). Voice
+models keep their existing engine-side lazy flow (D-030) with the
+shell pointing LOCALTOOLS_VOICE_DIR at the app cache dir.
+
+### D-035 — "qpdf fallback" (spec Phase 10 tool list): plumbing only in v1; qpdf-wasm remains the engine of record
+
+The spec's Phase 10 lazy-download list includes "qpdf fallback". In
+the shipped v1 surface every qpdf-backed tool (Protect/Unlock/
+Optimize/repair) runs on qpdf-**wasm** in the client worker — there is
+no engine-side qpdf consumer to feed a fallback binary to. A native
+qpdf fallback matters only as a _future contingency_ (e.g. a
+WASM-incompatible host or a structural-repair feature wasm can't
+express). Decision: ship the download plumbing (manifest entry, pinned
+mingw64/bin-linux zips, LOCALTOOLS_QPDF_PATH binding — the env var
+does not exist in tool-paths.ts yet and is reserved) and record this
+interpretation; wiring a consumer stays with the phase that needs it.
+This mirrors D-013's qpdf contingency note.
+
+### D-036 — Linux desktop: lazy downloads limited to the tools with official portable artifacts
+
+On Linux, Ghostscript (gpl releases ship only source + an unofficial
+snap), Tesseract, and LibreOffice have no official portable
+single-archive distribution worth pinning. The lazy-download manifest
+marks those Windows-only; on a Linux desktop the engine's existing
+resolution order (Docker apt paths → PATH) still finds distro-installed
+binaries, and LOCALTOOLS_*_PATH remains honored for manual installs.
+ffmpeg (BtbN tar.xz), yt-dlp (single binary), piper (tar.gz), and qpdf
+(bin zip) DO have official portable Linux artifacts and stay
+cross-platform in the manifest. This is honest-degradation, not a gap:
+the CI smoke runs on Linux and exercises the cross-platform pipeline;
+the Windows click-through covers the Windows-only formats.
+
+### D-037 — Desktop updater + unsigned-app warnings: updater OFF in v1.0; per-OS bypass steps documented in README
+
+**Updater:** the spec names Tauri's built-in updater, which requires
+(1) a signing keypair whose PRIVATE key must live in GitHub Actions
+secrets and (2) code-signing the installers for the update chain to be
+trustworthy. Phase 10 ships the shell WITHOUT updater config
+(tauri.conf.json has no updater block — verified against the installed
+tauri 2.11 schema: no `plugins.updater` key). Rationale: unsigned
+binaries updating themselves is a downgrade (users would train
+"ignore the warning → let anything auto-update"); the owner has not
+produced signing certs yet (Play Console/signing items were explicitly
+deferred in prior sessions). The release-desktop workflow (Phase 15)
+will decide the full matrix: if the owner provides secrets, enable the
+updater then, keyed off this decision. **Unsigned-app OS warnings**
+(spec line 399): README documents the exact bypass steps per OS —
+macOS: right-click the app → Open → Open (Gatekeeper unidentified
+developer), Windows: SmartScreen → "More info" → "Run anyway", Linux:
+AppImage needs `chmod +x` (the AppImage itself is not "unsigned-
+blocked" the way mac/win are; document the exec-bit step instead).
+These steps live in README's desktop section with screenshots to be
+added at Phase 15 polish.
+
+### D-038 — Engine bundle for the desktop: pnpm deploy isolation + pinned Node runtime as a resource
+
+The packaged app ships the engine as a Tauri resource:
+`apps/desktop/scripts/build-engine-dist.mjs` builds the engine dist and
+materializes an isolated copy via `pnpm --filter @localtools/engine
+deploy <target> --prod --legacy` (pnpm 10 requires --legacy for
+non-injected workspaces — verified live: ERR_PNPM_DEPLOY_NONINJECTED_
+WORKSPACE; target path must be quoted on Windows through the shell).
+The bundle (~119MB with prod node_modules) is gitignored and ships as
+`bundle.resources`. The Node runtime: dev/CI runs resolve the system
+node (paths.rs which-node fallback); **release builds set
+LOCALTOOLS_DESKTOP_NODE to pin the nodejs.org v22.23.2 runtime**
+(SHASUMS256-verified per D-034's node pins) so the installed app never
+depends on a host node. Runtime resolution order (paths.rs):
+<resource>/engine/node/node → dev which(node) → honest error. The
+bundle was live-verified standalone: booted from the deployed copy,
+healthz green, SSRF guard active — before wiring it into the shell.

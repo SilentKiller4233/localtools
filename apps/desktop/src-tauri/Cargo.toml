@@ -1,0 +1,34 @@
+[workspace]
+
+[package]
+name = "localtools-desktop"
+version = "0.1.0"
+description = "LocalTools desktop shell — wraps the client UI and manages the engine sidecar + lazy native-tool downloads"
+license = "MIT"
+edition = "2021"
+default-run = "localtools-desktop"
+
+[lib]
+name = "localtools_desktop"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6", features = [] }
+
+[dependencies]
+tauri = { version = "2.11", features = [] }
+tauri-plugin-single-instance = "2.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+hex = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+tokio = { version = "1", features = ["rt", "sync"] }
+
+[dev-dependencies]
+tempfile = "3"
+tiny_http = "0.12"
+
+[features]
+# Smoke tests run against the cargo test harness, not cargo-tauri.
+default = []

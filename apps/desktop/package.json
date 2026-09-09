@@ -1,0 +1,25 @@
+{
+  "name": "@localtools/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "echo 'desktop build is cargo + tauri (see desktop:*)' && exit 0",
+    "desktop:build": "tauri build",
+    "desktop:build:shell": "cargo build --manifest-path src-tauri/Cargo.toml",
+    "desktop:test:shell": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "desktop:test:shell:ignored": "cargo test --manifest-path src-tauri/Cargo.toml -- --ignored --nocapture",
+    "desktop:engine-dist": "node scripts/build-engine-dist.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "echo 'desktop shell tests run via cargo — see desktop:test:shell' && exit 0"
+  },
+  "devDependencies": {
+    "@localtools/eslint-config": "workspace:*",
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "^22.9.3",
+    "eslint": "^9.15.0",
+    "typescript": "^5.6.3"
+  }
+}

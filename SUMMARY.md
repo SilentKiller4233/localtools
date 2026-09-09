@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-08, after Phase 9 — Media speech & audio complete_
+_Last updated: 2026-09-09, after Phase 10 — Desktop app (Tauri) complete_
 
 ## What this project is
 
@@ -8,14 +8,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 9 of 15 (Section 15)
+- Phases complete: 10 of 15 (Section 15)
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
 - Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); speech & audio complete — transcribe-media + auto-captions client-side via whisper.cpp WASM (fugood 1.1.3, D-029 dual-environment contract) and text-to-speech + pdf-to-audiobook engine-side via Piper 2023.11.14-2 (D-030/D-031), 18 engine + 17 media-core tests; ffmpeg.wasm small-clip path deferred (D-021/D-032)**
 - Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
 - Text & Dev suite: **complete — all 30 Group A tools + zip/unzip (Section 3.5) implemented in `@localtools/devtext-core` (172/172 tests), worker-offloaded client pages wired**
-- Desktop app (Tauri): not started (placeholder `apps/desktop/README.md` only)
+- Desktop app (Tauri): **complete — Rust/Tauri 2.11 shell in `apps/desktop` (D-033): window + injected `window.__LOCALTOOLS__` invoke bridge (client never imports @tauri-apps/api), engine as a restricted child process (minimal env, scoped temp, loopback-only, taskkill-tree shutdown), pinned+SHA-verified lazy downloads for every native tool (D-034: yt-dlp, ffmpeg, piper, ghostscript, tesseract+eng data, libreoffice, qpdf-fallback plumbing D-035), engine bundle via pnpm deploy + node runtime (D-038); client download prompts on tool-unavailable (EngineRunnerPage/DownloaderPage + ToolDownloadPrompt); Linux CI smoke green (desktop-build job: build + cargo tests + real sidecar healthz); updater OFF until signing (D-037), unsigned-app bypass steps in README; manual click-through checklist in TESTS.md**
 - Docker Compose target: engine Dockerfile real (multi-stage bookworm-slim + ghostscript/tesseract/libreoffice/ffmpeg/pip-weasyprint, non-root, healthcheck); stack acceptance runs as the CI `compose-stack` job incl. a media round-trip (dev host has no Docker — D-015)
-- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 130 engine [82 Group B + 30 downloader + 18 speech] + 65 image-core + 172 devtext-core + 17 media-core) + build — all green
+- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 130 engine [82 Group B + 30 downloader + 18 speech] + 65 image-core + 172 devtext-core + 17 media-core) + build — all green; desktop shell tests run via cargo in the CI desktop-build job (5 rust tests incl. the ignored sidecar smoke)
 
 ## What has been built so far
 
@@ -97,12 +97,19 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - **Section 14.5 acceptance**: `scripts/worker-offload-test.mjs` — 52MB fixture (real PDF padded with a giant comment line, verified parseable) merged through the production UI in headless Chrome with a `PerformanceObserver` long-task counter: **0 long tasks, 0ms main-thread blocking → WORKER_OFFLOAD_PASS** (logged in TESTS.md).
 - Final bundle: initial JS 72.9KB gzipped (budget 250KB); pdfjs/qpdf chunks are lazy per-tool-suite.
 
+**Phase 10 — Desktop app (Tauri shell, complete)**
+
+- `apps/desktop/src-tauri` (Rust, lib+bin split so cargo tests exercise the shipped code): `manifest.rs` (every lazy-downloadable tool: pinned URL + SHA-256 per artifact, per-OS layouts, engine env bindings — D-034), `downloads.rs` (streaming SHA-256-verified download → per-kind extraction: 7z chain for SFX/NSIS, msiexec /a for MSI, tar for Linux archives, `.installed` marker only after full success — half-finished installs never look installed), `sidecar.rs` (engine as restricted child: minimal env, scoped temp, 127.0.0.1, healthz wait, taskkill-tree/process-group shutdown), `paths.rs` (app-data tools dir, resource-dir engine bundle, dev-checkout fallback), `lib.rs` (Tauri app: single-instance plugin, window built via WebviewWindowBuilder with the injected `bridge.js` init script, four invoke commands: desktop_status / tool_download_info / download_tool / tool_for_endpoint).
+- Client (browser behavior unchanged): `lib/desktop-bridge.ts` (typed `window.__LOCALTOOLS__` wrapper — absent in browsers, every call degrades honestly), `engine-client.ts` engineBaseUrl reads the injected port when bridged, `pages/ToolDownloadPrompt.tsx` (spec line 362 one-time friendly prompt + retry/dismiss + Section 13 isolation copy) wired into `EngineRunnerPage` + `DownloaderPage` on `tool-unavailable`.
+- Engine bundle: `apps/desktop/scripts/build-engine-dist.mjs` — engine build → `pnpm deploy --prod --legacy` isolation (119MB self-contained) + optional pinned node runtime; Tauri resource; live-verified standalone (healthz + SSRF round trip) before wiring.
+- Extraction strategies all live-probed pre-code (D-034): GS 7z-SFX, Tesseract NSIS (NOT Inno — innoextract 1.9 rejects it), LibreOffice msiexec /a (real conversion verified), piper/ffmpeg/qpdf zips, 7zr→7z bootstrap chain.
+- CI: `desktop-build` job (ubuntu) — rustup cache-less install of the pinned toolchain deps, engine-dist build, cargo build + cargo test (mock-server pipeline, no network) + `--ignored` sidecar healthz smoke + release build. Unsigned-app bypass steps + one-time-download story added to README (spec line 399).
+
 ## What's left
 
 - ffmpeg.wasm small-clip browser path (Group A; deferred per D-021 — schedule after Phase 9)
-- Phase 9 — Speech-to-text (whisper.cpp WASM) + auto-captions **+ Piper TTS + PDF→audiobook (assigned here per D-012)**
-- Phase 10 — Tauri desktop shell + sidecar + lazy downloads
-- Phase 11 — integration polish · Phase 12 — accessibility/responsiveness · Phase 13 — test/CI finalization (incl. wiring PWA/offline + worker-offload checks into `pnpm verify`) · Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010)
+- ~~Phase 10 — Tauri desktop shell + sidecar + lazy downloads~~ (complete — see above; manual click-through checklist pending owner run, TESTS.md)
+- Phase 11 — integration polish · Phase 12 — accessibility/responsiveness · Phase 13 — test/CI finalization (incl. wiring PWA/offline + worker-offload checks into `pnpm verify`) · Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010, enabling the desktop release matrix + updater decision per D-037)
 
 **Phase 9 — Media speech & audio (STT, auto-captions, TTS, audiobook, complete)**
 
