@@ -28,7 +28,7 @@ None — tree is clean at `08444d4`, everything pushed. (Verify with `git status
 
 ## Next immediate steps (in order — do these first)
 
-1. **Phase 10 — check PROJECT_SPEC Section 15 for the next named phase** (likely Image suite hardening or the Tauri desktop app scaffold; the spec's phase list is authoritative — read it before planning).
+1. **Phase 10 — Desktop app (Tauri)** (spec line 493, confirmed): `apps/desktop` shell, sidecar lifecycle (engine as Tauri Rust sidecar), lazy-download flow for every native tool now in play (LibreOffice, Ghostscript, Tesseract, qpdf fallback, yt-dlp, ffmpeg, Piper + voices, whisper models — spec Section 3.4/Tier-1, lines 362-364: one-time friendly download prompts caching to the app's local data dir; Tauri auto-updater). Acceptance: Section 14.7 desktop smoke test on Linux in CI; manual click-through with zero terminal use. `apps/desktop/` is currently a placeholder README by design.
 2. Standing pattern for any new engine tool: GroupBRequestHarness + runSubprocess(arg arrays, `stdinData` when needed) + tool-paths resolver (env → repo-local → /opt|Docker → PATH → honest 503).
 3. ffmpeg.wasm small-clip rider stays deferred (D-021/D-032) — revisit trigger: before Phase 13's CI finalization.
 
