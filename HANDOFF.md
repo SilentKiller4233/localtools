@@ -1,62 +1,73 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-09, end of session 12. Phase 9 (Media speech & audio) COMPLETE and shipped. `pnpm verify` fully green locally (549 tests: 165 pdf + 130 engine + 65 image + 172 devtext + 17 media-core speech). **CI GREEN end-to-end on `08444d4` (run 34335101202: verify-ubuntu ✓, verify-windows ✓, compose-stack incl. the new Piper speech round-trip ✓).** Working tree clean, all pushed (chain: `ac54c0a` Phase 9 feature → `3364fbf` + `08444d4` two CI fix-forwards for the engine Docker image)._
+_Last updated: 2026-09-10 (early hours), end of session 13. Phase 10 (Desktop app, Tauri) COMPLETE and shipped. `pnpm verify` fully green locally (549 tests + 5 Rust shell tests + ignored sidecar smoke). **CI FULLY GREEN on `14b916b` (run 34417207017): verify ubuntu/windows + compose-stack + desktop-build ALL SUCCESS — the Section 14.7 Linux smoke passed (engine healthy 1.26s, healthz OK, release binary 19.1MB).** Chain: `ff5d302` feat → `c07c145` workspace-build fix → `916a811` OS-aware test fix → `5c9bb46` process-group fix → `cc2009d` setsid smoke → `0595b33` draft cleanup → `14b916b` libc::kill fix (the one that made CI green)._
 
 ## Where things stand right now
 
-**Phases 0–9 complete (9 of 15).** Phase 9 (Sections 3.2, 15) shipped end-to-end across two sessions (session 11 did the research/scoping and nearly all implementation; session 12 = this recovery session — lint/verify finishing, ship, and two Docker CI fixes):
+**Phases 0–10 complete (10 of 15).** Phase 10 shipped this session:
 
-- **Group A (client-side)**: transcribe-media + auto-captions run whisper.cpp WASM in the browser via `@fugood/node-whisper-wasm` 1.1.3 (D-029). Models (tiny/base/small.en) lazy-download on first use from whisper.cpp's HF ggml repo, SHA-256-verified, cached in the browser Cache API; Node tests use the Temp-dir cache with the FS-preseed loading contract. 16kHz mono resample + SRT/VTT caption builders live in `packages/media-core/src/speech.ts`. Whisper WASM (4.1MB) + models are LAZY chunks — entry stays 118.96KB gzipped (250KB budget).
-- **Group B (engine-side)**: text-to-speech + pdf-to-audiobook via Piper 2023.11.14-2 subprocess (D-030/D-031). Voices (en_US-lessac-medium default, en_US-amy, en_GB-alba) lazy-download from rhasspy/piper-voices with per-file SHA-256 pins (`apps/engine/src/speech/voices.ts`). Audiobook: pdf-core loadPdf/extractText → outline chapters → ≤800-char chunks → per-chunk Piper WAVs → ffmpeg concat. `runSubprocess` grew an optional `stdinData` (Piper reads text on stdin — never argv). Routes at `/media/text-to-speech` + `/media/pdf-to-audiobook` behind the existing GroupBRequestHarness.
-- **Speech fixture** (D-028): `fixtures/media/sample-speech.wav` = Piper-generated "The quick brown fox jumps over the lazy dog. LocalTools speech test." — keyword-set assertions, P(fail) < 1e-4. Regenerate script: `apps/engine/scripts/regenerate-speech-fixture.ts`.
-- **Docker**: engine image installs piper from the SHA-pinned GitHub release tarball at /opt/piper; CI compose-stack gained a `SPEECH_STACK_PASS` round trip (TTS through the containerized engine, voice lazy-downloads in-container).
+- **Rust/Tauri 2.11 shell** in `apps/desktop/src-tauri` (lib+bin split; cargo tests exercise the shipped code). The engine is a RESTRICTED SPAWNED CHILD, not a Tauri externalBin sidecar (D-033 — externalBin wants a single static binary; the engine is a Node app with node_modules). Minimal env (PATH/SystemRoot/TEMP+TMP scoped/LOCALAPPDATA + LOCALTOOLS_* only), loopback bind, healthz wait (per-child port — see gotchas), taskkill-tree/process-group shutdown, single-instance plugin.
+- **Window + bridge**: window is built in setup() via WebviewWindowBuilder (NOT tauri.conf.json — Tauri 2 config has no init-script key) with `bridge.js` injected, defining `window.__LOCALTOOLS__` {invoke} over `__TAURI_INTERNALS__.invoke` + `__LOCALTOOLS_ENGINE_PORT__` (synchronous, constant 8787). The client never imports @tauri-apps/api; `desktop-bridge.ts` wraps the global; browsers degrade honestly.
+- **Lazy downloads (D-034)**: `manifest.rs` pins URL+SHA-256 for every artifact (yt-dlp/ffmpeg/piper from official checksums; GS/Tesseract/LO MSI/7-Zip/qpdf/eng.traineddata hashed live this session — no upstream checksums exist for those formats). `downloads.rs` streams with digest verify, extracts per kind (7zr→7z2409→full-7z chain for GS SFX + Tesseract NSIS; `msiexec /a` for LibreOffice; tar for Linux; zip via 7z), writes `.installed` marker only after every current-OS artifact succeeded. `.installed` marker + `downloads/` provenance dir per tool under `<app_data>/localtools-tools/<tool-id>/`.
+- **D-033 no-restart contract (proven live)**: `tool_env()` pre-wires LOCALTOOLS_*_PATH overrides at spawn for EVERY manifest tool (installed or not). Absent → engine spawn ENOENT → honest 503 tool-unavailable; after download the file appears behind the same override → next request 200 with NO engine restart. `integration_proof` bin: 503→200 through one running engine, end to end. This is the KEY mechanism — do not "fix" it back to installed-only env.
+- **Engine bundle (D-038)**: `scripts/build-engine-dist.mjs` — engine build → `pnpm --filter @localtools/engine deploy <target> --prod --legacy` (119MB self-contained, gitignored `engine-dist/`) + optional node runtime (release: pin nodejs.org v22.23.2 via LOCALTOOLS_DESKTOP_NODE; CI smoke: runner's node; dev: which(node)). Ships as Tauri `bundle.resources`.
+- **Client**: `ToolDownloadPrompt` (spec line 362 one-time copy + retry/dismiss + Section 13 isolation) wired into EngineRunnerPage + DownloaderPage on `tool-unavailable` (via `tool_for_endpoint` mapping). `engine-client.ts` engineBaseUrl reads the bridge port in the shell; browser paths unchanged. Entry JS 119.85KB gzipped (budget 250KB).
+- **CI**: `desktop-build` job (ubuntu): apt deps → pnpm install → **pnpm build** (full workspace — the client build resolves @localtools/ui, the client-alone step failed run 34404366318 and was fixed in c07c145) → engine-dist (runner node) → cargo build → cargo test (5 tests, mock server, no network) → `--ignored` sidecar healthz smoke → release build. Section 14.7: no GUI in CI.
+- **Docs**: DECISIONS D-033–D-038 (sidecar choice, download doctrine + per-format extraction proofs, qpdf-fallback interpretation, Linux portable-artifact limits, updater OFF + unsigned-app README steps, engine bundle). TESTS.md Phase 10 rows + the 14-step owner manual click-through checklist (pending owner run). README desktop section with exact per-OS unsigned-app bypass (spec line 399). SUMMARY Phase 10 current.
 
 ## Last thing done
 
-Session 12 (the "get context" recovery session resumed here after provider 429s killed it mid-verify):
-
-1. Fixed 10 lint errors the dead session never reached (media-core `unbound-method`/`toThrowError`/non-null-assertion; engine route `as never` casts, voices template-literal number + useless-catch, piper-tools pdfjs import → the repo's `.then((m) => m as PdfjsLike)` pattern).
-2. downloader-canary: allowlisted `speech/voices.ts` (pinned-HF fetches only, D-030/D-031) + added a NEW static assertion proving voices.ts builds fetch URLs only from the pinned `HF_BASE` const (fetch() count == 1, both fetchVerified calls rooted at HF_BASE).
-3. Full `pnpm verify` green; committed `ac54c0a` "feat(media): Phase 9"; pushed.
-4. CI fix-forward #1 (`3364fbf`): engine Dockerfile was missing `COPY packages/pdf-core` (the audiobook route imports it) — containerized tsc failed TS2307. Fixed; local filter build verified before push.
-5. CI fix-forward #2 (`08444d4`): node:22-bookworm-slim has no curl — the piper tarball fetch exited 127; also reordered the RUN chain so the curl fetch precedes the purge. Linux tarball SHA re-verified live against the GitHub release before pushing.
-6. CI run 34335101202 on `08444d4`: all three jobs success. This HANDOFF + SUMMARY/TESTS/DECISIONS updates are the only remaining actions; SUMMARY/TESTS were already Phase-9-accurate from session 11.
+1. Environment prep: rustup 1.29.1 (stable 1.98.1, MSVC) + VS 2022 Build Tools (link-verified via hello-world) + @tauri-apps/cli 2.11.4 (all versions from source, recorded D-033).
+2. All extraction strategies probed LIVE before writing pipeline code (D-034): GS SFX via full 7z; Tesseract setup is NSIS (innoextract 1.9 REJECTS it — the Inno plan was wrong; 7z lists/extracts tesseract.exe; eng traineddata NOT in the installer → separate artifact; real OCR round trip on the fixture); LibreOffice MSI via `msiexec /a` (real headless conversion from the extracted tree); piper/ffmpeg/qpdf zip layouts; 7zr→7z2409 bootstrap (7zr alone CANNOT read the GS SFX).
+3. Shell implemented + all compile errors fixed (edition 2021 missing was the big one; manifest statics vs E0716; test fake_tool via Box::leak).
+4. Two REAL bugs found by the ignored smoke and fixed: (a) healthz probe polled the hardcoded 8787 while the test engine was on 8791 — Sidecar now carries its per-child port; (b) Windows `canonicalize()` produces `\\?\` UNC paths that Node CJS cannot resolve (EISDIR 'D:') — never canonicalize paths fed to node.
+5. Live verifications: cargo tests 5/5 (+ smoke 0.85s), live_check yt-dlp (17.8MB pinned download, verified, extracted, `--version` = 2026.08.19) + piper zip; integration_proof piper (503 → download → 200, no restart).
+6. pnpm verify GREEN (background job — 549 tests + build; entry 119.85KB gz).
+7. Committed `ff5d302` "feat(desktop): Phase 10 — ..." and pushed; CI run 34404366318 desktop-build failed (client-alone build missing @localtools/ui dist) → fix-forward `c07c145` pushed; run 34405414767 watched to green in this session's background.
 
 ## In-progress / uncommitted work
 
-None — tree is clean at `08444d4`, everything pushed. (Verify with `git status`.)
+None — tree is clean at `c07c145` (verify with `git status`). CI on `c07c145` is the only open loop (verify green from the watcher below).
 
 ## Next immediate steps (in order — do these first)
 
-1. **Phase 10 — Desktop app (Tauri)** (spec line 493, confirmed): `apps/desktop` shell, sidecar lifecycle (engine as Tauri Rust sidecar), lazy-download flow for every native tool now in play (LibreOffice, Ghostscript, Tesseract, qpdf fallback, yt-dlp, ffmpeg, Piper + voices, whisper models — spec Section 3.4/Tier-1, lines 362-364: one-time friendly download prompts caching to the app's local data dir; Tauri auto-updater). Acceptance: Section 14.7 desktop smoke test on Linux in CI; manual click-through with zero terminal use. `apps/desktop/` is currently a placeholder README by design.
-2. Standing pattern for any new engine tool: GroupBRequestHarness + runSubprocess(arg arrays, `stdinData` when needed) + tool-paths resolver (env → repo-local → /opt|Docker → PATH → honest 503).
-3. ffmpeg.wasm small-clip rider stays deferred (D-021/D-032) — revisit trigger: before Phase 13's CI finalization.
+1. **Phase 11 — Integration polish** (spec Section 15): health-check gating with friendly language, consistent progress reporting, designed error states across all suites, batch mode where it applies. Acceptance: no tool shows a raw/unstyled error anywhere.
+2. While in Phase 11: wire the desktop `desktop_status` (engine readiness) into a client banner if not already visible; the bridge exposes it.
+3. Standing pattern for any new engine tool: GroupBRequestHarness + runSubprocess (arg arrays, stdinData when needed) + tool-paths resolver (env → repo-local → Docker → PATH → honest 503). If it needs a new lazy-download, add ONE row to manifest.rs (URL + sha + per-OS layouts) and one EnvBinding — nothing else changes.
+4. ffmpeg.wasm small-clip rider stays deferred (D-021/D-032) — revisit before Phase 13.
 
 ## Blockers / open decisions needing human input
 
-- None new. Standing owner-side items: Safari/WebKit manual checks scheduled for Phase 12 (TESTS.md); Play Console $25 / Tauri signing considerations land at their phases.
-- Model routing `z-ai/glm-5.3-free` 429s interrupted the previous session twice — batch tool calls, run long commands as background jobs with notify, and pause/resume from the todo list.
+- Owner items: the 14-step manual click-through checklist (TESTS.md) on a clean machine/VM — required before v1.0.0 per Section 14.7; screenshots for README bypass steps at Phase 15.
+- Signing/updater decision deferred to Phase 15 (D-037): owner must produce signing secrets or the release matrix ships unsigned with documented bypass.
+- Tauri updater API: intentionally NOT wired (D-037). If Phase 15 enables it, verify the current plugin API from source then (it is version-sensitive).
 
 ## Environment / local state notes
 
-- Repo-local native toolchain (all gitignored, do not delete): `ffmpeg-n9.0-latest-win64-gpl-9.0/`, `yt-dlp-2026.08.19/`, `gs10.07.1/`, `GTK3-Runtime/`, **`piper-2023.11.14-2/` (new — Windows amd64, zip SHA f3c58906... verified)**.
-- Model caches (do not delete): `%LOCALAPPDATA%/Temp/localtools-models/` — `u2netp.onnx`, `whisper/ggml-tiny.en.bin` (77.7MB), `piper-voices/en_US-lessac-medium.onnx(+.json)`. amy/alba voices NOT cached locally (lazy-download on first use, only lessac is exercised by tests).
-- Dev scratch dirs from the Phase 9 scouting (safe to delete if space needed): `%LOCALAPPDATA%/Temp/p9-scout/`, `p9-voices/`, `p9-tts-smoke.mjs` etc.
-- Dev host has NO Docker (D-015) — compose validation happens only in CI's compose-stack job.
-- `pnpm verify` takes ~5–7 min full (format + lint + typecheck + 549 tests + build); run as a background job with notify, never inline.
-- Voices/whisper lazy-download URLs are pinned + SHA-256-verified in code; the downloader-canary statically proves voices.ts can only fetch from the pinned HF_BASE.
+- **Rust toolchain now installed on the dev host**: rustup 1.29.1, stable 1.98.1 (x86_64-pc-windows-msvc), VS 2022 Build Tools (VCTools). `cargo` lives at `C:\Users\mshah\.cargo\bin` — bash sessions need `export PATH="/c/Users/mshah/.cargo/bin:$PATH"` (rustup's PATH injection doesn't reach this bash).
+- Repo-local native toolchain (gitignored, do not delete): ffmpeg-n9.0…/, yt-dlp-2026.08.19/, gs10.07.1/, GTK3-Runtime/, piper-2023.11.14-2/.
+- Model caches (do not delete): `%LOCALAPPDATA%/Temp/localtools-models/` — u2netp, whisper ggml-tiny.en, piper-voices lessac.
+- New scratch dirs from this session (safe to delete): `%LOCALAPPDATA%/Temp/p10-artifacts/` (LO MSI/GS/Tesseract/qpdf/innoextract probes — digests recorded in D-034), `p10-live/` (live_check), `p10-proof/` (integration_proof), `p10-artifacts-small/`.
+- `apps/desktop/src-tauri/engine-dist/` is a BUILD PRODUCT (119MB, gitignored) — rebuild with `pnpm --filter @localtools/desktop desktop:engine-dist`; CI builds it fresh every run.
+- Dev host has NO Docker (D-015) — compose validation only in CI.
+- `pnpm verify` takes 5–7 min — ALWAYS run as background with notify (session-11 lesson, still true).
 
 ## Useful context / gotchas discovered this session
 
-- **Engine Dockerfile COPY set is now load-bearing**: `packages/pdf-core` must be COPYed (audiobook route imports it). If any future engine code imports another workspace package, add its COPY line or the containerized `tsc --project tsconfig.build.json` fails TS2307 while local builds stay green (local pnpm workspaces resolve; Docker's isolated context doesn't).
-- **node:22-bookworm-slim ships no curl** — anything downloading in the runtime image needs `curl` + `ca-certificates` in the apt install list. Purge build-only tools AFTER their last use in the RUN chain (the first fix had the purge before the fetch — ordering matters in one RUN).
-- **Piper GitHub releases carry no upstream checksums** — our pinned SHA in the Dockerfile IS the verification (D-030 doctrine). Verified live: linux_x86_64 tarball `a50cb45f355b7af1f6d758c1b360717877ba0a398cc8cbe6d2a7a3a26e225992` (26.5MB, root dir `piper/` → `--strip-components=1` puts the binary at `/opt/piper/piper`).
-- **`@typescript-eslint/unbound-method` fires on destructured node-builtin methods** (`const { join } = await import('node:path')`) — keep the module namespace (`const nodePath = await import('node:path'); nodePath.join(...)`) instead of destructuring or wrapping.
-- **`toThrowError` is deprecated** in this vitest/eslint setup — use `toThrow`.
-- **The repo's pdfjs typing pattern** (from pdf-core tools/text.ts): `import('pdfjs-dist/legacy/build/pdf.mjs').then((m) => m as PdfjsLike)` — a plain `as` cast on the awaited import trips `no-unsafe-call`; the `.then()` form passes both lint and typecheck.
-- **downloader-canary allowlist discipline**: every entry must carry its justification in the test comment AND a companion static assertion pinning the safety property (the voices.ts entry now proves fetch() count and HF_BASE-rooted URLs). Do not allowlist without the companion assertion.
-- **Engine test suite takes ~4 min** (130 tests, real subprocesses) — full verify ~5–7 min; the previous session's 420s execute_code timeout killed its final verify run, which is why the lint errors survived to this session. Always run verify as `terminal(background=true, notify=true)`.
-- **Session-recovery lesson**: when a session dies on provider 429s mid-task, the working tree + session DB (`state.db` messages table) fully reconstruct the state — check `git status` first, then page the dead session's tail via session_search before redoing anything.
+- **Tauri 2 config has no window init-script key** — the window must be built in setup() via WebviewWindowBuilder with `.initialization_script()` to inject the bridge (verified against tauri-utils 2.9.3 config.rs). Config `windows: []` + builder = the working pattern.
+- **Windows `canonicalize()` returns `\\?\D:\...` UNC paths; Node's CJS loader CANNOT resolve them** (EISDIR 'D:' error from realpathSync). Never canonicalize paths fed to node. PathBuf::join of plain components is fine.
+- **Tesseract UB-Mannheim-lineage installers are NSIS, NOT Inno Setup** (7z lists NSIS-3 Unicode; innoextract 1.9 fails). 7z extracts them; scoop's tesseract.json confirms the `#/dl.7z` pattern. The 5.5.3 setup ships NO traineddata — eng.traineddata is a separate SingleFile artifact into tessdata/.
+- **7zr.exe alone cannot read 7z SFX/NSIS containers** — the chain is 7zr.exe extracts the 7z2409-x64.exe installer (itself SFX), then the extracted full 7z.exe handles everything. All three digests pinned from 7-zip.org (no signed manifest exists; our pins are the verification).
+- **`msiexec /a` extracts MSIs without elevation** (administrative install) — verified live with LibreOffice 25.8.7; TARGETDIR must be a plain path; the extracted tree runs soffice headless fine. Invoke via `Start-Process -Wait` or std::process::Command; the bash `cmd //c` quoting mangles args.
+- **tauri::generate_context! embeds frontendDist at RUST COMPILE time** — cargo build fails if ../client/dist is missing; CI must `pnpm build` (full workspace — client-alone fails: @localtools/ui must be built first; run 34404366318 lesson).
+- **`pnpm deploy` in pnpm 10 needs `--legacy`** for non-injected workspaces (ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE) and the target path is THE positional (flags after it); quote the path on Windows when shelling out (pnpm is pnpm.cmd → execFileSync needs shell:true + quoted path).
+- **healthz probes must target the SPAWNED port, not the constant** — the engine env carries LOCALTOOLS_ENGINE_PORT; the Sidecar reads it at spawn. Symptom otherwise: engine logs "listening" while the probe times out against 8787.
+- **Windows process cleanup**: `cmd //c taskkill` mangles flags through MSYS; use PowerShell `Stop-Process -Id <pid> -Force` from bash, or Command::new("taskkill").args(["/PID", ...]) from Rust (arg arrays are safe both ways).
+- **Rust manifest statics**: `&'static [T]` slices must reference NAMED statics (not inline temporaries — E0716). Test fixtures needing two different values: `Box::leak` per call, NOT OnceLock (shared state returns the first value for both).
+- **MSYS path conversion is disabled for native tools**: pass `C:/Users/x`-style forward-slash paths to native Windows programs; `//c`-style double-slash flags ARE needed for cmd builtins from git-bash but get mangled — prefer PowerShell for anything complex.
+- Engine bundle standalone boot is a great smoke: `LOCALTOOLS_ENGINE_PORT=<p> node dist/server.js` from the deployed copy — healthz + SSRF guard prove the whole isolation worked.
+- **GitHub's runner KILLS the whole job (shutdown signal, exit 143) when a step leaves grandchildren it can't manage** — four deterministic kills this session. The full fix stack: engine spawned with `process_group(0)` (own Unix group) + smoke run as a STANDALONE cargo bin under `setsid` (never inside the cargo-test harness — buffered harness output also made the death LOOK like a spawn-time kill when it was actually at stop/step-end) + tree-kill via `libc::kill(-pid)` (cfg-gated; NEVER `Command::new("kill")` — it's a shell builtin whose argv parsing of "-<pid>" is unreliable). All four pieces were needed; each alone still died.
+- **The ignored cargo-test smoke stayed in the suite but CI uses `ci_smoke` bin instead** — cargo test still works locally (`--ignored`); the CI workflow step runs `setsid cargo run --bin ci_smoke`. Don't "simplify" CI back to the test-harness form without expecting the runner kills to return.
 
 ## 0. Binding owner directives (unchanged — do not violate)
 
