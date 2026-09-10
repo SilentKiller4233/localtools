@@ -15,11 +15,23 @@ import { randomUUID } from 'node:crypto';
 const SWEEP_INTERVAL_MS = 60_000;
 const SWEEP_MAX_AGE_MS = 5 * 60_000; // 5-minute sweeper safety net (Section 5.2)
 
+/**
+ * Temp root: %TEMP%/localtools-engine by default; overridable via
+ * LOCALTOOLS_TEMP_ROOT (test isolation — each vitest file can boot
+ * engines under its own root so parallel suites never see each
+ * other's in-flight request dirs). The desktop sidecar achieves its
+ * scoped temp by setting the child's TEMP/TMP instead (which tmpdir()
+ * honors), so the default path composes.
+ */
+export function tempRoot(): string {
+  return process.env['LOCALTOOLS_TEMP_ROOT'] ?? join(tmpdir(), 'localtools-engine');
+}
+
 export class TempDir {
   private constructor(public readonly path: string) {}
 
   static async create(): Promise<TempDir> {
-    const root = join(tmpdir(), 'localtools-engine');
+    const root = tempRoot();
     await mkdir(root, { recursive: true });
     // mkdtemp gives a unique, unpredictable directory per request.
     const path = await mkdtemp(join(root, 'req-'));
@@ -44,7 +56,7 @@ let sweeperStarted = false;
 export function startTempSweeper(): void {
   if (sweeperStarted) return;
   sweeperStarted = true;
-  const root = join(tmpdir(), 'localtools-engine');
+  const root = tempRoot();
   const sweep = (): void => {
     void (async () => {
       try {

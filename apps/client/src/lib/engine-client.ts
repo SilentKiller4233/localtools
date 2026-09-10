@@ -9,9 +9,17 @@
  * Engine URL: same-origin in the Docker target (Caddy/nginx proxies
  * /engine); localhost:8787 in dev. The client NEVER holds an auth token
  * in persistent storage (Section 5.1) — none is needed for loopback.
+ *
+ * Phase 11: the human-readable error copy moved to lib/tool-errors.ts
+ * (single home for the whole app); the unreachable-copy constant lives
+ * here because this module is what throws it.
  */
 
 import type { EngineError } from '@localtools/shared-types';
+import { friendlyError } from './tool-errors';
+import { engineBaseUrl } from './engine-url';
+
+export { engineBaseUrl };
 
 export interface EngineFileOut {
   name: string;
@@ -35,45 +43,12 @@ export function isEngineCallError(err: unknown): err is EngineCallError {
   return err instanceof EngineCallError;
 }
 
-/** Resolve the engine base URL for this environment. */
-function engineBaseUrl(): string {
-  // Desktop shell: the bridge reports the sidecar port (Phase 10).
-  // Docker/prod web: same origin behind the reverse proxy path; dev:
-  // direct localhost. The client NEVER holds an auth token in
-  // persistent storage (Section 5.1) — none is needed for loopback.
-  const bridge = (globalThis as { __LOCALTOOLS__?: { invoke(c: string): Promise<unknown> } })
-    .__LOCALTOOLS__;
-  if (bridge !== undefined) {
-    // The shell injects the port before this module loads (bridge.js
-    // sets window.__LOCALTOOLS_ENGINE_PORT__); this stays sync.
-    const port = (window as { __LOCALTOOLS_ENGINE_PORT__?: number }).__LOCALTOOLS_ENGINE_PORT__;
-    if (port !== undefined) return `http://127.0.0.1:${String(port)}`;
-  }
-  if (import.meta.env.DEV) return 'http://127.0.0.1:8787';
-  return '/engine';
-}
+/** Copy thrown when the engine can't be reached at all (Section 13). */
+export const ENGINE_UNREACHABLE_TEXT =
+  'The local processing engine isn’t running. Start it with the desktop app or `docker compose up`.';
 
-/** Human-readable copy for engine error codes (mirrors ToolRunnerPage's). */
-export const ENGINE_ERROR_TEXT: Record<string, string> = {
-  'no-inputs': 'Select at least one file first.',
-  'empty-input': 'The selected file appears to be empty. Try another file.',
-  'invalid-file': 'This file is not a type this tool can process.',
-  'size-limit': 'This file is larger than the processing cap.',
-  'invalid-option': 'One of the settings above is not valid — check the highlighted fields.',
-  'tool-timeout': 'The operation took too long and was stopped.',
-  'tool-failed': 'The file could not be processed — it may be damaged or unsupported.',
-  'tool-unavailable':
-    'This tool needs a component that isn’t installed. On the desktop app it downloads on first use; on Docker it ships with the image.',
-  'engine-busy': 'The processing engine is busy — try again in a moment.',
-  'unsupported-site':
-    'This site isn’t supported by the downloader — try a link from a supported video or audio platform.',
-  'blocked-host': 'This link points at a private or local network address, which is not allowed.',
-  'rate-limited': 'Too many downloads in a short time — wait a moment and try again.',
-  'too-long': 'This item is longer than the downloader’s duration cap.',
-  'download-too-large': 'The download exceeded the size cap and was stopped — nothing was kept.',
-  unauthorized: 'This request is not authorized.',
-  internal: 'The operation failed unexpectedly. Please try again.',
-};
+/** Copy thrown when the engine answers something unparseable. */
+const ENGINE_UNREADABLE_TEXT = 'The engine returned an unreadable response.';
 
 /** Decode a base64 EngineFile to bytes. */
 export function decodeEngineFile(f: EngineFileOut): Uint8Array {
@@ -100,20 +75,19 @@ export async function runEngineJson<T>(
       body: JSON.stringify(body),
     });
   } catch {
-    throw new EngineCallError(
-      'engine-unreachable',
-      'The local processing engine isn’t running. Start it with the desktop app or `docker compose up`.',
-    );
+    throw new EngineCallError('engine-unreachable', ENGINE_UNREACHABLE_TEXT);
   }
   let parsed: { ok: boolean; data?: unknown; error?: { code: string; message: string } };
   try {
     parsed = (await res.json()) as typeof parsed;
   } catch {
-    throw new EngineCallError('internal', 'The engine returned an unreadable response.');
+    throw new EngineCallError('internal', ENGINE_UNREADABLE_TEXT);
   }
   if (!parsed.ok || parsed.error !== undefined) {
-    const code = parsed.error?.code ?? 'internal';
-    throw new EngineCallError(code, ENGINE_ERROR_TEXT[code] ?? parsed.error?.message ?? '');
+    throw new EngineCallError(
+      parsed.error?.code ?? 'internal',
+      friendlyError(parsed.error, 'engine', parsed.error?.message ?? ''),
+    );
   }
   return (parsed as { ok: true; data: T }).data;
 }
@@ -143,23 +117,20 @@ export async function runEngineTool(
   try {
     res = await fetch(`${engineBaseUrl()}${endpoint}`, { method: 'POST', body: form });
   } catch {
-    throw new EngineCallError(
-      'engine-unreachable',
-      'The local processing engine isn’t running. Start it with the desktop app or `docker compose up`.',
-    );
+    throw new EngineCallError('engine-unreachable', ENGINE_UNREACHABLE_TEXT);
   }
 
   let body: EngineResponse;
   try {
     body = (await res.json()) as EngineResponse;
   } catch {
-    throw new EngineCallError('internal', 'The engine returned an unreadable response.');
+    throw new EngineCallError('internal', ENGINE_UNREADABLE_TEXT);
   }
 
   if (!body.ok) {
     throw new EngineCallError(
       body.error.code,
-      ENGINE_ERROR_TEXT[body.error.code] ?? body.error.message,
+      friendlyError(body.error, 'engine', body.error.message),
     );
   }
   return body.data.files.map((f) => ({ name: f.name, ext: f.ext, bytes: decodeEngineFile(f) }));

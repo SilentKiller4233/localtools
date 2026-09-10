@@ -150,6 +150,8 @@ export interface BatchJob {
   op: 'convert' | 'compress' | 'resize';
   files: Uint8Array[];
   options: Record<string, unknown>;
+  /** Phase 11 real-progress seam: (filesDone, totalFiles) per file. */
+  onProgress?: (done: number, total: number) => void;
 }
 
 export interface BatchOutput {
@@ -187,6 +189,7 @@ export async function runBatch(job: BatchJob): Promise<BatchOutput[]> {
       const ext: string = typeof targetOpt === 'string' ? targetOpt : 'png';
       outs.push({ name: `image-${String(i + 1)}`, ext, bytes: result.bytes });
     }
+    job.onProgress?.(outs.length, job.files.length);
   }
   return outs;
 }

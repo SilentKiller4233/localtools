@@ -19,6 +19,12 @@ function done(id: number, result: unknown): void {
   self.postMessage(msg);
 }
 
+/** Phase 11: mid-run progress events (batch: per file). */
+function progress(id: number, doneCount: number, total: number): void {
+  const msg: ImageToolResponse = { id, progress: { done: doneCount, total } };
+  self.postMessage(msg);
+}
+
 interface FileInput {
   name: string;
   bytes: Uint8Array;
@@ -68,12 +74,21 @@ self.addEventListener('message', (event: MessageEvent<ImageToolRequest>) => {
           return;
         }
         case 'batch-image-processing': {
+          const names = files.map((f) => f.name);
           const outs = await core.runBatch({
             op: (options as { op: 'convert' | 'compress' | 'resize' }).op,
             files: files.map((f) => f.bytes),
             options: (options as { options: Record<string, unknown> }).options,
+            onProgress: (doneCount: number, total: number) => {
+              progress(id, doneCount, total);
+            },
           });
-          done(id, outs);
+          // Phase 11: outputs keep their original file names (image-1..N
+          // was opaque after a 20-file batch). runBatch preserves order.
+          done(
+            id,
+            outs.map((o, i) => ({ ...o, name: names[i] ?? o.name })),
+          );
           return;
         }
         case 'heic-converter':

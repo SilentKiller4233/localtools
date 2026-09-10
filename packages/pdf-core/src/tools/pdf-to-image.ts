@@ -24,6 +24,12 @@ export interface PdfToImageOptions {
   quality?: number;
   /** Internal oversized-input seam (D-013); client callers use the default. */
   maxBytes?: number;
+  /**
+   * Phase 11 real-progress seam: called after each rendered page with
+   * (pagesDone, totalPages). Worker callers thread this to the main
+   * thread; direct callers ignore it.
+   */
+  onProgress?: (done: number, total: number) => void;
 }
 
 const FORMATS: Readonly<Record<string, RenderFormat | undefined>> = {
@@ -79,6 +85,7 @@ export async function pdfToImage(
       } finally {
         surface.destroy();
       }
+      options.onProgress?.(results.length, pageNumbers.length);
     }
     if (results.length === 0) throw toolError('page-range', 'No pages were selected.');
     return results;

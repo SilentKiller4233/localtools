@@ -50,24 +50,13 @@ function ImageRunner({
   );
 }
 
-import { isImageWorkerError, runImageTool } from '../lib/image-worker-client';
+import { runImageTool, runImageToolWithProgress } from '../lib/image-worker-client';
 import type { WorkerFileInput } from '../lib/image-worker-client';
+import { friendlyError } from '../lib/tool-errors';
 import { Badge, Button, Card, DropZone, ProgressBar } from '@localtools/ui';
 import en from '../i18n/en.json';
 
 const UI = en.ui;
-
-const IMG_ERROR_TEXT: Record<string, string> = {
-  'empty-input': 'The selected file appears to be empty. Try another file.',
-  'invalid-image':
-    'This file could not be read as an image. It may be damaged or not an image at all.',
-  'unsupported-format': 'This image format is not supported here.',
-  'invalid-option': 'One of the settings above is not valid — check the highlighted fields.',
-  'no-inputs': 'Select at least one image first.',
-  'size-limit': 'This image is larger than the processing cap.',
-  'operation-failed': 'The operation failed. Please try again.',
-  'worker-crash': 'The image worker stopped unexpectedly. Try again in a moment.',
-};
 
 /** The image-suite twin of ToolRunnerPage (worker run + Section 9 frame). */
 function ImageToolRunnerShim({
@@ -149,7 +138,15 @@ function ImageToolRunnerImpl(props: {
     setProgress(3);
     try {
       const options = buildOptions();
-      const raw = await runImageTool(imageTool, options, fileList);
+      // Phase 11: batch runs report real per-file progress (the worker
+      // emits {progress:{done,total}} after every file); single-file
+      // tools keep the simple 3→100 step.
+      const isBatch = imageTool === 'batch-image-processing';
+      const raw = isBatch
+        ? await runImageToolWithProgress(imageTool, options, fileList, (done, total) => {
+            if (total > 0) setProgress(Math.round((done / total) * 100));
+          })
+        : await runImageTool(imageTool, options, fileList);
       setResult(raw);
       setProgress(100);
       const outs: { name: string; ext: string; bytes: Uint8Array }[] = [];
@@ -178,16 +175,15 @@ function ImageToolRunnerImpl(props: {
           bytes: raw.output,
         });
       } else if (isBatchOuts(raw)) {
-        for (const [i, o] of raw.entries()) {
-          outs.push({ name: `image-${String(i + 1)}`, ext: o.ext, bytes: o.bytes });
+        // Phase 11: names come from the worker (original file names,
+        // order preserved) — ext from each output.
+        for (const o of raw) {
+          outs.push({ name: baseNameOf(o.name), ext: o.ext, bytes: o.bytes });
         }
       }
       setOutputs(outs.length > 0 ? outs : undefined);
     } catch (err) {
-      const message = isImageWorkerError(err)
-        ? (IMG_ERROR_TEXT[err.code] ?? err.message)
-        : 'The operation failed. Please try again.';
-      setError(message);
+      setError(friendlyError(err, 'image'));
     } finally {
       setBusy(false);
       setProgress(undefined);

@@ -76,6 +76,11 @@ beforeAll(async () => {
   // Test seam: the mock origin is the ONE exempted loopback host:port.
   process.env['LOCALTOOLS_DOWNLOADER_TEST_MODE'] = 'true';
   process.env['LOCALTOOLS_DOWNLOADER_MOCK_TARGET'] = `127.0.0.1:${String(mock.port)}`;
+  // Test isolation (Phase 11): this file boots engines under a PRIVATE
+  // temp root so parallel engine suites (PDF/media, whose in-flight
+  // request dirs hold multi-MB inputs) never trip this file's
+  // leftover-file assertions — the assertion scans only OUR root.
+  process.env['LOCALTOOLS_TEMP_ROOT'] = join(tmpdir(), 'localtools-engine-downloader-test');
   // High downloader rate limit: the security suite fires ~30 requests
   // against this instance; the rate-limit behavior itself is tested on
   // its own tight-limiter engine below.
@@ -91,6 +96,7 @@ afterAll(async () => {
   await mock.close();
   delete process.env['LOCALTOOLS_DOWNLOADER_TEST_MODE'];
   delete process.env['LOCALTOOLS_DOWNLOADER_MOCK_TARGET'];
+  delete process.env['LOCALTOOLS_TEMP_ROOT'];
 });
 
 /* ------------------------------------------------------------------ */
@@ -321,8 +327,9 @@ describe('downloader: size cap (14.4/5.8)', () => {
       expect(r.body.ok).toBe(false);
       expect(r.body.error?.code).toBe('download-too-large');
       // No full file left on disk: the temp dir is removed in finally —
-      // verify the engine temp root has no new oversized leftovers.
-      const root = join(tmpdir(), 'localtools-engine');
+      // verify this suite's ISOLATED temp root (LOCALTOOLS_TEMP_ROOT set
+      // in beforeAll) has no oversized leftovers.
+      const root = join(tmpdir(), 'localtools-engine-downloader-test');
       const entries = await readdir(root).catch(() => [] as string[]);
       for (const e of entries) {
         const s = await stat(join(root, e)).catch(() => undefined);

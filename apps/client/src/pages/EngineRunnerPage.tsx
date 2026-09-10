@@ -11,8 +11,10 @@
 import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Badge, Button, Card, DropZone, ProgressBar } from '@localtools/ui';
-import { isEngineCallError, runEngineTool, type EngineClientFile } from '../lib/engine-client';
-import { toolForEndpoint } from '../lib/desktop-bridge';
+import { runEngineTool, type EngineClientFile } from '../lib/engine-client';
+import { friendlyError } from '../lib/tool-errors';
+import { useFakeProgress } from '../hooks/useFakeProgress';
+import { ENGINE_DOWN_COPY, useEngineTooling } from '../hooks/useEngineTooling';
 import { ToolDownloadPrompt } from './ToolDownloadPrompt';
 import { badgeLabel } from '../lib/tool-registry';
 import type { RegisteredTool } from '../lib/tool-registry';
@@ -56,12 +58,12 @@ export function EngineRunnerPage({
 }: EngineRunnerPageProps) {
   const [fileList, setFileList] = useState<EngineClientFile[]>([]);
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<number | undefined>(undefined);
+  const fake = useFakeProgress();
   const [error, setError] = useState<string | undefined>(undefined);
   const [outputs, setOutputs] = useState<OutputFile[] | undefined>(undefined);
-  // Phase 10: when the engine answers tool-unavailable and the desktop
-  // shell can supply the missing helper, offer the one-time download.
-  const [downloadFor, setDownloadFor] = useState<string | undefined>(undefined);
+  // Phase 11: shared engine-page toolkit — health gating + download
+  // prompt + installed confirmation (one hook, four pages).
+  const eng = useEngineTooling();
 
   const disabledReason =
     fileList.length === 0 ? 'Select a file first' : (validate?.() ?? undefined);
@@ -81,15 +83,19 @@ export function EngineRunnerPage({
   const run = useCallback(async () => {
     if (busy || fileList.length === 0) return;
     setBusy(true);
-    setProgress(5);
-    // Indeterminate-style liveness while the native tool runs.
-    const ticker = setInterval(() => {
-      setProgress((p) => (p === undefined ? 5 : Math.min(90, p + 7)));
-    }, 400);
+    fake.start();
+    setError(undefined);
+    eng.clearInstalledNote();
     try {
+      // Health gate (Phase 11): fail fast with friendly copy when the
+      // engine is down, before any bytes are read into memory.
+      if (!(await eng.gate())) {
+        setError(ENGINE_DOWN_COPY);
+        return;
+      }
       const options = buildOptions(fileList.length);
       const files = await runEngineTool(endpoint, options, fileList);
-      setProgress(100);
+      fake.set(100);
       setOutputs(
         files.map((f) => ({
           name: `${f.name}.${f.ext}`,
@@ -97,27 +103,19 @@ export function EngineRunnerPage({
         })),
       );
     } catch (err) {
-      if (isEngineCallError(err) && err.code === 'tool-unavailable') {
-        // Spec line 362 + Section 13: in the desktop shell, offer the
-        // one-time pinned download for the helper this endpoint needs;
-        // in a browser, keep the honest engine-unavailable copy.
-        const toolId = await toolForEndpoint(endpoint);
-        if (toolId !== undefined) {
-          setDownloadFor(toolId);
-          setError(undefined);
-          return;
-        }
+      // Spec line 362 + Section 13: in the desktop shell, offer the
+      // one-time pinned download for the helper this endpoint needs;
+      // in a browser, keep the honest engine-unavailable copy.
+      if (await eng.handleUnavailable(err, endpoint)) {
+        setError(undefined);
+        return;
       }
-      const message = isEngineCallError(err)
-        ? err.message
-        : 'The operation failed. Please try again.';
-      setError(message);
+      setError(friendlyError(err, 'engine'));
     } finally {
-      clearInterval(ticker);
+      fake.stop();
       setBusy(false);
-      setProgress(undefined);
     }
-  }, [busy, fileList, buildOptions, endpoint]);
+  }, [busy, fileList, buildOptions, endpoint, fake, eng]);
 
   return (
     <div className="lt-page">
@@ -141,6 +139,18 @@ export function EngineRunnerPage({
         </header>
 
         <Card className="lt-tool-runner">
+          {eng.health === 'unreachable' ? (
+            <div className="lt-engine-banner lt-engine-banner--down" role="status">
+              <p>
+                The local processing engine isn’t running. This tool needs it — the rest of the app
+                keeps working.
+              </p>
+              <Button variant="outline" onClick={() => void eng.probe()}>
+                Check again
+              </Button>
+            </div>
+          ) : null}
+
           <DropZone
             onFilesSelected={onFilesSelected}
             {...(accept !== undefined ? { accept } : {})}
@@ -172,22 +182,31 @@ export function EngineRunnerPage({
 
           {optionsPanel ?? null}
 
-          {downloadFor !== undefined ? (
+          {eng.downloadFor !== undefined ? (
             <ToolDownloadPrompt
-              toolId={downloadFor}
+              toolId={eng.downloadFor}
               onInstalled={() => {
                 // Helper landed — the next Run just works (engine env
                 // overrides point at the final path already).
-                setDownloadFor(undefined);
+                eng.setDownloadFor(undefined);
+                eng.setInstalledNote('Run');
               }}
               onDismiss={() => {
-                setDownloadFor(undefined);
+                eng.setDownloadFor(undefined);
                 setError('This tool needs a component that isn’t installed.');
               }}
             />
           ) : null}
 
-          {busy ? <ProgressBar percent={progress ?? 5} label={`Processing ${tool.name}`} /> : null}
+          {eng.installedNote !== undefined ? (
+            <p className="lt-installed-note" role="status">
+              {eng.installedNoteFor(eng.installedNote)}
+            </p>
+          ) : null}
+
+          {busy ? (
+            <ProgressBar percent={fake.percent ?? 5} label={`Processing ${tool.name}`} />
+          ) : null}
 
           {error !== undefined ? (
             <p className="lt-tool-error" role="alert">

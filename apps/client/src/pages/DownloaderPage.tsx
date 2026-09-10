@@ -14,8 +14,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, Field, Input, ProgressBar } from '@localtools/ui';
-import { isEngineCallError, runEngineJson } from '../lib/engine-client';
-import { toolForEndpoint } from '../lib/desktop-bridge';
+import { runEngineJson } from '../lib/engine-client';
+import { friendlyError } from '../lib/tool-errors';
+import { useFakeProgress } from '../hooks/useFakeProgress';
+import { ENGINE_DOWN_COPY, useEngineTooling } from '../hooks/useEngineTooling';
 import { ToolDownloadPrompt } from './ToolDownloadPrompt';
 import { badgeLabel } from '../lib/tool-registry';
 import type { RegisteredTool } from '../lib/tool-registry';
@@ -46,7 +48,7 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
   const [preview, setPreview] = useState<DownloadMetadataResponse | undefined>(undefined);
   const [previewing, setPreviewing] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [progress, setProgress] = useState<number | undefined>(undefined);
+  const fake = useFakeProgress();
   const [error, setError] = useState<string | undefined>(undefined);
   const [formatId, setFormatId] = useState<string>('best');
   const [wantAudio, setWantAudio] = useState(false);
@@ -55,9 +57,9 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
   const [subLang, setSubLang] = useState('en');
   const [queue, setQueue] = useState<number[]>([]); // playlist indexes (1-based items)
   const [outputs, setOutputs] = useState<OutputFile[] | undefined>(undefined);
-  // Phase 10: one-time yt-dlp download prompt when the engine answers
-  // tool-unavailable in the desktop shell.
-  const [downloadFor, setDownloadFor] = useState<string | undefined>(undefined);
+  // Phase 11: shared engine-page toolkit (health + download prompt +
+  // installed confirmation).
+  const eng = useEngineTooling();
 
   useEffect(() => {
     try {
@@ -80,37 +82,38 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
     if (previewing || url.trim() === '') return;
     setPreviewing(true);
     setError(undefined);
+    eng.clearInstalledNote();
     setPreview(undefined);
     setOutputs(undefined);
     setQueue([]);
     try {
+      // Health gate: friendly copy when the engine is down, before
+      // sending the URL anywhere.
+      if (!(await eng.gate())) {
+        setError(ENGINE_DOWN_COPY);
+        return;
+      }
       const data = await runEngineJson<DownloadMetadataResponse>('/downloader/metadata', {
         url: url.trim(),
       });
       setPreview(data);
       setFormatId(data.item.formats.length > 0 ? 'best' : 'best');
     } catch (err) {
-      if (isEngineCallError(err) && err.code === 'tool-unavailable') {
-        const toolId = await toolForEndpoint('/downloader/metadata');
-        if (toolId !== undefined) {
-          setDownloadFor(toolId);
-          setError(undefined);
-          return;
-        }
+      if (await eng.handleUnavailable(err, '/downloader/metadata')) {
+        setError(undefined);
+        return;
       }
-      setError(engineMessage(err));
+      setError(friendlyError(err, 'engine'));
     } finally {
       setPreviewing(false);
     }
-  }, [previewing, url]);
+  }, [previewing, url, eng]);
 
   const run = useCallback(async () => {
     if (downloading || preview === undefined) return;
     setDownloading(true);
-    setProgress(5);
-    const ticker = setInterval(() => {
-      setProgress((p) => (p === undefined ? 5 : Math.min(90, p + 4)));
-    }, 500);
+    fake.start();
+    eng.clearInstalledNote();
     try {
       const body: Record<string, unknown> = {
         url: url.trim(),
@@ -124,24 +127,31 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
         '/downloader/download',
         body,
       );
-      setProgress(100);
+      fake.set(100);
       setOutputs(data.files.map((f) => ({ name: f.name, bytes: decodeB64(f.data) })));
     } catch (err) {
-      if (isEngineCallError(err) && err.code === 'tool-unavailable') {
-        const toolId = await toolForEndpoint('/downloader/download');
-        if (toolId !== undefined) {
-          setDownloadFor(toolId);
-          setError(undefined);
-          return;
-        }
+      if (await eng.handleUnavailable(err, '/downloader/download')) {
+        setError(undefined);
+        return;
       }
-      setError(engineMessage(err));
+      setError(friendlyError(err, 'engine'));
     } finally {
-      clearInterval(ticker);
+      fake.stop();
       setDownloading(false);
-      setProgress(undefined);
     }
-  }, [downloading, preview, url, wantAudio, formatId, queue, wantSubs, subLang, audioFormat]);
+  }, [
+    downloading,
+    preview,
+    url,
+    wantAudio,
+    formatId,
+    queue,
+    wantSubs,
+    subLang,
+    audioFormat,
+    fake,
+    eng,
+  ]);
 
   const entries: PlaylistEntryMeta[] = preview?.entries ?? [];
   const item: DownloadItem | undefined = preview?.item;
@@ -201,6 +211,18 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
         ) : null}
 
         <Card className="lt-tool-runner">
+          {eng.health === 'unreachable' ? (
+            <div className="lt-engine-banner lt-engine-banner--down" role="status">
+              <p>
+                The local processing engine isn’t running. The downloader needs it — the rest of the
+                app keeps working.
+              </p>
+              <Button variant="outline" onClick={() => void eng.probe()}>
+                Check again
+              </Button>
+            </div>
+          ) : null}
+
           <Field label="Paste a link from any supported site" htmlFor="dl-url">
             <Input
               id="dl-url"
@@ -224,17 +246,24 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
             </p>
           ) : null}
 
-          {downloadFor !== undefined ? (
+          {eng.downloadFor !== undefined ? (
             <ToolDownloadPrompt
-              toolId={downloadFor}
+              toolId={eng.downloadFor}
               onInstalled={() => {
-                setDownloadFor(undefined);
+                eng.setDownloadFor(undefined);
+                eng.setInstalledNote('Preview');
               }}
               onDismiss={() => {
-                setDownloadFor(undefined);
+                eng.setDownloadFor(undefined);
                 setError('The downloader needs a component that isn’t installed.');
               }}
             />
+          ) : null}
+
+          {eng.installedNote !== undefined ? (
+            <p className="lt-installed-note" role="status">
+              {eng.installedNoteFor(eng.installedNote)}
+            </p>
           ) : null}
 
           {preview !== undefined && item !== undefined ? (
@@ -345,7 +374,7 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
                 </div>
               ) : null}
 
-              {downloading ? <ProgressBar percent={progress ?? 5} label="Downloading" /> : null}
+              {downloading ? <ProgressBar percent={fake.percent ?? 5} label="Downloading" /> : null}
 
               <div className="lt-tool-actions">
                 <Button onClick={() => void run()} disabled={downloading}>
@@ -378,10 +407,6 @@ export function DownloaderPage({ tool }: { tool: RegisteredTool }) {
       </main>
     </div>
   );
-}
-
-function engineMessage(err: unknown): string {
-  return isEngineCallError(err) ? err.message : 'The operation failed. Please try again.';
 }
 
 function formatDur(sec: number): string {

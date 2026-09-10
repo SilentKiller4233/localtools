@@ -22,8 +22,13 @@ function fail(id: number, err: unknown): ToolResponse {
   return { id, ok: false, code, message };
 }
 
+/** Phase 11: mid-run progress events for long jobs. */
+function progress(id: number, done: number, total: number): void {
+  (self as unknown as Worker).postMessage({ id, progress: { done, total } });
+}
+
 /** Tool dispatch: each entry validates its options inline and calls pdf-core. */
-const DISPATCH: Record<string, (p: Payload) => Promise<unknown>> = {
+const DISPATCH: Record<string, (p: Payload, id: number) => Promise<unknown>> = {
   'merge-pdf': async (p) => pdf.mergePdfs(p.files.map((f) => f.bytes)),
   'split-pdf': async (p) =>
     pdf.splitPdf(file0(p), {
@@ -51,12 +56,15 @@ const DISPATCH: Record<string, (p: Payload) => Promise<unknown>> = {
       ...(p.options.tile === undefined ? {} : { tile: p.options.tile === true }),
       ...(p.options.color === undefined ? {} : { color: str(p.options.color) }),
     }),
-  'pdf-to-image': async (p) =>
+  'pdf-to-image': async (p, id) =>
     pdf.pdfToImage(file0(p), {
       ...(p.options.pages === undefined ? {} : { pages: str(p.options.pages) }),
       ...(p.options.scale === undefined ? {} : { scale: num(p.options.scale) }),
       ...(p.options.format === undefined ? {} : { format: str(p.options.format) }),
       ...(p.options.quality === undefined ? {} : { quality: num(p.options.quality) }),
+      onProgress: (done: number, total: number) => {
+        progress(id, done, total);
+      },
     }),
   'image-to-pdf': async (p) =>
     pdf.imagesToPdf(
@@ -184,7 +192,7 @@ self.addEventListener('message', (event: MessageEvent<ToolRequest>) => {
   }
   void (async () => {
     try {
-      const result = await handler({ files: req.files, options: req.options });
+      const result = await handler({ files: req.files, options: req.options }, req.id);
       (self as unknown as Worker).postMessage({ id: req.id, ok: true, result });
     } catch (err) {
       (self as unknown as Worker).postMessage(fail(req.id, err));

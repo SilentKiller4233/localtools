@@ -11,10 +11,14 @@ import type { ReactNode } from 'react';
 import { Badge, Button, Card, DropZone, Field, Input, ProgressBar } from '@localtools/ui';
 import { PIPER_VOICE_LABELS } from '@localtools/shared-types';
 import type { PiperVoiceIdValue } from '@localtools/shared-types';
-import { isMediaWorkerError, runMediaTool } from '../lib/media-worker-client';
+import { runMediaTool } from '../lib/media-worker-client';
 import type { WorkerFileInput } from '../lib/media-worker-client';
-import { isEngineCallError, runEngineTool } from '../lib/engine-client';
+import { runEngineTool } from '../lib/engine-client';
 import type { EngineClientFile } from '../lib/engine-client';
+import { friendlyError } from '../lib/tool-errors';
+import { useFakeProgress } from '../hooks/useFakeProgress';
+import { ENGINE_DOWN_COPY, useEngineTooling } from '../hooks/useEngineTooling';
+import { ToolDownloadPrompt } from './ToolDownloadPrompt';
 import { badgeLabel } from '../lib/tool-registry';
 import type { RegisteredTool } from '../lib/tool-registry';
 import en from '../i18n/en.json';
@@ -23,17 +27,6 @@ const UI = en.ui;
 
 const AUDIO_ACCEPT = '.wav,audio/wav,audio/x-wav';
 const PDF_ACCEPT = 'application/pdf,.pdf';
-
-const SPEECH_ERROR_TEXT: Record<string, string> = {
-  'empty-input': 'The selected file appears to be empty. Try another file.',
-  'invalid-file': 'This WAV file could not be read. Re-export it as 16-bit or float PCM and retry.',
-  'size-limit': 'The audio is longer than the 2-hour transcription cap.',
-  'invalid-option': 'One of the settings above is not valid — check the highlighted fields.',
-  'model-download-failed':
-    'The speech model could not be downloaded. Check your connection and press Run again to retry — everything else keeps working.',
-  'operation-failed': 'The transcription failed. Please try again.',
-  'worker-crash': 'The speech worker stopped unexpectedly. Try again in a moment.',
-};
 
 /** Whisper tiers surfaced in the UI (D-029). */
 const TIERS = [
@@ -203,7 +196,7 @@ function TranscribeMediaPage({ tool }: ToolPageSpec) {
   const [fileList, setFileList] = useState<WorkerFileInput[]>([]);
   const [tier, setTier] = useState('tiny.en');
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<number | undefined>(undefined);
+  const fake = useFakeProgress();
   const [error, setError] = useState<string | undefined>(undefined);
   const [outputs, setOutputs] = useState<{ name: string; bytes: Uint8Array }[] | undefined>(
     undefined,
@@ -224,27 +217,20 @@ function TranscribeMediaPage({ tool }: ToolPageSpec) {
   const run = useCallback(async () => {
     if (busy || fileList.length === 0) return;
     setBusy(true);
-    setProgress(5);
+    fake.start();
     setError(undefined);
     setOutputs(undefined);
-    const ticker = setInterval(() => {
-      setProgress((p) => (p === undefined ? 5 : Math.min(90, p + 3)));
-    }, 400);
     try {
       const raw = (await runMediaTool('transcribe-media', { tier }, fileList)) as { text: string };
-      setProgress(100);
+      fake.set(100);
       setOutputs([{ name: 'transcript.txt', bytes: new TextEncoder().encode(raw.text) }]);
     } catch (err) {
-      const message = isMediaWorkerError(err)
-        ? (SPEECH_ERROR_TEXT[err.code] ?? err.message)
-        : 'The transcription failed. Please try again.';
-      setError(message);
+      setError(friendlyError(err, 'speech', 'The transcription failed. Please try again.'));
     } finally {
-      clearInterval(ticker);
+      fake.stop();
       setBusy(false);
-      setProgress(undefined);
     }
-  }, [busy, fileList, tier]);
+  }, [busy, fileList, tier, fake]);
 
   const disabledReason = fileList.length === 0 ? 'Select a WAV file first' : undefined;
 
@@ -275,7 +261,7 @@ function TranscribeMediaPage({ tool }: ToolPageSpec) {
               The model downloads once on first use, then works fully offline.
             </p>
           </div>
-          {busy ? <ProgressBar percent={progress ?? 5} label={`Transcribing`} /> : null}
+          {busy ? <ProgressBar percent={fake.percent ?? 5} label="Transcribing" /> : null}
           {error !== undefined ? (
             <p className="lt-tool-error" role="alert">
               {error}
@@ -305,7 +291,7 @@ function AutoCaptionsPage({ tool }: ToolPageSpec) {
   const [tier, setTier] = useState('tiny.en');
   const [format, setFormat] = useState('srt');
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<number | undefined>(undefined);
+  const fake = useFakeProgress();
   const [error, setError] = useState<string | undefined>(undefined);
   const [outputs, setOutputs] = useState<{ name: string; bytes: Uint8Array }[] | undefined>(
     undefined,
@@ -326,30 +312,23 @@ function AutoCaptionsPage({ tool }: ToolPageSpec) {
   const run = useCallback(async () => {
     if (busy || fileList.length === 0) return;
     setBusy(true);
-    setProgress(5);
+    fake.start();
     setError(undefined);
     setOutputs(undefined);
-    const ticker = setInterval(() => {
-      setProgress((p) => (p === undefined ? 5 : Math.min(90, p + 3)));
-    }, 400);
     try {
       const raw = (await runMediaTool('auto-captions', { tier, format }, fileList)) as {
         text: string;
         format: string;
       };
-      setProgress(100);
+      fake.set(100);
       setOutputs([{ name: `captions.${raw.format}`, bytes: new TextEncoder().encode(raw.text) }]);
     } catch (err) {
-      const message = isMediaWorkerError(err)
-        ? (SPEECH_ERROR_TEXT[err.code] ?? err.message)
-        : 'The caption generation failed. Please try again.';
-      setError(message);
+      setError(friendlyError(err, 'speech', 'The caption generation failed. Please try again.'));
     } finally {
-      clearInterval(ticker);
+      fake.stop();
       setBusy(false);
-      setProgress(undefined);
     }
-  }, [busy, fileList, tier, format]);
+  }, [busy, fileList, tier, format, fake]);
 
   const disabledReason = fileList.length === 0 ? 'Select a WAV file first' : undefined;
 
@@ -393,7 +372,7 @@ function AutoCaptionsPage({ tool }: ToolPageSpec) {
               The .srt/.vtt feeds straight into Burn Subtitles on a video.
             </p>
           </div>
-          {busy ? <ProgressBar percent={progress ?? 5} label="Generating captions" /> : null}
+          {busy ? <ProgressBar percent={fake.percent ?? 5} label="Generating captions" /> : null}
           {error !== undefined ? (
             <p className="lt-tool-error" role="alert">
               {error}
@@ -423,22 +402,26 @@ function TextToSpeechPage({ tool }: ToolPageSpec) {
   const [voice, setVoice] = useState('en_US-lessac-medium');
   const [speed, setSpeed] = useState('1');
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<number | undefined>(undefined);
+  const fake = useFakeProgress();
   const [error, setError] = useState<string | undefined>(undefined);
   const [outputs, setOutputs] = useState<{ name: string; bytes: Uint8Array }[] | undefined>(
     undefined,
   );
+  // Phase 11: health gating + helper-download flow, same as every engine page.
+  const eng = useEngineTooling();
 
   const run = useCallback(async () => {
     if (busy || text.trim() === '') return;
     setBusy(true);
-    setProgress(5);
+    fake.start();
     setError(undefined);
+    eng.clearInstalledNote();
     setOutputs(undefined);
-    const ticker = setInterval(() => {
-      setProgress((p) => (p === undefined ? 5 : Math.min(90, p + 7)));
-    }, 400);
     try {
+      if (!(await eng.gate())) {
+        setError(ENGINE_DOWN_COPY);
+        return;
+      }
       // Options-only request: runEngineTool with zero file parts (the
       // engine route is allowNoFiles, like html-to-pdf's inline HTML).
       const files = await runEngineTool(
@@ -450,18 +433,19 @@ function TextToSpeechPage({ tool }: ToolPageSpec) {
         },
         [],
       );
-      setProgress(100);
+      fake.set(100);
       setOutputs(files.map((f) => ({ name: `${f.name}.${f.ext}`, bytes: f.bytes })));
     } catch (err) {
-      setError(
-        isEngineCallError(err) ? err.message : 'The speech synthesis failed. Please try again.',
-      );
+      if (await eng.handleUnavailable(err, '/media/text-to-speech')) {
+        setError(undefined);
+        return;
+      }
+      setError(friendlyError(err, 'engine', 'The speech synthesis failed. Please try again.'));
     } finally {
-      clearInterval(ticker);
+      fake.stop();
       setBusy(false);
-      setProgress(undefined);
     }
-  }, [busy, text, voice, speed]);
+  }, [busy, text, voice, speed, fake, eng]);
 
   return (
     <div className="lt-page">
@@ -473,6 +457,17 @@ function TextToSpeechPage({ tool }: ToolPageSpec) {
       <main className="lt-main lt-tool-page">
         <ToolHeader tool={tool} tone="setup" />
         <Card className="lt-tool-runner">
+          {eng.health === 'unreachable' ? (
+            <div className="lt-engine-banner lt-engine-banner--down" role="status">
+              <p>
+                The local processing engine isn’t running. This tool needs it — the rest of the app
+                keeps working.
+              </p>
+              <Button variant="outline" onClick={() => void eng.probe()}>
+                Check again
+              </Button>
+            </div>
+          ) : null}
           <div className="lt-options">
             <Field label="Text to speak" htmlFor="tts-text">
               <textarea
@@ -501,7 +496,25 @@ function TextToSpeechPage({ tool }: ToolPageSpec) {
               />
             </Field>
           </div>
-          {busy ? <ProgressBar percent={progress ?? 5} label="Speaking" /> : null}
+          {busy ? <ProgressBar percent={fake.percent ?? 5} label="Speaking" /> : null}
+          {eng.downloadFor !== undefined ? (
+            <ToolDownloadPrompt
+              toolId={eng.downloadFor}
+              onInstalled={() => {
+                eng.setDownloadFor(undefined);
+                eng.setInstalledNote('Run');
+              }}
+              onDismiss={() => {
+                eng.setDownloadFor(undefined);
+                setError('This tool needs a component that isn’t installed.');
+              }}
+            />
+          ) : null}
+          {eng.installedNote !== undefined ? (
+            <p className="lt-installed-note" role="status">
+              {eng.installedNoteFor(eng.installedNote)}
+            </p>
+          ) : null}
           {error !== undefined ? (
             <p className="lt-tool-error" role="alert">
               {error}
@@ -532,11 +545,13 @@ function PdfToAudiobookPage({ tool }: ToolPageSpec) {
   const [speed, setSpeed] = useState('1');
   const [perChapter, setPerChapter] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<number | undefined>(undefined);
+  const fake = useFakeProgress();
   const [error, setError] = useState<string | undefined>(undefined);
   const [outputs, setOutputs] = useState<{ name: string; bytes: Uint8Array }[] | undefined>(
     undefined,
   );
+  // Phase 11: health gating + helper-download flow, same as every engine page.
+  const eng = useEngineTooling();
 
   const onFilesSelected = useCallback((selected: File[]) => {
     setError(undefined);
@@ -553,13 +568,15 @@ function PdfToAudiobookPage({ tool }: ToolPageSpec) {
   const run = useCallback(async () => {
     if (busy || fileList.length === 0) return;
     setBusy(true);
-    setProgress(5);
+    fake.start();
     setError(undefined);
+    eng.clearInstalledNote();
     setOutputs(undefined);
-    const ticker = setInterval(() => {
-      setProgress((p) => (p === undefined ? 5 : Math.min(90, p + 7)));
-    }, 400);
     try {
+      if (!(await eng.gate())) {
+        setError(ENGINE_DOWN_COPY);
+        return;
+      }
       const files = await runEngineTool(
         '/media/pdf-to-audiobook',
         {
@@ -570,18 +587,19 @@ function PdfToAudiobookPage({ tool }: ToolPageSpec) {
         },
         fileList,
       );
-      setProgress(100);
+      fake.set(100);
       setOutputs(files.map((f) => ({ name: `${f.name}.${f.ext}`, bytes: f.bytes })));
     } catch (err) {
-      setError(
-        isEngineCallError(err) ? err.message : 'The audiobook conversion failed. Please try again.',
-      );
+      if (await eng.handleUnavailable(err, '/media/pdf-to-audiobook')) {
+        setError(undefined);
+        return;
+      }
+      setError(friendlyError(err, 'engine', 'The audiobook conversion failed. Please try again.'));
     } finally {
-      clearInterval(ticker);
+      fake.stop();
       setBusy(false);
-      setProgress(undefined);
     }
-  }, [busy, fileList, voice, speed, perChapter]);
+  }, [busy, fileList, voice, speed, perChapter, fake, eng]);
 
   const disabledReason = fileList.length === 0 ? 'Select a PDF first' : undefined;
 
@@ -595,6 +613,17 @@ function PdfToAudiobookPage({ tool }: ToolPageSpec) {
       <main className="lt-main lt-tool-page">
         <ToolHeader tool={tool} tone="setup" />
         <Card className="lt-tool-runner">
+          {eng.health === 'unreachable' ? (
+            <div className="lt-engine-banner lt-engine-banner--down" role="status">
+              <p>
+                The local processing engine isn’t running. This tool needs it — the rest of the app
+                keeps working.
+              </p>
+              <Button variant="outline" onClick={() => void eng.probe()}>
+                Check again
+              </Button>
+            </div>
+          ) : null}
           <DropZone
             onFilesSelected={onFilesSelected}
             accept={PDF_ACCEPT}
@@ -639,7 +668,25 @@ function PdfToAudiobookPage({ tool }: ToolPageSpec) {
               One file per chapter (uses the PDF outline)
             </label>
           </div>
-          {busy ? <ProgressBar percent={progress ?? 5} label="Reading aloud" /> : null}
+          {busy ? <ProgressBar percent={fake.percent ?? 5} label="Reading aloud" /> : null}
+          {eng.downloadFor !== undefined ? (
+            <ToolDownloadPrompt
+              toolId={eng.downloadFor}
+              onInstalled={() => {
+                eng.setDownloadFor(undefined);
+                eng.setInstalledNote('Run');
+              }}
+              onDismiss={() => {
+                eng.setDownloadFor(undefined);
+                setError('This tool needs a component that isn’t installed.');
+              }}
+            />
+          ) : null}
+          {eng.installedNote !== undefined ? (
+            <p className="lt-installed-note" role="status">
+              {eng.installedNoteFor(eng.installedNote)}
+            </p>
+          ) : null}
           {error !== undefined ? (
             <p className="lt-tool-error" role="alert">
               {error}

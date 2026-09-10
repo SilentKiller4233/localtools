@@ -26,20 +26,29 @@ export interface ToolRequest {
 
 export type ToolResponse =
   | { id: number; ok: true; result: unknown }
-  | { id: number; ok: false; code: string; message: string };
+  | { id: number; ok: false; code: string; message: string }
+  // Phase 11 real-progress: emitted mid-run for long jobs (pdf-to-image
+  // per page). Additive — ignored by handlers that don't opt in.
+  | { id: number; progress: { done: number; total: number } };
 
 let nextId = 1;
 let worker: Worker | undefined;
 const pending = new Map<number, { resolve: (r: unknown) => void; reject: (e: unknown) => void }>();
+const progressCb = new Map<number, (done: number, total: number) => void>();
 
 function ensureWorker(): Worker {
   if (worker !== undefined) return worker;
   worker = new Worker(new URL('../workers/pdf.worker.ts', import.meta.url), { type: 'module' });
   worker.addEventListener('message', (event: MessageEvent<ToolResponse>) => {
     const msg = event.data;
+    if ('progress' in msg) {
+      progressCb.get(msg.id)?.(msg.progress.done, msg.progress.total);
+      return;
+    }
     const entry = pending.get(msg.id);
     if (entry === undefined) return;
     pending.delete(msg.id);
+    progressCb.delete(msg.id);
     if (msg.ok) entry.resolve(msg.result);
     else entry.reject(new ToolWorkerError(msg.code, msg.message));
   });
@@ -77,13 +86,37 @@ export function runTool(
   options: Record<string, unknown>,
   files: WorkerFileInput[],
 ): Promise<unknown> {
+  return runToolWithProgress(tool, options, files).then((r) => r.result);
+}
+
+export interface ToolRunResult {
+  result: unknown;
+}
+
+/**
+ * Run a tool and receive per-item progress events while it works
+ * (pdf-to-image per page). The callback fires on the main thread; the
+ * promise resolves when the tool completes.
+ */
+export function runToolWithProgress(
+  tool: string,
+  options: Record<string, unknown>,
+  files: WorkerFileInput[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<ToolRunResult> {
   const w = ensureWorker();
   const id = nextId;
   nextId += 1;
   const transfer = transfersOf(files);
   const request: ToolRequest = { id, tool, options, files };
+  if (onProgress !== undefined) progressCb.set(id, onProgress);
   return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
+    pending.set(id, {
+      resolve: (result) => {
+        resolve({ result });
+      },
+      reject,
+    });
     w.postMessage(request, transfer);
   });
 }

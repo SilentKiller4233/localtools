@@ -9,23 +9,13 @@
 import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Badge, Button, Card, DropZone, ProgressBar } from '@localtools/ui';
-import { isDevTextWorkerError, runDevTextTool } from '../lib/devtext-worker-client';
+import { runDevTextTool } from '../lib/devtext-worker-client';
 import type { WorkerFileInput } from '../lib/devtext-worker-client';
+import { friendlyError } from '../lib/tool-errors';
 import type { RegisteredTool } from '../lib/tool-registry';
 import en from '../i18n/en.json';
 
 const UI = en.ui;
-
-const ERROR_TEXT: Record<string, string> = {
-  'empty-input': 'The input is empty — paste or select something first.',
-  'invalid-input': 'This content could not be parsed. Check the syntax and try again.',
-  'invalid-option': 'One of the options above is not valid — check the highlighted fields.',
-  'no-inputs': 'Provide the required inputs first.',
-  'size-limit': 'This input exceeds the processing size cap.',
-  'too-many-files': 'Too many files were supplied.',
-  'operation-failed': 'The operation failed. Please try again.',
-  'worker-crash': 'The dev-text worker stopped unexpectedly. Try again in a moment.',
-};
 
 export interface DevTextToolFrameProps {
   tool: RegisteredTool;
@@ -96,10 +86,7 @@ export function DevTextRunner(props: DevTextToolFrameProps) {
       setResult(raw);
       setProgress(100);
     } catch (err) {
-      const message = isDevTextWorkerError(err)
-        ? (ERROR_TEXT[err.code] ?? err.message)
-        : 'The operation failed. Please try again.';
-      setError(message);
+      setError(friendlyError(err, 'devtext'));
     } finally {
       setBusy(false);
       setProgress(undefined);

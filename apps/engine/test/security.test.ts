@@ -23,11 +23,16 @@ import { readdir } from 'node:fs/promises';
 let engine: TestApp;
 
 beforeAll(async () => {
+  // Test isolation (Phase 11): private temp root for this file's engines
+  // so parallel suites' in-flight request dirs never affect this file's
+  // root-scanning assertions (traversal scan + before/after dir count).
+  process.env['LOCALTOOLS_TEMP_ROOT'] = join(tmpdir(), 'localtools-engine-security-test');
   engine = await startEngine();
 });
 
 afterAll(async () => {
   await engine.close();
+  delete process.env['LOCALTOOLS_TEMP_ROOT'];
 });
 
 describe('health + headers (5.1/5.7)', () => {
@@ -143,7 +148,7 @@ describe('upload validation (5.2)', () => {
     // hostile name is display-only. We assert no traversal file lands in
     // the engine temp root during the request's lifetime by scanning the
     // root for anything named pwned.
-    const root = join(tmpdir(), 'localtools-engine');
+    const root = join(tmpdir(), 'localtools-engine-security-test');
     const pdf = await readFixture('simple-text.pdf');
     const form = multipartBody(
       { preset: 'ebook', file: 0 },
@@ -157,7 +162,7 @@ describe('upload validation (5.2)', () => {
 
 describe('temp-dir lifecycle (5.2)', () => {
   it('deletes the per-request temp dir on success AND failure (finally block)', async () => {
-    const root = join(tmpdir(), 'localtools-engine');
+    const root = join(tmpdir(), 'localtools-engine-security-test');
     const before = await readdir(root).catch(() => [] as string[]);
 
     // Success case: valid compressed run (needs Ghostscript; if missing

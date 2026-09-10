@@ -856,3 +856,76 @@ depends on a host node. Runtime resolution order (paths.rs):
 <resource>/engine/node/node → dev which(node) → honest error. The
 bundle was live-verified standalone: booted from the deployed copy,
 healthz green, SSRF guard active — before wiring it into the shell.
+
+### D-039 — Phase 11 unified error copy + engine health gating (lib/tool-errors.ts + lib/engine-health.ts + useEngineTooling)
+
+**Error copy consolidation.** Every runner page previously carried its
+own ERROR_TEXT map (pdf, image, devtext, speech) or fell back to
+`err.message` (EngineRunnerPage, DownloaderPage, TTS, audiobook — the
+engine messages are human-audited, but the GROUP C/TTS pages rendered
+`isEngineCallError ? err.message : generic`, and future taxonomy drift
+would leak). Phase 11 moves ALL copy into
+`apps/client/src/lib/tool-errors.ts`: one map per taxonomy
+(pdf/image/devtext/speech/engine/bridge) + `friendlyError(err, scope)`
+which resolves code → copy and ALWAYS falls back to a friendly sentence
+— never a technical message. The "no raw/unstyled error anywhere"
+acceptance (spec line 495) is now enforced by test:
+`apps/client/test/tool-errors.test.ts` extracts the codes from each
+package's own error-union source (pdf-core/src/errors.ts,
+devtext-core/src/types.ts, image-core/src/types.ts,
+media-core/src/speech.ts, apps/engine/src/errors.ts) and asserts copy
+exists for every one — adding a code without copy fails `pnpm verify`.
+
+**Engine health gating.** `lib/engine-health.ts` probes readiness:
+desktop shell → bridge `desktop_status {engineReady}` (no network);
+browser/dev/Docker → GET /healthz on the shared engine base URL
+(`lib/engine-url.ts`, extracted from engine-client so the health poll
+and calls can't drift). `hooks/useEngineTooling.ts` bundles: probe on
+mount + re-probe on the shell's `engine://ready` event, a gate-before-
+run (`gate()` returns false → pages render the shared ENGINE_DOWN_COPY
+banner), the tool-unavailable → ToolDownloadPrompt routing (previously
+only EngineRunnerPage + DownloaderPage had it; TTS + pdf-to-audiobook
+now do too — the Rust tool_for_endpoint already mapped both → piper),
+and a green installed-confirmation note after a helper lands. The
+engine-down state renders as a styled warning banner
+(.lt-engine-banner--down) with a "Check again" button — the rest of
+the app stays usable (Section 13).
+
+**Uninstalled-component dismissal copy** stays page-local ("This tool
+needs a component that isn't installed.") per the Phase 10 pattern.
+
+### D-040 — Phase 11 real worker progress + unified liveness (additive worker message contract)
+
+The frozen worker request/response contract is extended ADDITIVELY:
+`{ id, progress: { done, total } }` as a third response member (pdf +
+image worker clients). Handlers that never opted in ignore it, so no
+existing call site changes. `pdfToImage` (pdf-core) gained an
+`onProgress(done, total)` seam fired per rendered page;
+`runBatch` (image-core) gained the same per file. The workers thread
+these to the main thread via the new message; `runToolWithProgress` /
+`runImageToolWithProgress` register a callback per pending id. Real
+granularity where it exists (multi-page renders, 50-file batches),
+honest liveness elsewhere: `hooks/useFakeProgress.ts` replaces the
+four per-page synthetic tickers (which had drifted to +7/400ms,
++4/500ms, +3/400ms) with ONE app-wide cadence (start 5, +4 per 400ms,
+ceiling 90; `nextLivenessPercent` is a pure unit-tested function).
+**Batch outputs are now named after their ORIGINAL files**
+(`photo-localtools.webp`, not `image-3.webp`) — the worker carries the
+input names through, order-preserved.
+
+### D-041 — Engine temp-root isolation for parallel test suites (LOCALTOOLS_TEMP_ROOT)
+
+A pre-existing flake surfaced during Phase 11 verification: the
+downloader suite's "no oversized leftover" assertion scanned the
+SHARED engine temp root (%TEMP%/localtools-engine), which every engine
+vitest file (PDF/media/security/downloader — each in its own worker
+process) also writes to via its own in-flight request dirs. A sibling
+suite's mid-request 8MB input PDF tripped the 50KB assertion
+nondeterministically (the same race exists in security.test.ts's
+before/after dir-count and traversal-scan assertions). Fix: temp-dirs
+gains a `tempRoot()` seam honoring `LOCALTOOLS_TEMP_ROOT`; the
+downloader + security test files boot their engines under private
+roots (`localtools-engine-<suite>-test`), so root-scanning assertions
+see only their own requests. No production behavior change — the
+default root is unchanged; the desktop sidecar's scoped temp (child
+TEMP/TMP) composes with the default as before.

@@ -258,6 +258,38 @@
   font-size: var(--lt-font-size-body);
 }
 
+/* Phase 11: engine-down banner (health gating) + installed note. */
+.lt-engine-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lt-space-3);
+  padding: var(--lt-space-3);
+  border: 1px solid var(--lt-border);
+  border-radius: var(--lt-radius-card, 8px);
+  margin-bottom: var(--lt-space-3);
+}
+
+.lt-engine-banner p {
+  margin: 0;
+  font-size: var(--lt-font-size-body);
+}
+
+.lt-engine-banner--down {
+  background: var(--lt-warning-bg);
+  color: var(--lt-warning-text);
+  border-color: var(--lt-warning);
+}
+
+.lt-installed-note {
+  margin: 0;
+  padding: var(--lt-space-3);
+  border-radius: var(--lt-radius-card, 8px);
+  background: var(--lt-success-bg);
+  color: var(--lt-success-text);
+  font-size: var(--lt-font-size-body);
+}
+
 .lt-tool-actions {
   display: flex;
   align-items: center;

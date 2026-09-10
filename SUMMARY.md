@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-09, after Phase 10 — Desktop app (Tauri) complete_
+_Last updated: 2026-09-10, after Phase 11 — Integration polish complete_
 
 ## What this project is
 
@@ -8,14 +8,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 10 of 15 (Section 15)
+- Phases complete: 11 of 15 (Section 15)
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
 - Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); speech & audio complete — transcribe-media + auto-captions client-side via whisper.cpp WASM (fugood 1.1.3, D-029 dual-environment contract) and text-to-speech + pdf-to-audiobook engine-side via Piper 2023.11.14-2 (D-030/D-031), 18 engine + 17 media-core tests; ffmpeg.wasm small-clip path deferred (D-021/D-032)**
 - Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
 - Text & Dev suite: **complete — all 30 Group A tools + zip/unzip (Section 3.5) implemented in `@localtools/devtext-core` (172/172 tests), worker-offloaded client pages wired**
 - Desktop app (Tauri): **complete — Rust/Tauri 2.11 shell in `apps/desktop` (D-033): window + injected `window.__LOCALTOOLS__` invoke bridge (client never imports @tauri-apps/api), engine as a restricted child process (minimal env, scoped temp, loopback-only, taskkill-tree shutdown), pinned+SHA-verified lazy downloads for every native tool (D-034: yt-dlp, ffmpeg, piper, ghostscript, tesseract+eng data, libreoffice, qpdf-fallback plumbing D-035), engine bundle via pnpm deploy + node runtime (D-038); client download prompts on tool-unavailable (EngineRunnerPage/DownloaderPage + ToolDownloadPrompt); Linux CI smoke green (desktop-build job: build + cargo tests + real sidecar healthz); updater OFF until signing (D-037), unsigned-app bypass steps in README; manual click-through checklist in TESTS.md**
 - Docker Compose target: engine Dockerfile real (multi-stage bookworm-slim + ghostscript/tesseract/libreoffice/ffmpeg/pip-weasyprint, non-root, healthcheck); stack acceptance runs as the CI `compose-stack` job incl. a media round-trip (dev host has no Docker — D-015)
-- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 130 engine [82 Group B + 30 downloader + 18 speech] + 65 image-core + 172 devtext-core + 17 media-core) + build — all green; desktop shell tests run via cargo in the CI desktop-build job (5 rust tests incl. the ignored sidecar smoke)
+- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 130 engine [82 Group B + 30 downloader + 18 speech] + 65 image-core + 172 devtext-core + 17 media-core + 25 client [Phase 11: taxonomy copy-completeness, raw-error guarantee, health probe, liveness ticker, dispatch coverage]) + build — all green; desktop shell tests run via cargo in the CI desktop-build job (5 rust tests incl. the ignored sidecar smoke)
 
 ## What has been built so far
 
@@ -109,7 +109,16 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 - ffmpeg.wasm small-clip browser path (Group A; deferred per D-021 — schedule after Phase 9)
 - ~~Phase 10 — Tauri desktop shell + sidecar + lazy downloads~~ (complete — see above; manual click-through checklist pending owner run, TESTS.md)
-- Phase 11 — integration polish · Phase 12 — accessibility/responsiveness · Phase 13 — test/CI finalization (incl. wiring PWA/offline + worker-offload checks into `pnpm verify`) · Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010, enabling the desktop release matrix + updater decision per D-037)
+- ~~Phase 11 — Integration polish~~ (complete — unified error copy + health gating + consistent progress + batch polish, D-039/D-040; first client test suite added)
+- Phase 12 — accessibility/responsiveness · Phase 13 — test/CI finalization (incl. wiring PWA/offline + worker-offload checks into `pnpm verify`) · Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010, enabling the desktop release matrix + updater decision per D-037)
+
+**Phase 11 — Integration polish (health gating, progress, error states, batch)**
+
+- **Unified error copy (D-039)**: `apps/client/src/lib/tool-errors.ts` — one home for every taxonomy's human-readable copy (pdf / image / devtext / speech / engine / desktop-bridge) + `friendlyError(err, scope)` that resolves code→copy and always falls back to a friendly sentence, never a technical message. All five runner frames (ToolRunnerPage, ImagePageSpec, DevTextRunner, MediaSpeechPageSpec, DownloaderPage/EngineRunnerPage) render through it; the per-page ERROR_TEXT maps are gone. The "no raw/unstyled error anywhere" acceptance is test-enforced: `apps/client/test/tool-errors.test.ts` extracts every code from each package's own error-union source and asserts copy exists.
+- **Engine health gating (D-039)**: `lib/engine-health.ts` (bridge `desktop_status` in the shell, GET /healthz elsewhere; base URL shared via `lib/engine-url.ts`) + `hooks/useEngineTooling.ts` (probe on mount, re-probe on `engine://ready`, gate-before-run, tool-unavailable→download-prompt routing, green installed-confirmation note). Wired into ALL FOUR engine surfaces — EngineRunnerPage, DownloaderPage (Preview gate), text-to-speech, pdf-to-audiobook (TTS + audiobook previously had no download-prompt flow; the Rust `tool_for_endpoint` already mapped them → piper). Engine-down renders a styled warning banner + "Check again"; the rest of the app stays usable (Section 13).
+- **Consistent progress (D-040)**: `hooks/useFakeProgress.ts` — one app-wide liveness cadence (start 5, +4 per 400ms, ceiling 90; pure unit-tested `nextLivenessPercent`) replacing four drifted per-page tickers. REAL progress where granularity exists: pdf-core `pdfToImage` gained an `onProgress` seam (per rendered page) and image-core `runBatch` (per file); pdf/image worker clients gained an additive `{id, progress:{done,total}}` response member — non-opted-in handlers unchanged; `runToolWithProgress`/`runImageToolWithProgress` deliver it to the main thread. pdf-to-image and image batch now show true percentages.
+- **Batch polish**: image batch outputs keep their ORIGINAL file names (`photo-localtools.webp`, not `image-3.webp`) — the worker carries input names through, order-preserved.
+- **First client test suite**: vitest wired into `apps/client` (25 tests, 4 files): taxonomy copy-completeness, raw-error guarantee (known code → copy never technical; unknown/no-code → friendly fallback; bridge errors → retry copy), engine-health probe paths (mocked fetch + bridge), liveness-ticker semantics, registry dispatch coverage (97 tools, unique ids, valid suites/groups).
 
 **Phase 9 — Media speech & audio (STT, auto-captions, TTS, audiobook, complete)**
 
@@ -122,12 +131,12 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Key architectural decisions made so far
 
-D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as Ghostscript), D-021 (ffmpeg.wasm small-clip path deferred, not dropped — routing design recorded for its implementing phase), D-022 (media fixtures self-generated → license-clear by construction), D-023 (merge re-encodes; trim lossless-by-default), plus D-018/D-019 (devtext serializer + QR PNG encoder), D-016 (background-removal: onnxruntime + Apache-2.0 u2netp), D-017 (@jsquash Node init), D-015 and earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL/GPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node.
+D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as Ghostscript), D-021 (ffmpeg.wasm small-clip path deferred, not dropped — routing design recorded for its implementing phase), D-022 (media fixtures self-generated → license-clear by construction), D-023 (merge re-encodes; trim lossless-by-default), plus D-039/D-040 (Phase 11: unified error copy + engine health gating; real worker progress via additive message contract + unified liveness ticker), D-018/D-019 (devtext serializer + QR PNG encoder), D-016 (background-removal: onnxruntime + Apache-2.0 u2netp), D-017 (@jsquash Node init), D-015 and earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL/GPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node.
 
 ## Known issues / tech debt
 
 - Engine's Section 5 control set covers PDF/media Group B (Phase 4/7) and the Group C downloader's Section 5.8 SSRF set (Phase 8). The SSRF guards are proven against the local mock; before Phase 13, consider one adversarial re-review pass (bounty-style) of ssrf-guard.ts.
-- `apps/desktop` contains no code yet (README placeholder only).
+- `apps/desktop` ships the full Tauri shell (Phase 10); its manual click-through checklist (TESTS.md) is pending the owner's run on a clean machine.
 - CI is green on `main`; workflow remains untested against PRs/tags until later phases exercise them.
 - PWA/offline + worker-offload checks are not yet part of `pnpm verify` (manual scripts today); wiring them in is scheduled for Phase 13.
 - Safari/WebKit quirks on the new Worker render path (COOP/COEP, OffscreenCanvas limits) untested — Section 13 lists Safari WASM testing as required; schedule it during Phase 12/14 rather than assuming.
@@ -139,7 +148,7 @@ D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as 
 pnpm install          # pnpm-lock.yaml is committed
 pnpm dev              # client → http://localhost:5173 ; engine health → http://127.0.0.1:8787/healthz
 pnpm build            # all workspaces (client build also copies /pdfjs/* and /wasm/qpdf.wasm assets)
-pnpm verify           # format + lint + typecheck + 519 tests (165 pdf + 130 engine + 65 image + 172 devtext + 17 media-core) + build gate
+pnpm verify           # format + lint + typecheck + 574 tests (165 pdf + 130 engine + 65 image + 172 devtext + 17 media-core + 25 client) + build gate
 
 # Phase 7 surface: every Media Group B tool card is live at #/tool/<id> —
 # video/audio convert, compress, trim, merge, extract-audio, GIF, subtitles,

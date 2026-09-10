@@ -1,29 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Badge, Button, Card, DropZone, ProgressBar } from '@localtools/ui';
-import { isToolWorkerError, runTool } from '../lib/pdf-worker-client';
+import { runTool, runToolWithProgress } from '../lib/pdf-worker-client';
 import type { WorkerFileInput } from '../lib/pdf-worker-client';
+import { friendlyError } from '../lib/tool-errors';
 import { badgeLabel } from '../lib/tool-registry';
 import type { RegisteredTool } from '../lib/tool-registry';
 import en from '../i18n/en.json';
 
 const UI = en.ui;
-
-/** Human-readable rendering of the pdf-core error taxonomy (Section 9). */
-const ERROR_TEXT: Record<string, string> = {
-  'empty-input': 'The selected file appears to be empty. Try another file.',
-  'invalid-pdf': 'This file could not be read as a PDF. It may be damaged or not a PDF at all.',
-  'encrypted-pdf':
-    'This PDF is password-protected. Use the Unlock tool first, then come back and retry.',
-  'page-range': 'The page selection is empty or outside this document — check the page numbers.',
-  'no-inputs': 'Select at least one file first.',
-  'single-file-only': 'This tool processes one file at a time.',
-  'size-limit': 'This file is larger than the 500MB processing cap.',
-  'zero-page-pdf': 'This PDF contains no pages.',
-  'invalid-option': 'One of the settings above is not valid — check the highlighted fields.',
-  'qpdf-failed': 'The operation failed — the file or password may be invalid.',
-  'worker-crash': 'The processing worker stopped unexpectedly. Try again in a moment.',
-};
 
 export interface ToolFileSpec {
   /** How many files the tool takes. */
@@ -123,7 +108,17 @@ export function ToolRunnerPage({
     setResult(undefined);
     try {
       const options = await buildOptions();
-      const raw = await runTool(workerTool ?? tool.id, options, fileList);
+      // Phase 11: pdf-to-image reports real per-page progress from the
+      // worker; other tools keep the 1→100 step on completion.
+      const toolId = workerTool ?? tool.id;
+      const raw =
+        toolId === 'pdf-to-image'
+          ? (
+              await runToolWithProgress(toolId, options, fileList, (done, total) => {
+                if (total > 0) setProgress(Math.max(1, Math.round((done / total) * 100)));
+              })
+            ).result
+          : await runTool(toolId, options, fileList);
       setResult(raw);
       setProgress(100);
       // Standard outputs: Uint8Array single, { parts } multi, image array.
@@ -171,10 +166,7 @@ export function ToolRunnerPage({
       }
       setOutputs(outs.length > 0 ? outs : undefined);
     } catch (err) {
-      const message = isToolWorkerError(err)
-        ? (ERROR_TEXT[err.code] ?? err.message)
-        : 'The operation failed. Please try again.';
-      setError(message);
+      setError(friendlyError(err, 'pdf'));
     } finally {
       setBusy(false);
       setProgress(undefined);
