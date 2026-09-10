@@ -27,7 +27,7 @@ _Last updated: 2026-09-10 (early hours), end of session 13. Phase 10 (Desktop ap
 
 ## In-progress / uncommitted work
 
-None — tree is clean at `c07c145` (verify with `git status`). CI on `c07c145` is the only open loop (verify green from the watcher below).
+None — tree is clean at `47e2cc5` (verify with `git status`). Everything is pushed and CI is green on the final HEAD: run 34447371680 on `47e2cc5` (all 4 jobs success) and run 34417207017 on `14b916b` before it. No open loops.
 
 ## Next immediate steps (in order — do these first)
 
