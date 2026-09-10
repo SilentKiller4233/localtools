@@ -1,6 +1,6 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-10 (late), end of session 14. Phase 11 (Integration polish) COMPLETE: unified error copy + engine health gating + consistent/real progress + batch polish + first client test suite; plus D-041 engine temp-root test isolation (fixed a pre-existing flaky downloader test). `pnpm verify` fully green locally — 574 vitest tests (165 pdf + 130 engine + 65 image + 172 devtext + 17 media-core + 25 client) + 5 Rust shell tests; entry JS 120.69KB gzipped (budget 250KB)._
+_Last updated: 2026-09-10 (late), end of session 14. Phase 11 (Integration polish) COMPLETE and shipped: commit `4bf61ed`, **CI FULLY GREEN (run 34517122128 — all 4 jobs: verify ubuntu/windows, compose-stack, desktop-build)**. Unified error copy + engine health gating + consistent/real progress + batch polish + first client test suite; plus D-041 engine temp-root test isolation (fixed a pre-existing flaky downloader test). `pnpm verify` fully green locally — 574 vitest tests (165 pdf + 131 engine + 65 image + 172 devtext + 17 media-core + 25 client) + 5 Rust shell tests; entry JS 120.69KB gzipped (budget 250KB)._
 
 ## Where things stand right now
 
@@ -21,15 +21,14 @@ _Last updated: 2026-09-10 (late), end of session 14. Phase 11 (Integration polis
 
 ## In-progress / uncommitted work
 
-The Phase 11 changes are on disk but NOT yet committed (verify was the last gate; commit immediately at session start — see Next steps). `git status` shows ~19 modified/new files under apps/client, apps/engine, packages/pdf-core, packages/image-core, plus docs (DECISIONS/TESTS/SUMMARY/HANDOFF) and pnpm-lock.yaml (vitest devDep added to @localtools/client).
+None — tree is clean at the Phase 11 commit (`4bf61ed` + the HANDOFF CI-green follow-up docs commit), everything pushed, CI green on `4bf61ed` (run 34517122128). No open loops.
 
 ## Next immediate steps (in order — do these first)
 
-1. **Commit + push Phase 11** (this session ended at the verify-green point): `git add -A && git commit -m "feat(client): Phase 11 — integration polish (unified error copy, engine health gating, real progress, batch naming) + client test suite"` — conventional-commit style per protocol; docs ride in the same commit. Then push and WATCH CI to green (all 4 jobs: verify ubuntu/windows, compose-stack, desktop-build).
-2. **Phase 12 — Accessibility & responsiveness** (spec Section 15): acceptance = Section 14.6 passes (automated + logged manual items) across all four suites. WCAG 2.1 AA audit pass, 390px viewport responsive check, keyboard/ARIA sweep, Safari/WebKit WASM quirks (COOP/COEP — noted in SUMMARY tech debt; schedule it here or Phase 14).
-3. Standing pattern for engine tools: GroupBRequestHarness + runSubprocess + tool-paths resolver; new lazy-download = one manifest.rs row + one EnvBinding (unchanged from Phase 10).
-4. ffmpeg.wasm small-clip rider stays deferred (D-021/D-032) — revisit before Phase 13.
-5. Phase 13 will wire PWA/offline + worker-offload checks into `pnpm verify` (still manual scripts today).
+1. **Phase 12 — Accessibility & responsiveness** (spec Section 15): acceptance = Section 14.6 passes (automated + logged manual items) across all four suites. WCAG 2.1 AA audit pass, 390px viewport responsive check, keyboard/ARIA sweep, Safari/WebKit WASM quirks (COOP/COEP — noted in SUMMARY tech debt; schedule it here or Phase 14).
+2. Standing pattern for engine tools: GroupBRequestHarness + runSubprocess + tool-paths resolver; new lazy-download = one manifest.rs row + one EnvBinding (unchanged from Phase 10).
+3. ffmpeg.wasm small-clip rider stays deferred (D-021/D-032) — revisit before Phase 13.
+4. Phase 13 will wire PWA/offline + worker-offload checks into `pnpm verify` (still manual scripts today).
 
 ## Blockers / open decisions needing human input
 
