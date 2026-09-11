@@ -170,8 +170,8 @@ jobs:
       - name: Install Chromium (Playwright registry)
         run: pnpm --filter @localtools/client exec playwright install chromium --with-deps
 
-      - name: Build the client (production)
-        run: pnpm --filter @localtools/ui build && pnpm --filter @localtools/client build
+      - name: Build the workspace (production; turbo orders deps)
+        run: pnpm build
 
       - name: Serve the production build
         run: |
