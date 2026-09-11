@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-11, after Phase 12 — Accessibility & responsiveness complete_
+_Last updated: 2026-09-12, after Phase 13 — Testing & CI finalization complete_
 
 ## What this project is
 
@@ -8,7 +8,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 12 of 15 (Section 15)
+- Phases complete: 13 of 15 (Section 15)
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
 - Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); speech & audio complete — transcribe-media + auto-captions client-side via whisper.cpp WASM (fugood 1.1.3, D-029 dual-environment contract) and text-to-speech + pdf-to-audiobook engine-side via Piper 2023.11.14-2 (D-030/D-031), 18 engine + 17 media-core tests; ffmpeg.wasm small-clip path deferred (D-021/D-032)**
 - Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
@@ -111,7 +111,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - ~~Phase 10 — Tauri desktop shell + sidecar + lazy downloads~~ (complete — see above; manual click-through checklist pending owner run, TESTS.md)
 - ~~Phase 11 — Integration polish~~ (complete — unified error copy + health gating + consistent progress + batch polish, D-039/D-040; first client test suite added)
 - ~~Phase 12 — Accessibility & responsiveness~~ (complete — see the Phase 12 section below)
-- Phase 13 — test/CI finalization (incl. wiring PWA/offline + worker-offload checks into `pnpm verify`) · Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010, enabling the desktop release matrix + updater decision per D-037)
+- Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010 — which also activates Dependabot — enabling the desktop release matrix + updater decision per D-037)
 
 **Phase 11 — Integration polish (health gating, progress, error states, batch)**
 
@@ -139,6 +139,15 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - **WebKit/Safari (Section 13)**: `webkit-wasm-smoke.mjs` (Playwright WebKit — Safari's engine) proves the app boots, qpdf-wasm runs a real protect-pdf end-to-end, `crossOriginIsolated === false` (the D-029 no-COOP/COEP contract holds), and the devtext worker is healthy. True macOS Safari hardware remains the owner's manual item (TESTS.md).
 - **Major pre-existing bug fixed (D-042)**: EVERY Text & Dev tool was broken in browsers since Phase 6 — the devtext worker's import of devtext-core threw at module-evaluation (ulid's detectPrng sees no window in a Worker; clean-css/terser read `process.platform` at init). The keyboard sweep surfaced it; fixes: in-house ULID (Crockford base32 over crypto bytes; ulid demoted to devDep for the test cross-check), minimal browser `process` shim at the worker entry, prettier switched to `prettier/standalone` + explicit parser plugins (its browser bundle can't resolve parsers from the Node registry). Verified empirically: 36/36 devtext tool variants run through the real production Worker in Chromium + json-formatter in WebKit. Lesson: Node-only test suites can't catch module-eval environment assumptions — Worker-imported packages must be exercised in a Worker.
 
+**Phase 13 — Testing & CI finalization (Section 14 wired into verify + both workflows, complete)**
+
+- **14.5 bundle-size gate**: `apps/client/scripts/bundle-size-check.mjs` (client `postbuild`, so every build gates it) walks the now-emitted Vite manifest's entry static-import graph and gzip-9s each chunk — initial = entry JS + entry CSS = **121.60KB gzipped vs the 250KB budget** (BUNDLE_SIZE_PASS; fails the build on regression; a near-budget 10% warning tier is recorded, not fatal).
+- **Self-contained acceptance checks**: the PWA offline check (Section 8) was rewritten from the kill-the-server two-phase design to browser-level `setOfflineMode(true)` with its own ephemeral-port `vite preview` (OFFLINE_RELOAD_PASS, 18 cards from cache); the 50MB worker-offload check (14.5) got the same treatment (own server, 0 long tasks / 0ms, WORKER_OFFLOAD_PASS). Both share `lib/find-chrome.mjs`, run at the end of `pnpm verify`, and again as explicit steps in the CI accessibility job.
+- **14.8 licensing gate**: `tools/licensing-check.mjs` — zero-dep grep of DECISIONS.md for the five required notes (Ghostscript AGPL+subprocess, ffmpeg variant, @imgly fallback, RAR extraction-only, D-026 mock-downloader); in `pnpm verify` AND a dedicated CI `licensing` job.
+- **14.4 shell-string canary** (acceptance: verified once manually then reverted): flipped `shell:false`→`true` in subprocess.ts live — security.test.ts still passed 15/15 (hostile input never reaches argv; layered defense) but the new `apps/engine/test/shell-canary.test.ts` failed with `SHELL_CANARY_FAIL: subprocess.ts: shell:true`; reverted, all green. The canary is committed permanently: bans `shell:true`, `exec/execSync`, and spawn-without-explicit-`shell:false` in any child_process-importing engine source file (import-aware — RegExp.exec / comment "spawn" don't false-positive).
+- **Supply chain (5.4/5.5 + DoD)**: `pnpm audit --audit-level high` rides the verify CI matrix; new `supply-chain` CI job = Trivy scan of the built engine image (`--severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed`) + `cargo audit --deny warnings`; `.github/dependabot.yml` (weekly npm/cargo/actions groups — inert until the D-010 public flip). Two real advisories found & fixed while wiring the gate: **js-yaml 4.3.1 → 4.3.2** (GHSA-2883-xcg3-v3hh, high — merge-key CPU DoS in devtext-core's YAML path) and **adm-zip 0.6.0 → 0.6.1** via root pnpm override (GHSA-vwc7-r8mq-g2x9, moderate — transitive of onnxruntime-node). `pnpm audit` now clean.
+- **release-desktop.yml**: real three-OS tauri-action matrix (windows/macos/ubuntu, engine-dist step, draft release) written; stays `if: false` until the Phase 15 D-037 signing decision — the CI desktop-build job already exercises every piece of the same pipeline.
+
 ## Key architectural decisions made so far
 
 D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as Ghostscript), D-021 (ffmpeg.wasm small-clip path deferred, not dropped — routing design recorded for its implementing phase), D-022 (media fixtures self-generated → license-clear by construction), D-023 (merge re-encodes; trim lossless-by-default), plus D-039/D-040 (Phase 11: unified error copy + engine health gating; real worker progress via additive message contract + unified liveness ticker), D-018/D-019 (devtext serializer + QR PNG encoder), D-016 (background-removal: onnxruntime + Apache-2.0 u2netp), D-017 (@jsquash Node init), D-015 and earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL/GPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node.
@@ -148,7 +157,6 @@ D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as 
 - Engine's Section 5 control set covers PDF/media Group B (Phase 4/7) and the Group C downloader's Section 5.8 SSRF set (Phase 8). The SSRF guards are proven against the local mock; before Phase 13, consider one adversarial re-review pass (bounty-style) of ssrf-guard.ts.
 - `apps/desktop` ships the full Tauri shell (Phase 10); its manual click-through checklist (TESTS.md) is pending the owner's run on a clean machine.
 - CI is green on `main`; workflow remains untested against PRs/tags until later phases exercise them.
-- PWA/offline + worker-offload checks are not yet part of `pnpm verify` (manual scripts today); wiring them in is scheduled for Phase 13.
 - Safari/WebKit WASM: Playwright WebKit smoke green (qpdf-wasm end-to-end, no COOP/COEP needed per D-029, devtext worker healthy — Phase 12, runs in CI); the remaining piece is true macOS Safari hardware (owner manual item in TESTS.md) — OffscreenCanvas limits on the pdf render path are the specific thing to watch there.
 - Redaction's v1 contract: text removal is genuine; image XObjects inside a box are covered visually but not pixel-removed (true image redaction needs the render pipeline — noted in-code as a future enhancement, consistent with the spec's algorithm).
 

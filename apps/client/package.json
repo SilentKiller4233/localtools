@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postbuild": "node scripts/bundle-size-check.mjs",
+    "check:offline": "node scripts/offline-test.mjs",
+    "check:worker-offload": "node scripts/worker-offload-test.mjs"
   },
   "dependencies": {
     "@localtools/devtext-core": "workspace:*",

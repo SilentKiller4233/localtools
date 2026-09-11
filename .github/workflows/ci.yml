@@ -27,8 +27,75 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify (format + lint + typecheck + build)
+      - name: Verify (format + lint + typecheck + build + tests + 14.5 bundle-size + 14.8 licensing gates)
         run: pnpm verify
+
+      # Section 5.5 supply-chain: fail on high/critical known vulns in the
+      # committed lockfile (dev + prod both — a dev-dep vuln in a build
+      # pipeline is still a real vuln).
+      - name: pnpm audit (fail on high/critical)
+        run: pnpm audit --audit-level high
+
+  licensing:
+    # Section 14.8: the required licensing notes must exist in
+    # DECISIONS.md (Ghostscript AGPL/subprocess reasoning, ffmpeg variant,
+    # @imgly/background-removal status, RAR constraint, mock-downloader
+    # decision). Also the Section 14.8 CI job from the Definition of Done.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Required licensing notes present in DECISIONS.md
+        run: node tools/licensing-check.mjs
+
+  supply-chain:
+    # Section 5.5 + 14.7: Trivy scan of the built engine image failing on
+    # new HIGH/CRITICAL findings, plus cargo audit for the Rust shell.
+    # (Scanning the image requires building it — ubuntu only, same as the
+    # compose-stack job; the Windows dev host has no Docker, D-015.)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy --version
+
+      - name: Build the engine image
+        run: docker compose build engine
+
+      - name: Trivy scan — engine image (fail on HIGH/CRITICAL)
+        run: |
+          set -euo pipefail
+          IMAGE="$(docker compose config --images | grep -E 'localtools|engine' | head -n1)"
+          echo "scanning: $IMAGE"
+          trivy image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed "$IMAGE"
+
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit
+
+      - name: cargo audit — Rust shell lockfile
+        working-directory: apps/desktop/src-tauri
+        run: cargo audit --deny warnings
 
   compose-stack:
     # Phase 4 acceptance: the Docker stack test (Section 14.7 engine round
@@ -196,6 +263,12 @@ jobs:
         run: |
           pnpm --filter @localtools/client exec playwright install webkit --with-deps
           cd apps/client && node scripts/webkit-wasm-smoke.mjs
+
+      - name: Section 14.5 — worker-offload check (50MB PDF, zero main-thread blocking)
+        run: cd apps/client && node scripts/worker-offload-test.mjs
+
+      - name: Section 8 — PWA offline reload (service-worker cache)
+        run: cd apps/client && node scripts/offline-test.mjs
 
   desktop-build:
     # Phase 10 acceptance (Section 14.7): build the Tauri shell on Linux,

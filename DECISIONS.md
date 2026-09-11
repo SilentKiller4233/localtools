@@ -988,3 +988,89 @@ WebKit): app boots, qpdf-wasm runs a real protect-pdf end-to-end, the
 D-029 contract holds (no COOP/COEP needed — not crossOriginIsolated),
 devtext worker healthy. True macOS Safari remains an owner manual item
 (TESTS.md) — no macOS host in CI yet.
+
+## Phase 13 — Testing & CI finalization
+
+### D-043 — Phase 13 wiring decisions (Section 14 suite into verify + CI; supply chain)
+
+The spec's Phase 13 acceptance: "CI green on a clean PR; the
+shell-string-subprocess canary test (14.4) verified once manually then
+reverted." What shipped, and the calls inside it:
+
+1. **Bundle-size gate is manifest-walked, not listed by hand.**
+   `apps/client/scripts/bundle-size-check.mjs` walks the Vite manifest's
+   entry static-import graph (entry + imports, recursive; dynamic imports
+   excluded by design — those are the per-tool lazy chunks) and gzips each
+   chunk at level 9. Vite's manifest is now emitted
+   (`build.manifest: true`) for this. Initial = 121.60KB gzipped vs the
+   250KB budget (BUNDLE_SIZE_PASS; the hand-quoted "120.75KB entry JS"
+   figure in earlier docs was entry-JS-only — the gate counts entry JS +
+   entry CSS, the honest "what loads before any interaction" number).
+   Runs as the client `postbuild` script → part of every `pnpm build`,
+   hence `pnpm verify` and every CI job that builds.
+
+2. **The offline check became browser-level self-contained.** The
+   original Phase 2 script needed a caller to kill the server between
+   warmup/verify phases — unwirable into one verify step. Rewritten
+   (`apps/client/scripts/offline-test.mjs`): starts its own
+   `vite preview` on an ephemeral port, then simulates network-gone via
+   puppeteer's `setOfflineMode(true)` (SW cache hits never reach the
+   intercepted network layer, so the "server is gone" condition is
+   faithfully reproduced), reloads, asserts the Media suite renders.
+   OFFLINE_RELOAD_PASS locally with 18 tool cards from cache. The old
+   two-phase design lives in git history.
+
+3. **Worker-offload check is also self-contained** (own preview server
+   on :4181, always-torn-down) and both browser checks share the Phase 12
+   `lib/find-chrome.mjs` discovery (system Chrome → Playwright registry).
+   Both are wired at the END of root `pnpm verify` (after build) AND as
+   explicit steps in the CI accessibility job (redundant by design —
+   the a11y job already has the browser installed; verify keeps them
+   because the dev host has Chrome).
+
+4. **14.8 licensing gate = `tools/licensing-check.mjs`**, a zero-dependency
+   grep of DECISIONS.md for the five required notes (Ghostscript
+   AGPL+subprocess, ffmpeg variant, @imgly status/fallback, RAR
+   extraction-only constraint, D-026 mock-downloader). In root
+   `pnpm verify` AND a dedicated CI `licensing` job (the spec asks for
+   "a CI job grepping" — both belt and suspenders).
+
+5. **Shell-string canary (14.4 acceptance) — both readings satisfied.**
+   The spec sentence says "verified once manually then reverted", but a
+   reverted-only canary guards nothing tomorrow. So: (a) the live
+   verification happened — `shell:false` flipped to `shell:true` in
+   subprocess.ts, security.test.ts STILL PASSED (15/15) because hostile
+   input never reaches argv (fresh internal names, zod enums — the
+   layered defense holds), then the new canary
+   `apps/engine/test/shell-canary.test.ts` FAILED with
+   `SHELL_CANARY_FAIL: subprocess.ts: shell:true`, then the patch was
+   reverted and everything went green. This proves the canary catches
+   exactly the class the functional tests cannot. (b) The canary is
+   COMMITTED as a permanent regression guard — import-aware
+   (child_process only; RegExp.exec and comment "spawn" mentions don't
+   false-positive), banning `shell:true`, `exec/execSync`, and
+   spawn-without-explicit-`shell:false` in any engine source file.
+
+6. **Supply-chain job (Section 5.5 / DoD):** `pnpm audit --audit-level
+high` rides on the verify matrix (fail on any high/critical advisory
+   in the committed lockfile); a dedicated `supply-chain` CI job builds
+   the engine image and Trivy-scans it (`--severity HIGH,CRITICAL
+--exit-code 1 --ignore-unfixed`) plus `cargo audit --deny warnings`
+   on the Rust shell. Two real advisories were found and FIXED before
+   wiring the gate: js-yaml 4.3.1 → 4.3.2 (GHSA-2883-xcg3-v3hh, high,
+   devtext-core's YAML merge-key CPU DoS) and adm-zip 0.6.0 → 0.6.1 via
+   root pnpm override (GHSA-vwc7-r8mq-g2x9, moderate, transitive of
+   onnxruntime-node). `--ignore-unfixed` on Trivy because bookworm-slim
+   base-layer CVEs without an available fix would otherwise permanently
+   red the job (recorded here; revisit per-release).
+
+7. **Dependabot** (`.github/dependabot.yml`): weekly npm + cargo +
+   github-actions groups. Inert while the repo is private without
+   dependency-graph enabled (D-010 public flip in Phase 15 activates it
+   for real); committed now so the flip needs no further change.
+
+8. **release-desktop.yml got its real three-OS tauri-action matrix**
+   (windows/macos/ubuntu, engine-dist step, draft release) but stays
+   `if: false` until Phase 15's signing decision (D-037) — publishing
+   unsigned artifacts from a tag early would be worse than not having
+   the pipeline. The comment block documents the exact enable step.
