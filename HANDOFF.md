@@ -23,7 +23,7 @@ _Last updated: 2026-09-11 (evening), end of session 15. Phase 12 (Accessibility 
 
 ## In-progress / uncommitted work
 
-None after the Phase 12 commit — everything (code + docs) is committed as `feat(client): Phase 12 — accessibility & responsiveness` and pushed; CI run in flight (verify ubuntu/windows, compose-stack, **accessibility (new)**, desktop-build). Check the run before starting Phase 13; if the accessibility job fails on runner differences, the scripts take `CHROME_PATH` and all four print a failing line before exit 1.
+None — tree is clean at the Phase 12 commit `88172c1` plus the CI fix-forward `bc0103d` (the first push's workflow had a bare `version:` key on pnpm/action-setup in the new accessibility job — GitHub rejected the whole file with zero jobs; fixed with the proper `with:` block). CI run 34609413694 in flight (verify ubuntu/windows, compose-stack, **accessibility (new — first run)**, desktop-build). Confirm it green before starting Phase 13; if the accessibility job fails on runner differences, the scripts take `CHROME_PATH` and all four print a failing line before exit 1.
 
 ## Next immediate steps (in order — do these first)
 
