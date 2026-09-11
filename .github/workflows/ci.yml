@@ -86,8 +86,20 @@ jobs:
       - name: Trivy scan — engine image (fail on HIGH/CRITICAL)
         run: |
           set -euo pipefail
-          IMAGE="$(docker compose config --images | grep -E 'localtools|engine' | head -n1)"
+          # `docker compose config --images` lists every service's image —
+          # pick the ENGINE's exactly (line 2 is the client's; grep has
+          # already bitten us once by matching the wrong service).
+          IMAGE="$(docker compose config --images engine 2>/dev/null || true)"
+          if [ -z "$IMAGE" ]; then
+            # Older compose versions don't filter by service — fall back
+            # to the deterministic <project>-<service> naming.
+            IMAGE="$(docker compose config --format json | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{const cfg=JSON.parse(s);const svc=cfg.services.engine;console.log(svc.image ?? '')}")"
+          fi
+          if [ -z "$IMAGE" ]; then
+            IMAGE="$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -- '-engine' | head -n1)"
+          fi
           echo "scanning: $IMAGE"
+          test -n "$IMAGE"
           trivy image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed "$IMAGE"
 
       - name: Install cargo-audit
