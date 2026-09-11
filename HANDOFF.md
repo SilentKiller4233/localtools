@@ -1,67 +1,62 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-11 (night), end of session 15. Phase 12 (Accessibility & responsiveness) COMPLETE and shipped: code commit `88172c1` + two CI fix-forwards (`bc0103d` workflow-schema, `cae5806` build order) — **CI FULLY GREEN (run 34612031724 — all 5 jobs: verify ubuntu/windows, compose-stack, accessibility (NEW, first run green), desktop-build)**. `pnpm verify` green locally: 578 tests (165 pdf + 131 engine + 65 image + 172 devtext + 17 media-core + 28 client); entry JS 120.75KB gzipped (budget 250KB). Includes a MAJOR pre-existing bug fix: every Text & Dev tool was broken in browsers since Phase 6 (devtext worker module-init failures) — fixed + verified 36/36 in real browser Workers._
+_Last updated: 2026-09-12 (early AM), end of session 16. Phase 13 (Testing & CI finalization) COMPLETE: commit `f9a1e32` on branch `phase-13-ci-finalization`, PR #1 (the repo's FIRST PR — also retires the "workflows untested against PRs" known-issue). All Section 14 suite wired into `pnpm verify` + both workflows. `pnpm verify` green locally with the new gates (580 tests; BUNDLE_SIZE / LICENSING / WORKER_OFFLOAD / OFFLINE_RELOAD all PASS). CI on the PR in flight at session end — see "Where things stand" for the exact state._
 
 ## Where things stand right now
 
-**Phases 0–12 complete (12 of 15).** Phase 12 shipped this session (D-042):
+**Phases 0–13 complete (13 of 15).** Phase 13 shipped this session (D-043):
 
-- **axe-core gate (Section 14.6)**: `apps/client/scripts/a11y-scan.mjs` — every route (home + 4 suites + /dev/ui-preview + 97 tool pages) × BOTH themes, WCAG 2.x AA + best-practice tags; zero critical/serious/moderate/minor on the final build (initial scan: 292 critical/serious — all fixed at source). Runs as the new CI `accessibility` job → fails the build.
-- **Token WCAG test**: `apps/client/test/token-contrast.test.ts` (in `pnpm verify` — 3 new tests) computes real contrast ratios for every composed token pair, both themes. It caught 3 hover/text states axe can't see: dark accent-hover #388bfd→#2a6fe0, NEW `--lt-accent-text` token (light #0f62fe / dark #58a6ff) for accent-as-text (dark fill-blue was 3.73:1 on surface), light faint #9ca3af→#7d8590 (placeholders ≥3:1).
-- **DropZone rebuilt (the 268-violation fix)**: native file input IS the interactive control (focusable, Enter/Space, aria-label) — wrapper is a plain div with drag handlers; focus ring via CSS `:has()`. `packages/ui/src/DropZone.tsx` + `styles/drop-zone.css`.
-- **390px responsive**: `responsive-check.mjs` — 13 routes × 390/768/1280px, zero overflow/off-viewport controls. SuiteNav wraps <720px, tabs wrap, tighter gutters <480px, headers wrap.
-- **Keyboard sweep**: `keyboard-sweep.mjs` — Tab-order walk on all 103 routes + 4 real keyboard-only tool runs (merge-pdf / json-formatter / image-converter complete; video-converter reaches designed engine-gated state). Skip-to-content button in SuiteNav (programmatic main.focus()); ThemeToggle now in the production nav (was only on /dev/ui-preview — Section 8 gap); inert nav search removed.
-- **WebKit WASM smoke (Section 13)**: `webkit-wasm-smoke.mjs` (Playwright WebKit) — boots, qpdf-wasm protect-pdf end-to-end, `crossOriginIsolated === false` (D-029 no-COOP/COEP contract), devtext worker healthy. Runs in the CI accessibility job.
-- **THE BIG FIX — Text & Dev suite was fully broken in browsers since Phase 6** (Node tests never saw it): (1) ulid@2.4.0 module-eval `detectPrng()` throws in windowless Workers → in-house ULID in `devtext-core/src/tools/generators.ts` (Crockford base32 over crypto bytes; ulid demoted to devDep, tests cross-check via decodeTime); (2) clean-css/terser read `process.platform` at module-eval → minimal browser `process` shim at the devtext worker entry (`apps/client/src/workers/devtext.worker.ts`); (3) prettier browser bundle can't resolve parsers → `prettier/standalone` + explicit postcss/babel/estree/html plugins in `devtext-core/src/tools/minify.ts`. Verified: 36/36 devtext tool variants through the real production Worker in Chromium (sweep deleted after use — the coverage lives in keyboard-sweep + WebKit smoke + the suite tests), 172/172 devtext Node tests still green.
-- **Shared Chrome discovery**: `apps/client/scripts/lib/find-chrome.mjs` (system Chrome → Playwright registry) so CI can install Chromium via playwright; `axe-core` + `playwright` are new client devDeps.
+- **14.5 bundle-size gate**: `apps/client/scripts/bundle-size-check.mjs` as the client `postbuild` (every build gates it) — walks the Vite manifest's entry static-import graph (manifest now emitted, `build.manifest: true`), gzip-9 per chunk. Initial = 121.60KB gzipped (entry JS 117.62 + entry CSS 3.98) vs 250KB budget. Warn-tier within 10% of budget (recorded, not fatal).
+- **Self-contained acceptance checks, both in `pnpm verify` (after build) AND as steps in the CI accessibility job**: worker-offload (own `vite preview` :4181, 52MB fixture → 0 long tasks) and the REWRITTEN offline check (browser-level `setOfflineMode(true)` instead of the old kill-the-server two-phase; own preview :4182; SW renders Media suite w/ 18 cards). Both share `scripts/lib/find-chrome.mjs`.
+- **14.8 licensing gate**: `tools/licensing-check.mjs` — five required DECISIONS.md notes; in `pnpm verify` + a dedicated CI `licensing` job.
+- **14.4 shell-string canary — the acceptance's "verified once manually then reverted" is DONE and evidenced**: flipped `shell:false`→`true` in subprocess.ts; security.test.ts still passed 15/15 (hostile input never reaches argv — layered defense holds); the new `apps/engine/test/shell-canary.test.ts` failed with `SHELL_CANARY_FAIL: subprocess.ts: shell:true`; reverted (git diff clean); canary committed as a PERMANENT import-aware guard (bans `shell:true`, `exec/execSync`, spawn-without-`shell:false` in any child_process-importing engine file; RegExp.exec/comment-"spawn" don't false-positive).
+- **Supply chain (5.4/5.5/DoD)**: `pnpm audit --audit-level high` rides the verify CI matrix (after every `pnpm verify`); new CI `supply-chain` job = Trivy `--severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed` on the built engine image + `cargo audit --deny warnings`; `.github/dependabot.yml` (npm/cargo/actions, weekly — INERT until the D-010 public flip or owner-enables dependency graph). Two REAL advisories found & fixed while wiring the audit gate: **js-yaml 4.3.1→4.3.2** (GHSA-2883-xcg3-v3hh high — merge-key CPU DoS; devtext-core's direct dep) and **adm-zip 0.6.0→0.6.1** via root `pnpm.overrides` (GHSA-vwc7-r8mq-g2x9 moderate — transitive of onnxruntime-node). `pnpm audit` now fully clean.
+- **release-desktop.yml**: real three-OS tauri-action matrix (windows/macos/ubuntu, engine-dist step, draft release) written; stays `if: false` until Phase 15's D-037 signing decision — the CI desktop-build job already exercises the same pipeline pieces.
 
 ## Last thing done
 
-1. All four Phase 12 scripts green on the final build: A11Y_SCAN_PASS (206 route-theme scans, 0 violations), RESPONSIVE_CHECK_PASS, KEYBOARD_SWEEP_PASS, WEBKIT_WASM_SMOKE_PASS.
-2. `pnpm verify` green (578 tests: 165 pdf + 131 engine + 65 image + 172 devtext + 17 media-core + 28 client; entry JS 120.75KB gzipped, budget 250KB).
-3. Docs: DECISIONS.md D-042; TESTS.md Phase 12 section (incl. the two PENDING owner manual items: screen-reader spot-check per suite, true macOS Safari); SUMMARY.md Phase 12 (12/15); this HANDOFF.
+1. `pnpm verify` green END-TO-END with the new chain: format+lint+typecheck → 580 tests (165 pdf + 133 engine [131 + 2 shell-canary] + 65 image + 172 devtext + 17 media-core + 28 client) → build (+bundle-size postbuild: BUNDLE_SIZE_PASS 121.60KB) → LICENSING_CHECK_PASS → WORKER_OFFLOAD_PASS → OFFLINE_RELOAD_PASS.
+2. Commit `f9a1e32` on `phase-13-ci-finalization`, pushed, **PR #1 opened** (first PR in repo history). CI in flight at session end — 7 jobs: verify×2, compose-stack, desktop-build, accessibility (+2 new steps), licensing (new), supply-chain (new).
+3. Docs: DECISIONS.md D-043 (8 numbered sub-decisions); TESTS.md Phase 13 section (11 rows); SUMMARY.md at 13/15 (test-suite bullet, Phase 13 built-section, known-issues cleaned); this HANDOFF.
 
 ## In-progress / uncommitted work
 
-None — tree is clean at `cae5806`, everything pushed, CI green on `cae5806` (run 34612031724 — all 5 jobs). Two CI fix-forwards after the initial push: `bc0103d` (the new job's pnpm/action-setup had a bare `version:` key — GitHub rejected the whole workflow with zero jobs; proper `with:` block restores it) and `cae5806` (the job built @localtools/ui directly before @localtools/shared-types had a dist — switched to `pnpm build` so turbo orders deps). No open loops.
+The Phase 13 commit is pushed; working tree clean on the branch. **OPEN LOOP: PR #1's CI runs must be confirmed green and the PR merged to main** — that merge IS the acceptance ("CI green on a clean PR"). If a job fails, fix-forward on the branch and re-push (never force-push main).
 
 ## Next immediate steps (in order — do these first)
 
-1. **Phase 13 — Testing & CI finalization** (spec Section 15): full Section 14 suite wired into `pnpm verify` + workflows. Known gaps: PWA offline check + worker-offload check are still manual scripts (`apps/client/scripts/offline-test.mjs`, `worker-offload-test.mjs`) — wire them into verify/CI; the shell-string-subprocess canary (14.4) verified once manually then reverted.
-2. The 14-step manual click-through checklist (TESTS.md) + Phase 12's two manual items (screen-reader spot-check ×4 suites, macOS Safari hardware) remain owner items before v1.0.0.
-3. Phase 14 (performance/size: Section 14.5 metrics into README incl. Docker image size) then Phase 15 (docs/release).
-4. ffmpeg.wasm small-clip rider still deferred (D-021/D-032) — decide before Phase 15 whether it ships in v1 or moves to the roadmap.
+1. **Watch PR #1 CI to completion** (run 34633815682). `gh pr checks 1`. If all green → `gh pr merge 1 --merge` (or rebase per repo convention — no convention yet; merge is fine) → main's own CI run must also be green (fix-forward if not). If a job fails, read its log, fix on the branch, push; the PR updates itself.
+2. **Phase 14 — Performance & size pass** (spec Section 15 / 14.5): Lighthouse-style metrics recorded in README (perf was 82 at Phase 2 — re-measure on the current build; a11y 100 / BP 100 / SEO 91); Docker image size note (Section 11 — the engine image is big: bookworm-slim + LO/ffmpeg/piper; measure via `docker compose build` on CI or note the estimate honestly); bundle numbers already gated by the new 14.5 check.
+3. **Phase 15 — Documentation & release**: README (what/why, screenshots per suite, two quick-starts, full tool list, Mermaid architecture), LEGAL.md (Section 6), CONTRIBUTING.md, TESTS.md fully logged, DECISIONS.md finalized (must contain every 14.8 note — the new licensing-check enforces it), public flip (D-010 — activates Dependabot), signing/updater decision (D-037 → un-gate release-desktop.yml), tag v1.0.0.
+4. Owner manual items before v1.0.0 (TESTS.md): 14-step desktop click-through (clean machine/VM), screen-reader spot-check ×4 suites, true macOS Safari pass.
 
 ## Blockers / open decisions needing human input
 
-- Owner items: manual click-through (clean machine/VM, TESTS.md), screen-reader spot-check (4 suites), true macOS Safari pass — all logged in TESTS.md Phase 12 rows.
-- Signing/updater decision deferred to Phase 15 (D-037).
-- Unilateral defaults this session (all in DECISIONS.md D-042, override if desired): the specific replacement token values (#57606e, #2a6fe0, #58a6ff, #7d8590), the in-house ULID (vs pinning/patching ulid), the browser `process` shim in the devtext worker (vs lazy-import refactors), prettier/standalone + explicit plugins, skip-link as a button (vs hash anchor), ThemeToggle in the suite nav.
+- Owner items: manual click-through, screen-reader spot-check, macOS Safari — all logged in TESTS.md.
+- Signing/updater decision = Phase 15 (D-037). Public flip = Phase 15 (D-010).
+- Unilateral defaults this session (all in DECISIONS.md D-043, override if desired): bundle gate = manifest-walk incl. entry CSS (vs entry-JS-only); offline check rewritten to browser-level offline mode (vs keeping the kill-the-server design); canary committed permanently (vs revert-only per literal spec reading); Trivy `--ignore-unfixed`; audit gate covers dev deps too; adm-zip overridden at root to 0.6.1.
 
 ## Environment / local state notes
 
 - Rust toolchain on the dev host: rustup 1.29.1, stable 1.98.1 (x86_64-pc-windows-msvc). `cargo` at `C:\Users\mshah\.cargo\bin` — bash needs `export PATH="/c/Users/mshah/.cargo/bin:$PATH"`.
 - Repo-local native toolchain (gitignored, do not delete): ffmpeg-n9.0…/, yt-dlp-2026.08.19/, gs10.07.1/, GTK3-Runtime/, piper-2023.11.14-2/.
 - Model caches (do not delete): `%LOCALAPPDATA%/Temp/localtools-models/` — u2netp, whisper ggml-tiny.en, piper-voices lessac.
-- Test-isolation temp roots (safe to delete): `%TEMP%/localtools-engine-downloader-test/`, `%TEMP%/localtools-engine-security-test/`.
 - `apps/desktop/src-tauri/engine-dist/` is a BUILD PRODUCT (119MB, gitignored) — rebuild with `pnpm --filter @localtools/desktop desktop:engine-dist`.
-- Dev host has NO Docker (D-015) — compose validation only in CI.
-- `pnpm verify` takes 5–8 min — ALWAYS background with notify.
-- Playwright WebKit 26.6 + Chromium are installed in the registry (`%LOCALAPPDATA%/ms-playwright/`) for the Phase 12 scripts.
-- A `vite preview --port 4173` may still be running from this session (kill by port if Phase 13 needs it).
+- Dev host has NO Docker (D-015) — compose/Trivy validation only in CI.
+- `pnpm verify` now takes ~10–12 min (the two browser checks add ~2-3 min) — ALWAYS background with notify.
+- Playwright WebKit 26.6 + Chromium installed in the registry (`%LOCALAPPDATA%/ms-playwright/`).
+- Ports 4181/4182 are the self-contained checks' ephemeral preview ports (4173 legacy-still-in-CI-a11y-job for the Phase 12 scripts).
 
 ## Useful context / gotchas discovered this session
 
-- **Node-only test suites cannot catch module-eval environment assumptions.** The devtext suite passed 172 Node tests while being 100% broken in browsers: ulid/clean-css/terser all throw at module-evaluation in windowless/`process`-less Worker contexts. Any package reachable from a Worker must be exercised IN one — the keyboard sweep + WebKit smoke now guard this class.
-- **ulid@2.4.0**: `export const ulid = factory()` → `detectPrng()` at module-eval; only recognizes `window.crypto`; `require('crypto')` fallback obviously fails in browsers. If a future dep pulls ulid back in, import `factory` explicitly and pass a `globalThis.crypto` PRNG — or use the in-house implementation now in generators.ts.
-- **prettier browser bundle**: `prettier` main entry resolves parsers from a Node plugin registry; in a browser Worker you MUST use `prettier/standalone` + explicit `plugins: [postcss, babel, estree, html]`. Same output in Node.
-- **axe with hash-router SPAs**: run `axe.run(document, ...)` per route after `networkidle0`; set the theme explicitly (`data-theme` attribute) — the theme bootstrap reads localStorage at boot, and `evaluateOnNewDocument`-set storage can race the app's own bootstrap; re-asserting the attribute post-load is the reliable path.
-- **puppeteer `evaluate` round-trips destroy typed arrays** (JSON serialization) — build Worker payloads INSIDE one `page.evaluate` call so structured clone carries the real `Uint8Array`.
-- **Vite stale-workspace-dep builds**: after changing a workspace package (devtext-core), the client build bundles from its `dist/` — always `pnpm --filter <pkg> build` before the client build, or you chase ghosts (msCrypto fingerprints in old chunks are NOT proof of staleness — ulid is also inside html-minifier-terser/terser source; verify by content of your actual change, e.g. the `Uint32Array(1)` signature).
-- **Contrast math gotcha**: compute ratios against the token the element actually sits on (`--lt-canvas` ≠ `--lt-surface`); hover states and text-role accent fills are invisible to axe — only the token-pair test catches them.
-- **Blocked-command false positives**: long single-line greps with special chars can trip the agent's terminal parser — use `search_files`/`execute_code` for content inspection of built chunks.
-- **Prettier formats markdown docs too** — run `pnpm format` after writing TESTS/DECISIONS/SUMMARY content or format:check fails verify.
-- Session-13/14 gotchas (Tauri init-script, UNC paths, NSIS-not-Inno, 7zr→7z, msiexec /a, generate_context!, pnpm deploy --legacy, per-child healthz, taskkill-tree, manifest statics, MSYS paths, CI process-group kills, engine temp-root isolation, Vite dep-optimize cache) — all still true; see `2a4f1f3^` / `a91da56^` history if needed.
+- **Vite manifest entry key**: the html entry's manifest `file` points at its JS chunk, not an .html — detect via `isEntry:true` + `src` ending .html. Also `build.manifest` must be explicitly enabled; nothing emits it by default.
+- **Windows `spawn('npx.cmd', …)` throws EINVAL** without `shell: true` in this bash host's Node (25.x) — the self-contained scripts set `shell: process.platform === 'win32'` for the SERVER spawn only (the canary's `shell:true` scan excludes non-child_process importers, and these are scripts/ not engine src/ — no conflict).
+- **node:url's `fileURLToPath` must be imported explicitly in .mjs** — pathname.replace for Windows paths is fragile; always use fileURLToPath.
+- **The engine's functional security tests CANNOT catch a shell-string regression** — hostile input never reaches argv (fresh internal names + zod), so they pass under `shell:true`. That's WHY the static canary exists; this is the exact finding the spec's 14.4 acceptance anticipated.
+- **Python-in-bash heredocs with backticks break** (bash command substitution inside the quoted script) — write the edit script to a temp .py FILE and run it, never inline.
+- **js-yaml GHSA-2883-xcg3-v3hh**: CPU DoS via empty-mapping merge keys; 4.3.2 counts merge sources. If a future dep pins js-yaml 3.x/4.3.0-, audit will now fail the verify matrix.
+- **Background-process output capture**: `node script.mjs 2>&1 | tail` in a background terminal can swallow output on exit-code != 0 — for capture-critical runs, foreground the command.
+- Prior-session gotchas (Vite stale-workspace-dep builds, UNC paths, taskkill-tree, CI process-group kills, axe+hash-router, prettier formats markdown) — all still true; see HANDOFF history in git if needed.
 
 ## 0. Binding owner directives (unchanged — do not violate)
 
