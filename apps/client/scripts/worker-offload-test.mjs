@@ -79,12 +79,23 @@ async function main() {
   console.log(`fixture: ${file} (${sizeMb.toFixed(1)}MB)`);
 
   const killServer = await startPreviewServer();
+  // Hard watchdog (Phase 13 CI lesson): a wedged Chrome launch / silent
+  // protocol stall must fail loudly inside 3 minutes, never hang a job
+  // (run 34641228513: this step wedged for 26+ min until the job
+  // timeout killed it — with zero diagnostics to read).
+  const watchdog = setTimeout(() => {
+    console.error('WORKER_OFFLOAD_FAIL: hard watchdog timeout (180s) — run wedged.');
+    process.exit(1);
+  }, 180_000);
+
   try {
+    console.log('launching browser…');
     const browser = await puppeteer.launch({
       executablePath: findChrome(),
       headless: 'new',
-      args: ['--no-sandbox', '--disable-dev-shm-usage'],
+      args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-dev-tools-api'],
     });
+    console.log('browser up');
     try {
       const page = await browser.newPage();
 
@@ -151,6 +162,7 @@ async function main() {
       await browser.close();
     }
   } finally {
+    clearTimeout(watchdog);
     killServer();
   }
 }
