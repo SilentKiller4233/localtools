@@ -68,7 +68,8 @@ async function main() {
     browser = await puppeteer.launch({
       executablePath: findChrome(),
       headless: 'new',
-      userDataDir: process.env.LOCALAPPDATA + '/Temp/localtools-pwa-profile',
+      userDataDir:
+        (process.env.LOCALAPPDATA ?? process.env.TMPDIR ?? '/tmp') + '/localtools-pwa-profile',
       args: ['--no-first-run', '--no-sandbox', '--disable-dev-shm-usage'],
     });
     const page = await browser.newPage();
