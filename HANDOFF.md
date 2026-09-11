@@ -1,6 +1,6 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-11 (evening), end of session 15. Phase 12 (Accessibility & responsiveness) COMPLETE: axe/responsive/keyboard/WebKit all green locally, `pnpm verify` green (see verify log), CI accessibility job added (first run happens on this session's push). Includes a MAJOR pre-existing bug fix: every Text & Dev tool was broken in browsers since Phase 6 (devtext worker module-init failures) — fixed + verified 36/36 in real browser Workers._
+_Last updated: 2026-09-11 (night), end of session 15. Phase 12 (Accessibility & responsiveness) COMPLETE and shipped: code commit `88172c1` + two CI fix-forwards (`bc0103d` workflow-schema, `cae5806` build order) — **CI FULLY GREEN (run 34612031724 — all 5 jobs: verify ubuntu/windows, compose-stack, accessibility (NEW, first run green), desktop-build)**. `pnpm verify` green locally: 578 tests (165 pdf + 131 engine + 65 image + 172 devtext + 17 media-core + 28 client); entry JS 120.75KB gzipped (budget 250KB). Includes a MAJOR pre-existing bug fix: every Text & Dev tool was broken in browsers since Phase 6 (devtext worker module-init failures) — fixed + verified 36/36 in real browser Workers._
 
 ## Where things stand right now
 
@@ -23,7 +23,7 @@ _Last updated: 2026-09-11 (evening), end of session 15. Phase 12 (Accessibility 
 
 ## In-progress / uncommitted work
 
-None — tree is clean at the Phase 12 commit `88172c1` plus the CI fix-forward `bc0103d` (the first push's workflow had a bare `version:` key on pnpm/action-setup in the new accessibility job — GitHub rejected the whole file with zero jobs; fixed with the proper `with:` block). CI run 34609413694 in flight (verify ubuntu/windows, compose-stack, **accessibility (new — first run)**, desktop-build). Confirm it green before starting Phase 13; if the accessibility job fails on runner differences, the scripts take `CHROME_PATH` and all four print a failing line before exit 1.
+None — tree is clean at `cae5806`, everything pushed, CI green on `cae5806` (run 34612031724 — all 5 jobs). Two CI fix-forwards after the initial push: `bc0103d` (the new job's pnpm/action-setup had a bare `version:` key — GitHub rejected the whole workflow with zero jobs; proper `with:` block restores it) and `cae5806` (the job built @localtools/ui directly before @localtools/shared-types had a dist — switched to `pnpm build` so turbo orders deps). No open loops.
 
 ## Next immediate steps (in order — do these first)
 
