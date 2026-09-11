@@ -1345,6 +1345,7 @@ function OfficeConversionPage({
         <div className="lt-options">
           <Field label="Direction" htmlFor="office-direction">
             <select
+              id="office-direction"
               value={direction}
               onChange={(e) => {
                 setDirection(e.target.value as 'to-pdf' | 'from-pdf');
@@ -1380,6 +1381,7 @@ function OcrPage({ tool }: ToolPageSpec) {
         <div className="lt-options">
           <Field label="Language" htmlFor="ocr-language">
             <select
+              id="ocr-language"
               value={language}
               onChange={(e) => {
                 setLanguage(e.target.value);
@@ -1438,6 +1440,7 @@ function DeepCompressPage({ tool }: ToolPageSpec) {
         <div className="lt-options">
           <Field label="Quality" htmlFor="compress-preset">
             <select
+              id="compress-preset"
               value={preset}
               onChange={(e) => {
                 setPreset(e.target.value as 'screen' | 'ebook' | 'printer');
@@ -1468,6 +1471,7 @@ function PdfToPdfAPage({ tool }: ToolPageSpec) {
         <div className="lt-options">
           <Field label="PDF/A flavor" htmlFor="pdfa-flavor">
             <select
+              id="pdfa-flavor"
               value={flavor}
               onChange={(e) => {
                 setFlavor(e.target.value as '2b' | '3b');
@@ -1511,6 +1515,7 @@ function HtmlToPdfPage({ tool }: ToolPageSpec) {
         <div className="lt-options">
           <Field label="Renderer" htmlFor="html-renderer">
             <select
+              id="html-renderer"
               value={renderer}
               onChange={(e) => {
                 setRenderer(e.target.value as 'weasyprint' | 'playwright');
@@ -1525,6 +1530,7 @@ function HtmlToPdfPage({ tool }: ToolPageSpec) {
           </Field>
           <Field label="Page size" htmlFor="html-pagesize">
             <select
+              id="html-pagesize"
               value={pageSize}
               onChange={(e) => {
                 setPageSize(e.target.value);

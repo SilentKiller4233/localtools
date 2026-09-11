@@ -21,6 +21,8 @@ export interface SuiteNavProps {
   onNavigate?: (suite: SuiteId) => void;
   /** Optional right-aligned slot (global search field in Phase 2). */
   trailing?: React.ReactNode;
+  /** Accessible name for the nav landmark; defaults to "Suites". */
+  navLabel?: string;
 }
 
 /**
@@ -28,16 +30,36 @@ export interface SuiteNavProps {
  * optional search/trailing content right. Active tab = accent pill.
  * Landmark structure is fixed so every suite page shares it.
  */
-export function SuiteNav({ active, onNavigate, trailing }: SuiteNavProps): React.ReactNode {
+export function SuiteNav({
+  active,
+  onNavigate,
+  trailing,
+  navLabel,
+}: SuiteNavProps): React.ReactNode {
   return (
     <header className="lt-suite-nav">
+      <button
+        type="button"
+        className="lt-skip-link"
+        onClick={() => {
+          // A hash HREF would fight the app's hash router — focus the
+          // landmark programmatically instead (main carries tabIndex=-1).
+          const main = document.querySelector('main');
+          if (main !== null) {
+            main.setAttribute('tabindex', '-1');
+            main.focus();
+          }
+        }}
+      >
+        Skip to content
+      </button>
       <span className="lt-suite-nav__brand">
         <span aria-hidden="true" className="lt-suite-nav__brand-mark">
           ⌘
         </span>
         LocalTools
       </span>
-      <nav aria-label="Suites">
+      <nav aria-label={navLabel ?? 'Suites'}>
         <div className="lt-suite-nav__tabs">
           {SUITE_NAV_ITEMS.map((item) => {
             const isActive = item.id === active;

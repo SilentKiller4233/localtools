@@ -17,10 +17,27 @@
 }
 
 .lt-dropzone__input {
-  /* The real input is visually hidden but must stay focusable/clickable. */
+  /* The real input is the interactive control (keyboard + click) but
+   * visually hidden; its focus ring lights the whole zone via :has()
+   * (supported by every target browser — Chromium/Tauri + modern Safari
+   * and Firefox; the global :focus-visible outline still applies as
+   * fallback where :has() is unsupported). */
   position: absolute;
   inset: 0;
   opacity: 0;
+  cursor: pointer;
+}
+
+.lt-dropzone__input:focus-visible {
+  outline: none;
+}
+
+.lt-dropzone:has(.lt-dropzone__input:focus-visible) {
+  outline: 2px solid var(--lt-accent);
+  outline-offset: 2px;
+}
+
+.lt-dropzone--uploading .lt-dropzone__input {
   pointer-events: none;
 }
 
@@ -57,7 +74,7 @@
 }
 .lt-dropzone--drag-over .lt-dropzone__icon,
 .lt-dropzone--drag-over .lt-dropzone__headline {
-  color: var(--lt-accent);
+  color: var(--lt-accent-text);
 }
 
 /* error: error-red dashed border + tint */

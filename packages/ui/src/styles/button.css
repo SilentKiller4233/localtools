@@ -34,7 +34,7 @@
 }
 .lt-button--outline:hover:not(:disabled) {
   border-color: var(--lt-accent);
-  color: var(--lt-accent);
+  color: var(--lt-accent-text);
 }
 
 .lt-button--ghost {

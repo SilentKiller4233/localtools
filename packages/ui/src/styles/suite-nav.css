@@ -1,13 +1,46 @@
-/* Slim top navigation bar — shared by home and every tool page. */
+/* Slim top navigation bar — shared by home and every tool page. Wraps to
+ * two rows under 720px (Phase 12: 390px viewport, no horizontal overflow). */
 .lt-suite-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--lt-space-4);
-  height: 56px;
-  padding: 0 var(--lt-space-6);
+  flex-wrap: wrap;
+  gap: var(--lt-space-2) var(--lt-space-4);
+  min-height: 56px;
+  padding: var(--lt-space-2) var(--lt-space-4);
   background-color: var(--lt-surface);
   border-bottom: 1px solid var(--lt-border);
+}
+
+@media (min-width: 720px) {
+  .lt-suite-nav {
+    min-height: 56px;
+    height: 56px;
+    padding: 0 var(--lt-space-6);
+    flex-wrap: nowrap;
+  }
+}
+
+/* Skip-to-content: invisible until focused, then a real visible control
+ * (WCAG 2.1 — bypass blocks; first Tab stop on every page). */
+.lt-skip-link {
+  position: absolute;
+  left: var(--lt-space-2);
+  top: var(--lt-space-2);
+  z-index: 10;
+  padding: var(--lt-space-2) var(--lt-space-3);
+  background-color: var(--lt-accent);
+  color: var(--lt-on-accent);
+  border-radius: var(--lt-radius-control);
+  font-size: var(--lt-font-size-body);
+  text-decoration: none;
+  transform: translateY(-64px);
+}
+
+.lt-skip-link:focus {
+  transform: none;
+  outline: 2px solid var(--lt-focus-ring);
+  outline-offset: 2px;
 }
 
 .lt-suite-nav__brand {
@@ -35,6 +68,10 @@
   background-color: var(--lt-canvas);
   border: 1px solid var(--lt-border);
   border-radius: var(--lt-radius-pill);
+  /* 390px viewport: the four labeled tabs must never push the page past
+   * its own width — they wrap to two rows instead of overflowing. */
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .lt-suite-nav__tab {

@@ -22,7 +22,13 @@ export interface DropZoneProps {
 /**
  * Shared drop zone per Section 9's per-tool pattern. States mirror the
  * Stitch component sheet exactly: default, drag-over, uploading, error,
- * compact. Keyboard-operable (Enter/Space opens the picker).
+ * compact.
+ *
+ * Accessibility (Phase 12, WCAG 2.1 AA): the native `<input type=file>` IS
+ * the interactive control — focusable, keyboard-activatable (Enter/Space
+ * open the picker), and labeled via aria-label — so the visual wrapper is
+ * a plain div with drag handlers only. No role=button wrapper (axe
+ * nested-interactive: interactive control inside interactive control).
  */
 export function DropZone({
   state,
@@ -57,10 +63,6 @@ export function DropZone({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label={headline}
-      aria-disabled={effectiveState === 'uploading'}
       className={cx(
         'lt-dropzone',
         `lt-dropzone--${effectiveState}`,
@@ -69,12 +71,6 @@ export function DropZone({
       )}
       onClick={() => {
         if (effectiveState !== 'uploading') {
-          inputRef.current?.click();
-        }
-      }}
-      onKeyDown={(event) => {
-        if ((event.key === 'Enter' || event.key === ' ') && effectiveState !== 'uploading') {
-          event.preventDefault();
           inputRef.current?.click();
         }
       }}
@@ -94,6 +90,8 @@ export function DropZone({
         type="file"
         accept={accept}
         multiple={multiple}
+        aria-label={headline}
+        disabled={effectiveState === 'uploading'}
         onChange={(event) => {
           const files = Array.from(event.target.files ?? []);
           if (files.length > 0) {
@@ -104,10 +102,8 @@ export function DropZone({
           event.target.value = '';
         }}
       />
-      <div className="lt-dropzone__content">
-        <span aria-hidden="true" className="lt-dropzone__icon">
-          ⬆
-        </span>
+      <div className="lt-dropzone__content" aria-hidden="true">
+        <span className="lt-dropzone__icon">⬆</span>
         <p className="lt-dropzone__headline">{headline}</p>
         {hint !== undefined && hint !== '' ? <p className="lt-dropzone__hint">{hint}</p> : null}
       </div>

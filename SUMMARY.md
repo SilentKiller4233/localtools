@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-10, after Phase 11 — Integration polish complete_
+_Last updated: 2026-09-11, after Phase 12 — Accessibility & responsiveness complete_
 
 ## What this project is
 
@@ -8,14 +8,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 11 of 15 (Section 15)
+- Phases complete: 12 of 15 (Section 15)
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
 - Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); speech & audio complete — transcribe-media + auto-captions client-side via whisper.cpp WASM (fugood 1.1.3, D-029 dual-environment contract) and text-to-speech + pdf-to-audiobook engine-side via Piper 2023.11.14-2 (D-030/D-031), 18 engine + 17 media-core tests; ffmpeg.wasm small-clip path deferred (D-021/D-032)**
 - Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
 - Text & Dev suite: **complete — all 30 Group A tools + zip/unzip (Section 3.5) implemented in `@localtools/devtext-core` (172/172 tests), worker-offloaded client pages wired**
 - Desktop app (Tauri): **complete — Rust/Tauri 2.11 shell in `apps/desktop` (D-033): window + injected `window.__LOCALTOOLS__` invoke bridge (client never imports @tauri-apps/api), engine as a restricted child process (minimal env, scoped temp, loopback-only, taskkill-tree shutdown), pinned+SHA-verified lazy downloads for every native tool (D-034: yt-dlp, ffmpeg, piper, ghostscript, tesseract+eng data, libreoffice, qpdf-fallback plumbing D-035), engine bundle via pnpm deploy + node runtime (D-038); client download prompts on tool-unavailable (EngineRunnerPage/DownloaderPage + ToolDownloadPrompt); Linux CI smoke green (desktop-build job: build + cargo tests + real sidecar healthz); updater OFF until signing (D-037), unsigned-app bypass steps in README; manual click-through checklist in TESTS.md**
 - Docker Compose target: engine Dockerfile real (multi-stage bookworm-slim + ghostscript/tesseract/libreoffice/ffmpeg/pip-weasyprint, non-root, healthcheck); stack acceptance runs as the CI `compose-stack` job incl. a media round-trip (dev host has no Docker — D-015)
-- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 130 engine [82 Group B + 30 downloader + 18 speech] + 65 image-core + 172 devtext-core + 17 media-core + 25 client [Phase 11: taxonomy copy-completeness, raw-error guarantee, health probe, liveness ticker, dispatch coverage]) + build — all green; desktop shell tests run via cargo in the CI desktop-build job (5 rust tests incl. the ignored sidecar smoke)
+- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 130 engine [82 Group B + 30 downloader + 18 speech] + 65 image-core + 172 devtext-core + 17 media-core + 28 client [Phase 11: taxonomy copy-completeness, raw-error guarantee, health probe, liveness ticker, dispatch coverage; Phase 12: WCAG token-contrast, both themes]) + build — all green; desktop shell tests run via cargo in the CI desktop-build job (5 rust tests incl. the ignored sidecar smoke). CI also runs the Phase 12 `accessibility` job: axe-core on every route in both themes, 390px responsive check, keyboard sweep, WebKit WASM smoke — all fail the build on regression
 
 ## What has been built so far
 
@@ -110,7 +110,8 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - ffmpeg.wasm small-clip browser path (Group A; deferred per D-021 — schedule after Phase 9)
 - ~~Phase 10 — Tauri desktop shell + sidecar + lazy downloads~~ (complete — see above; manual click-through checklist pending owner run, TESTS.md)
 - ~~Phase 11 — Integration polish~~ (complete — unified error copy + health gating + consistent progress + batch polish, D-039/D-040; first client test suite added)
-- Phase 12 — accessibility/responsiveness · Phase 13 — test/CI finalization (incl. wiring PWA/offline + worker-offload checks into `pnpm verify`) · Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010, enabling the desktop release matrix + updater decision per D-037)
+- ~~Phase 12 — Accessibility & responsiveness~~ (complete — see the Phase 12 section below)
+- Phase 13 — test/CI finalization (incl. wiring PWA/offline + worker-offload checks into `pnpm verify`) · Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010, enabling the desktop release matrix + updater decision per D-037)
 
 **Phase 11 — Integration polish (health gating, progress, error states, batch)**
 
@@ -129,6 +130,15 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - Client: `media.worker.ts` + `media-worker-client.ts` (frozen image-worker bridge pattern; whisper + media-core load lazily inside the worker — Vite code-splits them out of the entry) + `MediaSpeechPageSpec.tsx` (transcribe + captions worker pages; TTS + audiobook engine pages) + ToolPage dispatch. Initial JS 422.82KB raw / **118.96KB gzipped** (budget 250KB gzipped); the 4.1MB whisper WASM + models are lazy chunks/runtime fetches.
 - Docker: engine image installs piper_linux_x86_64.tar.gz from the 2023.11.14-2 release, SHA-256-pinned (a50cb45f… — no upstream checksums, our pin is the verification, D-030) at /opt/piper with a build-time `--version` sanity run; CI compose-stack gained a speech round-trip (text-to-speech through the containerized engine).
 
+**Phase 12 — Accessibility & responsiveness (WCAG 2.1 AA, 390px, keyboard, WebKit — complete)**
+
+- **axe-core gate (Section 14.6)**: `apps/client/scripts/a11y-scan.mjs` scans every route (home + 4 suites + /dev/ui-preview + all 97 tool pages) in BOTH themes with WCAG 2.x AA + best-practice tags; zero critical/serious allowed, runs as the CI `accessibility` job. The initial scan found 292 critical/serious violations — all fixed at source (D-042): DropZone rebuilt so the native file input is the interactive control (was div[role=button] wrapping an unlabeled input: 268 violations), 7 unlabeled selects labeled, light `--lt-text-muted` darkened to #57606e (4.39:1 → 5.78:1 on canvas), ui-preview demo nav landmark disambiguated. Final: 0/0/0/0 across 206 route-theme scans.
+- **Token-level WCAG test**: `apps/client/test/token-contrast.test.ts` (in `pnpm verify`) computes real WCAG ratios for every composed text/bg token pair in both themes — it caught 3 states axe cannot see (hover/fill/text roles): dark accent-hover #388bfd→#2a6fe0 (3.34→4.72 with white text), new `--lt-accent-text` token (#0f62fe light / #58a6ff dark) for accent-as-text usage (dark fill-blue was 3.73:1 on surface), light placeholder-faint #9ca3af→#7d8590 (2.54→3.73, ≥3:1 supplementary bar).
+- **390px responsive (Section 8)**: `responsive-check.mjs` asserts zero horizontal overflow + zero off-viewport interactive elements at 390/768/1280px across every suite + one tool per runner frame. SuiteNav now wraps under 720px (tabs wrap to rows), page gutters tighten under 480px, suite/tool headers wrap.
+- **Keyboard sweep (Section 14.6 automated half)**: `keyboard-sweep.mjs` walks the full Tab order on all 103 routes (no traps/hidden focus stops) and drives 4 real keyboard-only tool runs — merge-pdf, json-formatter, image-converter complete; video-converter reaches its designed engine-gated state. Skip-to-content is the first Tab stop on every page (programmatic main.focus() — hash href would fight the router); ThemeToggle (manual theme override, Section 8) is now in the production nav (was only on /dev/ui-preview); the inert nav search input was removed.
+- **WebKit/Safari (Section 13)**: `webkit-wasm-smoke.mjs` (Playwright WebKit — Safari's engine) proves the app boots, qpdf-wasm runs a real protect-pdf end-to-end, `crossOriginIsolated === false` (the D-029 no-COOP/COEP contract holds), and the devtext worker is healthy. True macOS Safari hardware remains the owner's manual item (TESTS.md).
+- **Major pre-existing bug fixed (D-042)**: EVERY Text & Dev tool was broken in browsers since Phase 6 — the devtext worker's import of devtext-core threw at module-evaluation (ulid's detectPrng sees no window in a Worker; clean-css/terser read `process.platform` at init). The keyboard sweep surfaced it; fixes: in-house ULID (Crockford base32 over crypto bytes; ulid demoted to devDep for the test cross-check), minimal browser `process` shim at the worker entry, prettier switched to `prettier/standalone` + explicit parser plugins (its browser bundle can't resolve parsers from the Node registry). Verified empirically: 36/36 devtext tool variants run through the real production Worker in Chromium + json-formatter in WebKit. Lesson: Node-only test suites can't catch module-eval environment assumptions — Worker-imported packages must be exercised in a Worker.
+
 ## Key architectural decisions made so far
 
 D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as Ghostscript), D-021 (ffmpeg.wasm small-clip path deferred, not dropped — routing design recorded for its implementing phase), D-022 (media fixtures self-generated → license-clear by construction), D-023 (merge re-encodes; trim lossless-by-default), plus D-039/D-040 (Phase 11: unified error copy + engine health gating; real worker progress via additive message contract + unified liveness ticker), D-018/D-019 (devtext serializer + QR PNG encoder), D-016 (background-removal: onnxruntime + Apache-2.0 u2netp), D-017 (@jsquash Node init), D-015 and earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL/GPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node.
@@ -139,7 +149,7 @@ D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as 
 - `apps/desktop` ships the full Tauri shell (Phase 10); its manual click-through checklist (TESTS.md) is pending the owner's run on a clean machine.
 - CI is green on `main`; workflow remains untested against PRs/tags until later phases exercise them.
 - PWA/offline + worker-offload checks are not yet part of `pnpm verify` (manual scripts today); wiring them in is scheduled for Phase 13.
-- Safari/WebKit quirks on the new Worker render path (COOP/COEP, OffscreenCanvas limits) untested — Section 13 lists Safari WASM testing as required; schedule it during Phase 12/14 rather than assuming.
+- Safari/WebKit WASM: Playwright WebKit smoke green (qpdf-wasm end-to-end, no COOP/COEP needed per D-029, devtext worker healthy — Phase 12, runs in CI); the remaining piece is true macOS Safari hardware (owner manual item in TESTS.md) — OffscreenCanvas limits on the pdf render path are the specific thing to watch there.
 - Redaction's v1 contract: text removal is genuine; image XObjects inside a box are covered visually but not pixel-removed (true image redaction needs the render pipeline — noted in-code as a future enhancement, consistent with the spec's algorithm).
 
 ## How to run the project right now
@@ -148,7 +158,7 @@ D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as 
 pnpm install          # pnpm-lock.yaml is committed
 pnpm dev              # client → http://localhost:5173 ; engine health → http://127.0.0.1:8787/healthz
 pnpm build            # all workspaces (client build also copies /pdfjs/* and /wasm/qpdf.wasm assets)
-pnpm verify           # format + lint + typecheck + 574 tests (165 pdf + 130 engine + 65 image + 172 devtext + 17 media-core + 25 client) + build gate
+pnpm verify           # format + lint + typecheck + 578 tests (165 pdf + 131 engine + 65 image + 172 devtext + 17 media-core + 28 client) + build gate
 
 # Phase 7 surface: every Media Group B tool card is live at #/tool/<id> —
 # video/audio convert, compress, trim, merge, extract-audio, GIF, subtitles,

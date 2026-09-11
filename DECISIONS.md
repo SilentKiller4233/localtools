@@ -929,3 +929,62 @@ roots (`localtools-engine-<suite>-test`), so root-scanning assertions
 see only their own requests. No production behavior change — the
 default root is unchanged; the desktop sidecar's scoped temp (child
 TEMP/TMP) composes with the default as before.
+
+### D-042 — Phase 12 accessibility + the dual-environment bugs it exposed
+
+Phase 12's acceptance (Section 14.6: axe-core on every route, 390px
+responsive, keyboard sweep) surfaced findings in two classes:
+
+**Accessibility fixes (all in packages/ui + apps/client styles):**
+
+- DropZone rebuilt: the native file input IS the interactive control
+  (focusable, Enter/Space opens the picker, aria-labeled) instead of a
+  div[role=button] WRAPPING the input — axe flagged 134 nested-interactive
+  - 134 label violations app-wide from that one component. Focus ring
+    lights the whole zone via CSS :has().
+- Seven unlabeled selects (PDF Group B options) got the ids their Field
+  labels were already pointing at.
+- Token contrast: light `--lt-text-muted` #6b7280→#57606e (4.39:1→5.78:1
+  on canvas — muted sits on `--lt-canvas` in nav tabs, not just surfaces);
+  dark `--lt-accent-hover` #388bfd→#2a6fe0 (white hover text 3.34→4.72);
+  NEW `--lt-accent-text` token (light #0f62fe, dark #58a6ff) for every
+  accent-as-TEXT usage — the dark fill-blue read 3.73:1 as text on
+  surface; light `--lt-text-faint` #9ca3af→#7d8590 (placeholders
+  2.54→3.73, above the 3:1 supplementary bar). A new vitest
+  (token-contrast.test.ts) pins every composed pair at >=4.5:1 (faint
+  > =3:1) in both themes so token edits can't silently regress contrast.
+- Skip-to-content link in SuiteNav (first Tab stop; focuses `<main>`
+  programmatically — a hash href would fight the app's hash router);
+  ThemeToggle added to the production suite nav (the manual override
+  required by Section 8 was previously only reachable on /dev/ui-preview);
+  the inert nav search input removed (the functional filter is the page's
+  own input); SuiteNav/tabs wrap under 720px so 390px has zero overflow.
+
+**Dual-environment bugs (pre-existing: EVERY Text & Dev tool was broken
+in browsers/Workers since Phase 6; Node tests never saw them):**
+
+1. ulid@2.4.0's default export runs detectPrng() at module-evaluation —
+   it only recognizes window.crypto, and inside a Web Worker (no window)
+   it throws, taking the whole devtext-core import down. ULID is now
+   in-house (~30 lines: Crockford base32 over crypto random bytes,
+   uniform since 256 % 32 === 0; ulid stays a devDep for the test's
+   decodeTime cross-check).
+2. clean-css (bundled via csso) and terser read process.platform at
+   module-eval — same failure class. Fixed with the standard minimal
+   browser `process` shim at the devtext worker entry (Node keeps its
+   real process).
+3. prettier's browser bundle can't resolve parsers from the Node plugin
+   registry — beautify switched to prettier/standalone with explicit
+   postcss/babel/estree/html plugins (identical behavior in Node).
+
+Verified empirically: a browser-worker sweep drives all 36 devtext tool
+variants through the real production worker — 36/36 in Chromium and the
+json-formatter flow in WebKit. Lesson recorded: Node-only test suites
+cannot catch module-eval environment assumptions; any package imported
+from a Worker context must be exercised IN one.
+
+**WebKit/Safari (Section 13):** WebKit WASM smoke added (Playwright
+WebKit): app boots, qpdf-wasm runs a real protect-pdf end-to-end, the
+D-029 contract holds (no COOP/COEP needed — not crossOriginIsolated),
+devtext worker healthy. True macOS Safari remains an owner manual item
+(TESTS.md) — no macOS host in CI yet.

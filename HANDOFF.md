@@ -1,40 +1,42 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-10 (late), end of session 14. Phase 11 (Integration polish) COMPLETE and shipped: commit `4bf61ed`, **CI FULLY GREEN (run 34517122128 — all 4 jobs: verify ubuntu/windows, compose-stack, desktop-build)**. Unified error copy + engine health gating + consistent/real progress + batch polish + first client test suite; plus D-041 engine temp-root test isolation (fixed a pre-existing flaky downloader test). `pnpm verify` fully green locally — 574 vitest tests (165 pdf + 131 engine + 65 image + 172 devtext + 17 media-core + 25 client) + 5 Rust shell tests; entry JS 120.69KB gzipped (budget 250KB)._
+_Last updated: 2026-09-11 (evening), end of session 15. Phase 12 (Accessibility & responsiveness) COMPLETE: axe/responsive/keyboard/WebKit all green locally, `pnpm verify` green (see verify log), CI accessibility job added (first run happens on this session's push). Includes a MAJOR pre-existing bug fix: every Text & Dev tool was broken in browsers since Phase 6 (devtext worker module-init failures) — fixed + verified 36/36 in real browser Workers._
 
 ## Where things stand right now
 
-**Phases 0–11 complete (11 of 15).** Phase 11 shipped this session (D-039/D-040/D-041):
+**Phases 0–12 complete (12 of 15).** Phase 12 shipped this session (D-042):
 
-- **Unified error copy (D-039)**: `apps/client/src/lib/tool-errors.ts` — one map per taxonomy (pdf/image/devtext/speech/engine/bridge) + `friendlyError(err, scope)` that always falls back to a friendly sentence, never a technical message. All five runner frames render through it; the per-page ERROR_TEXT maps are deleted. Acceptance ("no raw/unstyled error anywhere", spec line 495) is test-enforced: `apps/client/test/tool-errors.test.ts` extracts every code from each package's error-union SOURCE and asserts copy exists.
-- **Engine health gating (D-039)**: `lib/engine-health.ts` (bridge `desktop_status` in the shell → GET /healthz in browsers; base URL via `lib/engine-url.ts`, now shared with engine-client) + `hooks/useEngineTooling.ts` (mount probe, re-probe on `engine://ready`, gate-before-run, tool-unavailable→ToolDownloadPrompt routing, green installed-confirmation note). Wired into ALL FOUR engine surfaces: EngineRunnerPage, DownloaderPage (gate on Preview), text-to-speech, pdf-to-audiobook (TTS/audiobook previously had NO download-prompt flow — the Rust `tool_for_endpoint` already mapped them → piper). Engine-down renders a styled warning banner + "Check again" (`.lt-engine-banner--down`, `.lt-installed-note` CSS in apps/client/src/styles.css).
-- **Consistent + real progress (D-040)**: `hooks/useFakeProgress.ts` — one app-wide liveness cadence (start 5, +4/400ms, ceiling 90; pure `nextLivenessPercent` unit-tested) replacing four drifted per-page tickers. REAL progress via an ADDITIVE worker message `{id, progress:{done,total}}` (pdf + image worker clients — non-opted-in handlers unchanged): `pdfToImage` per rendered page, image `runBatch` per file; delivered through `runToolWithProgress`/`runImageToolWithProgress`.
-- **Batch polish**: image batch outputs keep ORIGINAL filenames (`photo-localtools.webp`, not `image-1.webp`) — the worker carries input names through.
-- **First client test suite**: vitest wired into `apps/client` (package.json test script, vitest.config.ts, tsconfig now includes test/): 25 tests / 4 files — taxonomy copy-completeness, raw-error guarantee, engine-health probe paths (mocked fetch/bridge), liveness-ticker semantics, registry dispatch coverage (97 tools).
-- **D-041 temp-root isolation**: engine `temp-dirs.ts` gained `tempRoot()` honoring `LOCALTOOLS_TEMP_ROOT`; downloader.test.ts + security.test.ts boot engines under private roots (`localtools-engine-<suite>-test`). Fixes a PRE-EXISTING flake: those files' root-scanning assertions saw sibling vitest workers' in-flight request dirs in the shared root (a parallel suite's 8MB input PDF tripped the downloader 50KB leftover assertion). No production behavior change.
+- **axe-core gate (Section 14.6)**: `apps/client/scripts/a11y-scan.mjs` — every route (home + 4 suites + /dev/ui-preview + 97 tool pages) × BOTH themes, WCAG 2.x AA + best-practice tags; zero critical/serious/moderate/minor on the final build (initial scan: 292 critical/serious — all fixed at source). Runs as the new CI `accessibility` job → fails the build.
+- **Token WCAG test**: `apps/client/test/token-contrast.test.ts` (in `pnpm verify` — 3 new tests) computes real contrast ratios for every composed token pair, both themes. It caught 3 hover/text states axe can't see: dark accent-hover #388bfd→#2a6fe0, NEW `--lt-accent-text` token (light #0f62fe / dark #58a6ff) for accent-as-text (dark fill-blue was 3.73:1 on surface), light faint #9ca3af→#7d8590 (placeholders ≥3:1).
+- **DropZone rebuilt (the 268-violation fix)**: native file input IS the interactive control (focusable, Enter/Space, aria-label) — wrapper is a plain div with drag handlers; focus ring via CSS `:has()`. `packages/ui/src/DropZone.tsx` + `styles/drop-zone.css`.
+- **390px responsive**: `responsive-check.mjs` — 13 routes × 390/768/1280px, zero overflow/off-viewport controls. SuiteNav wraps <720px, tabs wrap, tighter gutters <480px, headers wrap.
+- **Keyboard sweep**: `keyboard-sweep.mjs` — Tab-order walk on all 103 routes + 4 real keyboard-only tool runs (merge-pdf / json-formatter / image-converter complete; video-converter reaches designed engine-gated state). Skip-to-content button in SuiteNav (programmatic main.focus()); ThemeToggle now in the production nav (was only on /dev/ui-preview — Section 8 gap); inert nav search removed.
+- **WebKit WASM smoke (Section 13)**: `webkit-wasm-smoke.mjs` (Playwright WebKit) — boots, qpdf-wasm protect-pdf end-to-end, `crossOriginIsolated === false` (D-029 no-COOP/COEP contract), devtext worker healthy. Runs in the CI accessibility job.
+- **THE BIG FIX — Text & Dev suite was fully broken in browsers since Phase 6** (Node tests never saw it): (1) ulid@2.4.0 module-eval `detectPrng()` throws in windowless Workers → in-house ULID in `devtext-core/src/tools/generators.ts` (Crockford base32 over crypto bytes; ulid demoted to devDep, tests cross-check via decodeTime); (2) clean-css/terser read `process.platform` at module-eval → minimal browser `process` shim at the devtext worker entry (`apps/client/src/workers/devtext.worker.ts`); (3) prettier browser bundle can't resolve parsers → `prettier/standalone` + explicit postcss/babel/estree/html plugins in `devtext-core/src/tools/minify.ts`. Verified: 36/36 devtext tool variants through the real production Worker in Chromium (sweep deleted after use — the coverage lives in keyboard-sweep + WebKit smoke + the suite tests), 172/172 devtext Node tests still green.
+- **Shared Chrome discovery**: `apps/client/scripts/lib/find-chrome.mjs` (system Chrome → Playwright registry) so CI can install Chromium via playwright; `axe-core` + `playwright` are new client devDeps.
 
 ## Last thing done
 
-1. Phase 11 implemented end-to-end (files: `apps/client/src/lib/{tool-errors,engine-health,engine-url}.ts`, `apps/client/src/hooks/{useFakeProgress,useEngineTooling}.{ts,tsx}`, worker-client + worker + page changes in `apps/client/src/{lib,workers,pages}`, `packages/pdf-core/src/tools/pdf-to-image.ts` + `packages/image-core/src/tools/compress.ts` onProgress seams, styles.css banner/note classes, engine temp-dirs + two test files).
-2. All gates green locally: apps/client lint/typecheck/vitest (25/25), engine vitest 131/131 (after D-041), `pnpm verify` — 9 turbo tasks successful, entry JS 120.69KB gz.
-3. Docs updated: DECISIONS.md D-039/D-040/D-041; TESTS.md Phase 11 section (incl. the note that the acceptance is now test-enforced); SUMMARY.md Phase 11 (status 11/15, test counts 574, decisions line, stale "apps/desktop has no code" line fixed).
+1. All four Phase 12 scripts green on the final build: A11Y_SCAN_PASS (206 route-theme scans, 0 violations), RESPONSIVE_CHECK_PASS, KEYBOARD_SWEEP_PASS, WEBKIT_WASM_SMOKE_PASS.
+2. `pnpm verify` green (578 tests: 165 pdf + 131 engine + 65 image + 172 devtext + 17 media-core + 28 client; entry JS 120.75KB gzipped, budget 250KB).
+3. Docs: DECISIONS.md D-042; TESTS.md Phase 12 section (incl. the two PENDING owner manual items: screen-reader spot-check per suite, true macOS Safari); SUMMARY.md Phase 12 (12/15); this HANDOFF.
 
 ## In-progress / uncommitted work
 
-None — tree is clean at the Phase 11 commit (`4bf61ed` + the HANDOFF CI-green follow-up docs commit), everything pushed, CI green on `4bf61ed` (run 34517122128). No open loops.
+None after the Phase 12 commit — everything (code + docs) is committed as `feat(client): Phase 12 — accessibility & responsiveness` and pushed; CI run in flight (verify ubuntu/windows, compose-stack, **accessibility (new)**, desktop-build). Check the run before starting Phase 13; if the accessibility job fails on runner differences, the scripts take `CHROME_PATH` and all four print a failing line before exit 1.
 
 ## Next immediate steps (in order — do these first)
 
-1. **Phase 12 — Accessibility & responsiveness** (spec Section 15): acceptance = Section 14.6 passes (automated + logged manual items) across all four suites. WCAG 2.1 AA audit pass, 390px viewport responsive check, keyboard/ARIA sweep, Safari/WebKit WASM quirks (COOP/COEP — noted in SUMMARY tech debt; schedule it here or Phase 14).
-2. Standing pattern for engine tools: GroupBRequestHarness + runSubprocess + tool-paths resolver; new lazy-download = one manifest.rs row + one EnvBinding (unchanged from Phase 10).
-3. ffmpeg.wasm small-clip rider stays deferred (D-021/D-032) — revisit before Phase 13.
-4. Phase 13 will wire PWA/offline + worker-offload checks into `pnpm verify` (still manual scripts today).
+1. **Phase 13 — Testing & CI finalization** (spec Section 15): full Section 14 suite wired into `pnpm verify` + workflows. Known gaps: PWA offline check + worker-offload check are still manual scripts (`apps/client/scripts/offline-test.mjs`, `worker-offload-test.mjs`) — wire them into verify/CI; the shell-string-subprocess canary (14.4) verified once manually then reverted.
+2. The 14-step manual click-through checklist (TESTS.md) + Phase 12's two manual items (screen-reader spot-check ×4 suites, macOS Safari hardware) remain owner items before v1.0.0.
+3. Phase 14 (performance/size: Section 14.5 metrics into README incl. Docker image size) then Phase 15 (docs/release).
+4. ffmpeg.wasm small-clip rider still deferred (D-021/D-032) — decide before Phase 15 whether it ships in v1 or moves to the roadmap.
 
 ## Blockers / open decisions needing human input
 
-- Owner items (unchanged): the 14-step manual click-through checklist (TESTS.md) on a clean machine/VM — required before v1.0.0 per Section 14.7; screenshots for README bypass steps at Phase 15.
+- Owner items: manual click-through (clean machine/VM, TESTS.md), screen-reader spot-check (4 suites), true macOS Safari pass — all logged in TESTS.md Phase 12 rows.
 - Signing/updater decision deferred to Phase 15 (D-037).
-- No new unilateral defaults this session beyond: the engine-down banner copy/pattern (D-039), the liveness cadence constants (D-040), LOCALTOOLS_TEMP_ROOT as the isolation seam (D-041) — all recorded in DECISIONS.md, override if desired.
+- Unilateral defaults this session (all in DECISIONS.md D-042, override if desired): the specific replacement token values (#57606e, #2a6fe0, #58a6ff, #7d8590), the in-house ULID (vs pinning/patching ulid), the browser `process` shim in the devtext worker (vs lazy-import refactors), prettier/standalone + explicit plugins, skip-link as a button (vs hash anchor), ThemeToggle in the suite nav.
 
 ## Environment / local state notes
 
@@ -44,18 +46,22 @@ None — tree is clean at the Phase 11 commit (`4bf61ed` + the HANDOFF CI-green 
 - Test-isolation temp roots (safe to delete): `%TEMP%/localtools-engine-downloader-test/`, `%TEMP%/localtools-engine-security-test/`.
 - `apps/desktop/src-tauri/engine-dist/` is a BUILD PRODUCT (119MB, gitignored) — rebuild with `pnpm --filter @localtools/desktop desktop:engine-dist`.
 - Dev host has NO Docker (D-015) — compose validation only in CI.
-- `pnpm verify` takes 5–8 min (now includes the client suite) — ALWAYS background with notify.
+- `pnpm verify` takes 5–8 min — ALWAYS background with notify.
+- Playwright WebKit 26.6 + Chromium are installed in the registry (`%LOCALAPPDATA%/ms-playwright/`) for the Phase 12 scripts.
+- A `vite preview --port 4173` may still be running from this session (kill by port if Phase 13 needs it).
 
 ## Useful context / gotchas discovered this session
 
-- **apps/client tests resolve @localtools/pdf-core + image-core from their built dist** — after adding an option to a core package, REBUILD the package (`pnpm --filter <pkg> build`) before apps/client typecheck, or tsc reports the new option as unknown.
-- **apps/client tsconfig**: `rootDir: src` broke when test/ was included — the whole tsconfig is now `noEmit: true` with include [src, test, vitest.config.ts] (matching pdf-core's pattern); vite owns the actual build.
-- **No testing-library/jsdom in the workspace** — hook tests must avoid renderers: extract pure functions (see `nextLivenessPercent`) or test via mocked globals (see engine-health.test.ts's vi.stubGlobal fetch + `__LOCALTOOLS__`).
-- **The client test that enforces copy-completeness parses SOURCE FILES of other packages** (regex over the error-code union). Two regexes are needed: `export type XErrorCode =` unions AND media-core's inline `readonly code:` class-field union. Keep them in sync if a package moves its taxonomy.
-- **Engine temp-root flake root cause** (D-041): vitest runs each test FILE in its own worker process, but all engine files shared `%TEMP%/localtools-engine` — root-scanning assertions (downloader leftover scan, security dir-count/traversal scan) race with sibling suites' in-flight request dirs. Private `LOCALTOOLS_TEMP_ROOT` per file fixes it; if you write NEW root-scanning engine tests, isolate the root the same way.
-- **Prettier formats more than you touched** — `pnpm format` reflowed several files; always run it before `pnpm verify` (format:check is the first gate).
-- **Tauri window init-script, canonicalize/UNC paths, NSIS-not-Inno, 7zr→7z chain, msiexec /a, generate_context! frontendDist, pnpm deploy --legacy, per-child healthz port, taskkill-tree/process-group, manifest statics E0716, MSYS path conversion, CI runner-grandchild kills (process_group + setsid ci_smoke + libc::kill)** — all still true, see session-13 HANDOFF in git history (`2a4f1f3^`) if needed; unchanged by Phase 11.
-- **`engine-client.ts` exports `engineBaseUrl` re-exported from `lib/engine-url.ts`** — one source of truth now; engine-health and the client calls can never drift apart.
+- **Node-only test suites cannot catch module-eval environment assumptions.** The devtext suite passed 172 Node tests while being 100% broken in browsers: ulid/clean-css/terser all throw at module-evaluation in windowless/`process`-less Worker contexts. Any package reachable from a Worker must be exercised IN one — the keyboard sweep + WebKit smoke now guard this class.
+- **ulid@2.4.0**: `export const ulid = factory()` → `detectPrng()` at module-eval; only recognizes `window.crypto`; `require('crypto')` fallback obviously fails in browsers. If a future dep pulls ulid back in, import `factory` explicitly and pass a `globalThis.crypto` PRNG — or use the in-house implementation now in generators.ts.
+- **prettier browser bundle**: `prettier` main entry resolves parsers from a Node plugin registry; in a browser Worker you MUST use `prettier/standalone` + explicit `plugins: [postcss, babel, estree, html]`. Same output in Node.
+- **axe with hash-router SPAs**: run `axe.run(document, ...)` per route after `networkidle0`; set the theme explicitly (`data-theme` attribute) — the theme bootstrap reads localStorage at boot, and `evaluateOnNewDocument`-set storage can race the app's own bootstrap; re-asserting the attribute post-load is the reliable path.
+- **puppeteer `evaluate` round-trips destroy typed arrays** (JSON serialization) — build Worker payloads INSIDE one `page.evaluate` call so structured clone carries the real `Uint8Array`.
+- **Vite stale-workspace-dep builds**: after changing a workspace package (devtext-core), the client build bundles from its `dist/` — always `pnpm --filter <pkg> build` before the client build, or you chase ghosts (msCrypto fingerprints in old chunks are NOT proof of staleness — ulid is also inside html-minifier-terser/terser source; verify by content of your actual change, e.g. the `Uint32Array(1)` signature).
+- **Contrast math gotcha**: compute ratios against the token the element actually sits on (`--lt-canvas` ≠ `--lt-surface`); hover states and text-role accent fills are invisible to axe — only the token-pair test catches them.
+- **Blocked-command false positives**: long single-line greps with special chars can trip the agent's terminal parser — use `search_files`/`execute_code` for content inspection of built chunks.
+- **Prettier formats markdown docs too** — run `pnpm format` after writing TESTS/DECISIONS/SUMMARY content or format:check fails verify.
+- Session-13/14 gotchas (Tauri init-script, UNC paths, NSIS-not-Inno, 7zr→7z, msiexec /a, generate_context!, pnpm deploy --legacy, per-child healthz, taskkill-tree, manifest statics, MSYS paths, CI process-group kills, engine temp-root isolation, Vite dep-optimize cache) — all still true; see `2a4f1f3^` / `a91da56^` history if needed.
 
 ## 0. Binding owner directives (unchanged — do not violate)
 

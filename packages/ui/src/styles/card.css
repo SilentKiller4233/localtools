@@ -43,7 +43,7 @@
 
 .lt-tool-card:hover .lt-tool-card__icon,
 .lt-tool-card:focus-visible .lt-tool-card__icon {
-  color: var(--lt-accent);
+  color: var(--lt-accent-text);
   background-color: var(--lt-accent-subtle);
 }
 

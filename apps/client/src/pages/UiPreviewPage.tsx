@@ -48,7 +48,10 @@ export function UiPreviewPage() {
         <section aria-labelledby="h-suite-nav">
           <h2 id="h-suite-nav">Suite navigation</h2>
           <Card className="preview-block">
-            <SuiteNav active="media" />
+            {/* Demo instance: its nav landmark gets a distinct label so it
+             * never collides with the live page nav above (axe
+             * landmark-unique). */}
+            <SuiteNav active="media" navLabel="Suite navigation (demo)" />
             <p className="preview-note">
               Slim top bar · wordmark · four segmented suite tabs · active accent pill. The bar at
               the very top of this page is the same component (PDF active).

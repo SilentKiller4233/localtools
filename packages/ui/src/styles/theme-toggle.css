@@ -14,6 +14,6 @@
 }
 
 .lt-theme-toggle:hover {
-  color: var(--lt-accent);
+  color: var(--lt-accent-text);
   border-color: var(--lt-accent);
 }

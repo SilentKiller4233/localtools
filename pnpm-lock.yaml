@@ -66,9 +66,15 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.3
         version: 4.7.0(vite@6.4.3(@types/node@22.20.1)(terser@5.51.2)(tsx@4.23.12))
+      axe-core:
+        specifier: ^4.13.0
+        version: 4.13.0
       eslint:
         specifier: ^9.15.0
         version: 9.39.5
+      playwright:
+        specifier: ~1.63.0
+        version: 1.63.0
       puppeteer-core:
         specifier: ^25.9.0
         version: 25.9.0
@@ -208,9 +214,6 @@ importers:
       terser:
         specifier: ^5.36.0
         version: 5.51.2
-      ulid:
-        specifier: ^2.0.0
-        version: 2.4.0
     devDependencies:
       '@localtools/eslint-config':
         specifier: workspace:*
@@ -242,6 +245,9 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+      ulid:
+        specifier: ^2.4.0
+        version: 2.4.0
       vitest:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@22.20.1)(vite@6.4.3(@types/node@22.20.1)(terser@5.51.2)(tsx@4.23.12))
@@ -1570,6 +1576,10 @@ packages:
   avvio@9.3.0:
     resolution: {integrity: sha512-g2tQ7LE7oOSqDfwEm3M+ZCMTJc7KiZCdJ4UwyZJb5ckTKyYu50OYmvv0mCFXPuYXoM4zkSt8zM9XQ9KCvxA74A==}
 
+  axe-core@4.13.0:
+    resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
+    engines: {node: '>=4'}
+
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
@@ -2314,6 +2324,16 @@ packages:
 
   platform@1.3.6:
     resolution: {integrity: sha512-fnWVljUchTro6RiCFvCXBbNhJc2NijN7oIQxbwsyL0buWJPG85v81ehlHI9fXrJsMNgTofEoWIQeClKpgxFLrg==}
+
+  playwright-core@1.63.0:
+    resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.63.0:
+    resolution: {integrity: sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   pngjs@5.0.0:
     resolution: {integrity: sha512-40QW5YalBNfQo5yRYmiw7Yz6TKKVr3h6970B2YE+3fQpsWcrbj1PzJgxeJ19DRQjhMbKPIuMY8rFaXc8moolVw==}
@@ -3736,6 +3756,8 @@ snapshots:
       '@fastify/error': 4.2.0
       fastq: 1.20.1
 
+  axe-core@4.13.0: {}
+
   balanced-match@1.0.2: {}
 
   balanced-match@4.0.4: {}
@@ -4502,6 +4524,12 @@ snapshots:
       pngjs: 7.0.0
 
   platform@1.3.6: {}
+
+  playwright-core@1.63.0: {}
+
+  playwright@1.63.0:
+    dependencies:
+      playwright-core: 1.63.0
 
   pngjs@5.0.0: {}
 

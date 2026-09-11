@@ -145,6 +145,57 @@ jobs:
         if: always()
         run: docker compose down -v
 
+  accessibility:
+    # Phase 12 acceptance (Section 14.6): axe-core scan on every route in
+    # both themes (zero critical/serious), 390px responsive check, keyboard
+    # sweep — against the PRODUCTION build served by vite preview. Chrome
+    # comes from the Playwright registry (npx playwright install chromium).
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        version: 10.34.5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium (Playwright registry)
+        run: pnpm --filter @localtools/client exec playwright install chromium --with-deps
+
+      - name: Build the client (production)
+        run: pnpm --filter @localtools/ui build && pnpm --filter @localtools/client build
+
+      - name: Serve the production build
+        run: |
+          cd apps/client
+          npx vite preview --port 4173 --strictPort &
+          for i in $(seq 1 30); do
+            curl -fsS -o /dev/null http://localhost:4173/ && break
+            sleep 1
+          done
+          curl -fsS -o /dev/null http://localhost:4173/
+
+      - name: Section 14.6 — axe scan on every route (both themes)
+        run: cd apps/client && node scripts/a11y-scan.mjs
+
+      - name: Section 8 — 390px responsive check
+        run: cd apps/client && node scripts/responsive-check.mjs
+
+      - name: Section 14.6 — keyboard sweep (all routes + 4 tool runs)
+        run: cd apps/client && node scripts/keyboard-sweep.mjs
+
+      - name: Section 13 — WebKit WASM smoke (qpdf-wasm, no COOP/COEP)
+        run: |
+          pnpm --filter @localtools/client exec playwright install webkit --with-deps
+          cd apps/client && node scripts/webkit-wasm-smoke.mjs
+
   desktop-build:
     # Phase 10 acceptance (Section 14.7): build the Tauri shell on Linux,
     # then prove the engine sidecar boots and answers /healthz — no GUI

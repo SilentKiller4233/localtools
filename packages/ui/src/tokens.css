@@ -44,14 +44,24 @@
   --lt-border-strong: #d1d5db;
 
   /* Text */
+  /* #57606e (was #6b7280): muted must clear 4.5:1 on --lt-canvas (#f3f4f6)
+   * too, not just surfaces — #6b7280 lands at 4.39:1 there (Phase 12
+   * WCAG audit; see DECISIONS.md D-042). */
   --lt-text: #111827;
-  --lt-text-muted: #6b7280;
-  --lt-text-faint: #9ca3af;
+  --lt-text-muted: #57606e;
+  /* #7d8590 (was #9ca3af): placeholders are supplementary (the label
+   * carries meaning) but must still clear the 3:1 bar — #9ca3af read
+   * 2.54:1 on white (Phase 12 WCAG audit, D-042). */
+  --lt-text-faint: #7d8590;
 
   /* The one sparing accent */
   --lt-accent: #0f62fe;
   --lt-accent-hover: #004ee3;
   --lt-accent-subtle: rgba(15, 98, 254, 0.08);
+  /* Accent used AS TEXT on light surfaces — same blue; named separately so
+   * the dark theme can shift it brighter without touching button fills
+   * (Phase 12 WCAG audit, D-042). */
+  --lt-accent-text: #0f62fe;
   --lt-on-accent: #ffffff;
   --lt-focus-ring: rgba(15, 98, 254, 0.45);
 
@@ -89,8 +99,13 @@
 
   /* Contrast-adjusted accent for dark surfaces (WCAG AA against --lt-on-accent) */
   --lt-accent: #1f6feb;
-  --lt-accent-hover: #388bfd;
+  /* #2a6fe0 (was #388bfd): hover fills still carry WHITE text — #388bfd
+   * lands at 3.34:1, #2a6fe0 at 4.72:1 (Phase 12 WCAG audit, D-042). */
+  --lt-accent-hover: #2a6fe0;
   --lt-accent-subtle: rgba(31, 111, 235, 0.16);
+  /* Accent AS TEXT on dark surfaces: the fill blue reads 3.73:1 there;
+   * the brighter link-blue clears 4.5:1 on surface AND canvas. */
+  --lt-accent-text: #58a6ff;
   --lt-on-accent: #ffffff;
   --lt-focus-ring: rgba(56, 139, 253, 0.55);
 

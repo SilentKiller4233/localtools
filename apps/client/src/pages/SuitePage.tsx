@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { SuiteId } from '@localtools/shared-types';
-import { Card, Input, SuiteNav, ToolCard } from '@localtools/ui';
+import { Card, Input, SuiteNav, ThemeToggle, ToolCard } from '@localtools/ui';
 import {
   ALL_TOOLS,
   badgeLabel,
@@ -55,14 +55,7 @@ export function SuitePage({
       <SuiteNav
         active={suite}
         {...(onNavigate !== undefined ? { onNavigate } : {})}
-        trailing={
-          <Input
-            type="search"
-            placeholder={UI.searchLabel}
-            aria-label={UI.searchLabel}
-            className="lt-nav-search"
-          />
-        }
+        trailing={<ThemeToggle />}
       />
       <main className="lt-main">
         <header className="lt-suite-header">

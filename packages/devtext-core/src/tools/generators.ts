@@ -4,8 +4,48 @@
  * converter. All pure Group A logic.
  */
 
-import { ulid } from 'ulid';
 import { devError, requireText, assertTextCap, MAX_TEXT_CHARS } from '../types';
+
+/**
+ * ULID generation is implemented in-house (dropping the `ulid` package —
+ * see DECISIONS.md D-042): ulid@2.4.0's default export runs detectPrng()
+ * at MODULE-EVALUATION time, which only recognizes window.crypto; inside a
+ * Web Worker (no window) it throws "secure crypto unusable" and takes
+ * every devtext-core import in the browser down with it. The algorithm is
+ * 30 lines of Crockford base32 over crypto random bytes (MIT reference:
+ * ulid's own encodeTime/encodeRandom), fully worker-safe.
+ */
+const ULID_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford base32
+const ULID_TIME_LEN = 10;
+const ULID_RANDOM_LEN = 16;
+
+/** Safe alphabet lookup — always defined for indexes 0..31. */
+function b32(index: number): string {
+  return ULID_ALPHABET.charAt(((index % 32) + 32) % 32);
+}
+
+function ulid(now = Date.now()): string {
+  // Time part: 48-bit big-endian timestamp → 10 base32 chars.
+  let time = Math.floor(now);
+  if (!Number.isFinite(time) || time < 0 || time > 0xffff_ffff_ffff) {
+    throw devError('operation-failed', 'Could not encode the current time as a ULID.');
+  }
+  let timeChars = '';
+  for (let i = 0; i < ULID_TIME_LEN; i += 1) {
+    timeChars = b32(time % 32) + timeChars;
+    time = Math.floor(time / 32);
+  }
+  // Random part: 16 chars from crypto random bytes. A byte holds 256
+  // values and 256 % 32 === 0, so byte % 32 is uniform over the alphabet
+  // (128 bits of entropy total) — no rejection sampling required.
+  const buf = new Uint8Array(ULID_RANDOM_LEN);
+  globalThis.crypto.getRandomValues(buf);
+  let randomChars = '';
+  for (let i = 0; i < ULID_RANDOM_LEN; i += 1) {
+    randomChars += b32(buf[i] ?? 0);
+  }
+  return timeChars + randomChars;
+}
 
 /* ---------------- UUID / ULID ---------------- */
 

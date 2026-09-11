@@ -15,12 +15,23 @@
   gap: var(--lt-space-4);
 }
 
+/* 390px viewport: tighter gutters below the small breakpoint. */
+@media (max-width: 480px) {
+  .lt-main {
+    padding: var(--lt-space-4);
+  }
+  .lt-breadcrumb {
+    padding: var(--lt-space-3) var(--lt-space-4) 0;
+  }
+}
+
 .lt-suite-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--lt-space-4);
   margin-top: var(--lt-space-2);
+  flex-wrap: wrap;
 }
 
 .lt-suite-header h1,
@@ -54,10 +65,6 @@
   max-width: 480px;
 }
 
-.lt-nav-search {
-  width: 220px;
-}
-
 .lt-empty {
   padding: var(--lt-space-8);
   text-align: center;
@@ -87,13 +94,14 @@
 }
 
 .lt-crumb-link:hover {
-  color: var(--lt-accent);
+  color: var(--lt-accent-text);
 }
 
 .lt-tool-header {
   display: flex;
   align-items: center;
   gap: var(--lt-space-3);
+  flex-wrap: wrap;
 }
 
 .lt-tool-hero-icon {
@@ -104,7 +112,7 @@
   height: 44px;
   border-radius: var(--lt-radius-card);
   background-color: var(--lt-accent-subtle);
-  color: var(--lt-accent);
+  color: var(--lt-accent-text);
   flex-shrink: 0;
 }
 

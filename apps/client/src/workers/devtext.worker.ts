@@ -8,6 +8,34 @@
 
 import type { DevTextToolRequest, DevTextToolResponse } from '../lib/devtext-worker-client';
 
+/**
+ * Browser `process` shim (Phase 12, D-042): csso pulls in clean-css, and
+ * both clean-css and terser read `process.platform` at MODULE-EVALUATION
+ * time. In a windowless Web Worker that ReferenceError took the entire
+ * devtext-core chunk down — every Text & Dev tool failed in the browser
+ * (Node tests never saw it; `process` exists there). This defines the
+ * standard minimal surface bundlers provide: posix paths (never win32),
+ * a cwd that is only consulted for URL rebasing we never enable, and
+ * microtask-based nextTick. Node contexts keep their real `process`.
+ */
+{
+  const g = globalThis as { process?: unknown };
+  if (g.process === undefined) {
+    g.process = {
+      platform: 'browser',
+      browser: true,
+      env: {} as Record<string, string>,
+      version: '',
+      cwd: (): string => '/',
+      nextTick: (fn: (...a: unknown[]) => void, ...args: unknown[]): void => {
+        void Promise.resolve().then(() => {
+          fn(...args);
+        });
+      },
+    };
+  }
+}
+
 type Algs = ('md5' | 'sha-1' | 'sha-256' | 'sha-512')[];
 
 function fail(id: number, code: string, message: string): DevTextToolResponse {
