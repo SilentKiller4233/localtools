@@ -105,9 +105,16 @@ jobs:
       - name: Install cargo-audit
         run: cargo install --locked cargo-audit
 
-      - name: cargo audit — Rust shell lockfile
+      # Spec 5.5: "cargo audit in CI, fail on high/critical" — plain
+      # `cargo audit` exits non-zero on real vulnerabilities and prints
+      # unmaintained/unsound advisories as warnings. `--deny warnings`
+      # proved wrong on the first live run (run 34635985930): 7 denied
+      # warnings, ALL unmaintained/unsound advisories in Tauri's own
+      # transitive tree (proc-macro-error, unic-*, glib 0.18.5) — crates
+      # we cannot remove without patching Tauri. Recorded in D-043.
+      - name: cargo audit — Rust shell lockfile (vulnerabilities fail the build)
         working-directory: apps/desktop/src-tauri
-        run: cargo audit --deny warnings
+        run: cargo audit
 
   compose-stack:
     # Phase 4 acceptance: the Docker stack test (Section 14.7 engine round
