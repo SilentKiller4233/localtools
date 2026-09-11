@@ -236,8 +236,10 @@ jobs:
     # both themes (zero critical/serious), 390px responsive check, keyboard
     # sweep — against the PRODUCTION build served by vite preview. Chrome
     # comes from the Playwright registry (npx playwright install chromium).
+    # Phase 13 adds the worker-offload + offline checks here; 40m because
+    # the sweep alone takes ~15m and the additions once wedged past 30m.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
