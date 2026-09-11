@@ -64,6 +64,13 @@ RUN apt-get update \
   && apt-get purge -y python3-pip curl \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# The runtime needs only `node` — the base image's bundled npm CLI (with
+# its tar/pacote/sigstore/ip-address/... dependency tree) is pure attack
+# surface: the Phase 13 Trivy gate found 11 HIGH/CRITICAL advisories in it
+# (CVE-2026-59873 tar et al), all in npm's own node_modules, none in
+# LocalTools deps. The engine runs `node dist/server.js`; nothing invokes
+# npm at runtime. Removing it also cuts ~80MB from the image.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 # Flat deploy layout: the engine's own package.json + dist at /app root,
 # deps (incl. @localtools/shared-types) inside node_modules.
 COPY --from=build /pruned/node_modules ./node_modules
