@@ -1,19 +1,21 @@
 /**
  * Offline-reload acceptance test (PROJECT_SPEC Phase 2 / Section 8) —
  * self-contained (Phase 13): starts its own `vite preview` on an
- * ephemeral port, loads the app, waits for the service worker, then
- * simulates offline by going browser-offline via the CDP Network domain
- * (Network.setOffline), reloads, and asserts the page still renders
- * fully from the service-worker cache.
+ * ephemeral port, loads the app, waits for the service worker, goes
+ * browser-offline via CDP network emulation, reloads, and asserts the
+ * page still renders fully from the service-worker cache.
  *
  * (The original two-phase warmup/verify design needed the caller to kill
  * the server between phases — fine interactively, impossible to wire
  * into verify/CI as one step. Browser-level offline is the same
- * network-gone condition and fits one process. First CI attempt used
- * puppeteer's setOfflineMode — which wedged page.reload on the ubuntu
- * runner (run 34637640479, silent 13-min hang) — replaced with a direct
- * CDP call + hard timeouts on EVERY phase so the step can never hang a
- * job again. The original bytes/history are in git.)
+ * network-gone condition and fits one process. History of CI hardening:
+ * setOfflineMode wedged reload silently (run 34637640479) → CDP
+ * Network.emulateNetworkConditions; ubuntu wedges can happen at ANY
+ * unbounded await (runs 34641228513/34644521693, the sibling script) →
+ * this file carries the same full discipline: watchdog armed before any
+ * async work, 127.0.0.1-only binding + AbortSignal-bounded probes,
+ * withTimeout() races on launch/close, explicit process.exit on both
+ * paths. The original bytes/history are in git.)
  *
  * Usage:  node scripts/offline-test.mjs
  * Output: OFFLINE_RELOAD_PASS on success.
@@ -25,21 +27,25 @@ import { fileURLToPath } from 'node:url';
 import { findChrome } from './lib/find-chrome.mjs';
 
 const PORT = 4182;
-const BASE = `http://localhost:${PORT}`;
-/** Every phase is hard-bounded so a wedge fails loudly instead of hanging CI. */
+const BASE = `http://127.0.0.1:${PORT}`;
+/** Whatever wedges, the whole script must finish inside this. */
 const HARD_TIMEOUT_MS = 120_000;
 
-const fail = (msg) => {
-  console.error(`OFFLINE_RELOAD_FAIL: ${msg}`);
-  process.exit(1);
-};
+/** Reject with `label` if `promise` doesn't settle within `ms`. */
+function withTimeout(ms, promise, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} exceeded ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
-/** Start vite preview on our port; resolve when it answers; return a killer. */
+/** Start vite preview on 127.0.0.1; resolve with a killer once it answers. */
 async function startPreviewServer() {
   const cwd = fileURLToPath(new URL('..', import.meta.url));
   const child = spawn(
     process.platform === 'win32' ? 'npx.cmd' : 'npx',
-    ['vite', 'preview', '--port', String(PORT), '--strictPort'],
+    ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'],
     { cwd, stdio: 'pipe', shell: process.platform === 'win32' },
   );
   let killed = false;
@@ -52,39 +58,60 @@ async function startPreviewServer() {
       child.kill('SIGKILL');
     }
   };
-  for (let i = 0; i < 120; i++) {
-    try {
-      const res = await fetch(`${BASE}/`);
-      if (res.ok) return kill;
-    } catch {
-      /* not up yet */
+  const ready = (async () => {
+    for (let i = 0; i < 60; i++) {
+      try {
+        const res = await fetch(`${BASE}/`, { signal: AbortSignal.timeout(2000) });
+        if (res.ok) return kill;
+      } catch {
+        /* not up yet */
+      }
+      await new Promise((r) => setTimeout(r, 500));
     }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  kill();
-  throw new Error(`vite preview did not come up on :${PORT} within 60s`);
+    kill();
+    throw new Error(`vite preview did not come up on 127.0.0.1:${PORT}`);
+  })();
+  return withTimeout(60_000, ready, 'vite preview readiness');
 }
+
+const fail = (msg) => {
+  console.error(`OFFLINE_RELOAD_FAIL: ${msg}`);
+  process.exit(1);
+};
 
 async function main() {
   if (!existsSync(new URL('../dist/index.html', import.meta.url))) {
     throw new Error('dist/ missing — run `pnpm build` first.');
   }
-  const killServer = await startPreviewServer();
 
-  // Hard watchdog: whatever wedges (browser launch, goto, reload, CDP),
-  // this turns a hang into a failure inside 2 minutes.
-  const watchdog = setTimeout(
-    () => fail(`hard timeout after ${HARD_TIMEOUT_MS}ms`),
-    HARD_TIMEOUT_MS,
-  );
+  // Watchdog FIRST — armed before any async work exists that could wedge.
+  let finished = false;
+  let killServer = () => {};
+  const watchdog = setTimeout(() => {
+    if (finished) return;
+    console.error(
+      `OFFLINE_RELOAD_FAIL: hard watchdog timeout (${HARD_TIMEOUT_MS}ms) — run wedged.`,
+    );
+    killServer();
+    process.exit(1);
+  }, HARD_TIMEOUT_MS);
+
+  killServer = await startPreviewServer();
+  console.log('preview server up');
 
   let browser;
   try {
-    browser = await puppeteer.launch({
-      executablePath: findChrome(),
-      headless: 'new',
-      args: ['--no-first-run', '--no-sandbox', '--disable-dev-shm-usage'],
-    });
+    console.log('launching browser…');
+    browser = await withTimeout(
+      60_000,
+      puppeteer.launch({
+        executablePath: findChrome(),
+        headless: 'new',
+        args: ['--no-first-run', '--no-sandbox', '--disable-dev-shm-usage'],
+      }),
+      'browser launch',
+    );
+    console.log('browser up');
     const page = await browser.newPage();
 
     await page.goto(`${BASE}/suite/media`, { waitUntil: 'networkidle0', timeout: 30_000 });
@@ -105,8 +132,8 @@ async function main() {
     // Give the runtime cache a beat to populate hashed assets.
     await new Promise((r) => setTimeout(r, 1500));
 
-    // GO OFFLINE via CDP — setOfflineMode proved unreliable on the ubuntu
-    // runner (silent reload wedge), so drive the protocol directly.
+    // GO OFFLINE via CDP network emulation (setOfflineMode proved
+    // unreliable on the ubuntu runner — silent reload wedge).
     const cdp = await page.createCDPSession();
     await cdp.send('Network.enable');
     await cdp.send('Network.emulateNetworkConditions', {
@@ -126,13 +153,20 @@ async function main() {
       fail('offline page did not render from the SW cache.');
     }
   } finally {
+    finished = true;
     clearTimeout(watchdog);
-    if (browser !== undefined) await browser.close();
+    if (browser !== undefined) {
+      await withTimeout(30_000, browser.close(), 'browser.close').catch((e) =>
+        console.error(`note: ${e instanceof Error ? e.message : e}`),
+      );
+    }
     killServer();
   }
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exitCode = 1;
-});
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  });

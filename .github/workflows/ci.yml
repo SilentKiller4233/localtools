@@ -286,9 +286,11 @@ jobs:
           cd apps/client && node scripts/webkit-wasm-smoke.mjs
 
       - name: Section 14.5 — worker-offload check (50MB PDF, zero main-thread blocking)
+        timeout-minutes: 6
         run: cd apps/client && node scripts/worker-offload-test.mjs
 
       - name: Section 8 — PWA offline reload (service-worker cache)
+        timeout-minutes: 6
         run: cd apps/client && node scripts/offline-test.mjs
 
   desktop-build:
