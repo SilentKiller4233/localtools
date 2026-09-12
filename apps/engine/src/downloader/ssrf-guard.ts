@@ -230,6 +230,37 @@ export interface ProxyOptions {
 }
 
 /**
+ * Parse a CONNECT request's authority-form target ("host:port" or
+ * "[ipv6]:port") into hostname + port. Splitting on ':' mangles IPv6
+ * literals (seven colons per address) — WHATWG URL parsing handles both
+ * forms and returns the hostname bracket-free. Port defaults to 443
+ * (CONNECT is https-only by contract).
+ */
+export function parseConnectTarget(raw: string): { hostname: string; port: number } {
+  let target: URL;
+  try {
+    target = new URL(`http://${raw}`);
+  } catch {
+    throw new EngineToolError('invalid-option', 'That doesn’t look like a valid URL.');
+  }
+  if (target.hostname === '') {
+    throw new EngineToolError('invalid-option', 'That doesn’t look like a valid URL.');
+  }
+  // WHATWG URL keeps brackets in .hostname for IPv6 literals — return
+  // the canonical bracket-free form (resolveAndValidateHost accepts
+  // both, but the seam comparison and ResolvedTarget.hostname should
+  // see one shape).
+  const hostname =
+    target.hostname.startsWith('[') && target.hostname.endsWith(']')
+      ? target.hostname.slice(1, -1)
+      : target.hostname;
+  return {
+    hostname,
+    port: target.port === '' ? 443 : Number(target.port),
+  };
+}
+
+/**
  * Start the validating forward proxy. Every connection yt-dlp makes —
  * initial page fetch, every redirect hop, every media fragment — goes
  * through here and re-validates scheme + resolved IPs. This is the
@@ -309,9 +340,8 @@ export function startValidatingProxy(opts: ProxyOptions = {}): Promise<Validatin
   server.on('connect', (req, clientSocket, head) => {
     void (async () => {
       try {
-        const [hostPart, portPart] = (req.url ?? '').split(':');
-        const port = portPart === undefined || portPart === '' ? 443 : Number(portPart);
-        const rv = await checkWithMock(hostPart ?? '', port);
+        const { hostname: hostPart, port } = parseConnectTarget(req.url ?? '');
+        const rv = await checkWithMock(hostPart, port);
         allowed += 1;
         const upstream = net.connect({ host: rv.ip, port, family: rv.family }, () => {
           clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');

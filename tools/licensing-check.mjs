@@ -6,7 +6,11 @@
  *   - Ghostscript's AGPL/subprocess-boundary reasoning        → D-001 + D-015-era notes; grep for the reasoning, not just the word
  *   - ffmpeg's license build variant chosen                   → D-020
  *   - @imgly/background-removal's license status / fallback   → D-016 (the fallback WAS chosen)
- *   - RAR extraction-only licensing constraint (if built)      → D-001 forward constraint — v1 does not build it, so the note must say so
+ *   - RAR extraction-only licensing constraint (if built)      → D-001 forward constraint — v1 does not build it, so the note must say so.
+ *     (External review N2: this requirement is pre-recorded per the spec's
+ *     Section 4.8 forward-constraint list — the RAR tool is NOT built yet.
+ *     The gate greps for the constraint's existence in DECISIONS.md, not
+ *     for a shipped tool — hence "not built in v1" in the label.)
  *   - the mocked-downloader-testing decision                   → D-026
  *
  * Runs anywhere (no deps) — part of `pnpm verify` and the CI licensing job.

@@ -57,3 +57,9 @@ cargo run --bin integration_proof -- <tools-root-dir> piper  # 503→200 no-rest
 Signing/updater: deliberately OFF until the owner provides signing
 secrets (D-037); unsigned-app first-launch bypass steps live in the
 root README.
+
+**No auto-update in v1.0** (D-037): the desktop app will not notify you
+about new versions. Check the GitHub Releases page periodically —
+especially for security fixes — and re-download manually. A future
+release may add an update-check (notification-only) once signing is
+decided.

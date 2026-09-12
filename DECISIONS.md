@@ -17,6 +17,13 @@ strictly as subprocesses (never linked) so their licenses do not propagate into
 this work:
 
 - Ghostscript (AGPL-3.0/commercial dual) — deep compress/PDF-A/deep repair, subprocess only. Same boundary reasoning used by Stirling-PDF and OCRmyPDF's dependency chain.
+  AGPL network-clause note (external review H1): when a deployer offers
+  LocalTools with `LOCALTOOLS_EXPOSE=true`, remote users interact with
+  Ghostscript's functionality over a network. AGPL §13's corresponding-source
+  obligation is satisfied for the Ghostscript component by linking to the
+  UNMODIFIED upstream project (https://www.ghostscript.com/) — LocalTools
+  never modifies it; no local corresponding-source offer is required beyond
+  that link. The MIT engine never links AGPL code; the boundary is subprocess-only.
 - `@imgly/background-removal` (AGPL-3.0/commercial dual) — **decision deferred to Phase 5** per spec Section 4.3: license terms to be re-confirmed at implementation time, with the documented fallback being ONNX Runtime Web + a permissively licensed U2Net/MODNet model. If AGPL proves unacceptable for a browser-bundled asset, the fallback is used.
 - ffmpeg — build variant decided in Phase 7 (LGPL-only build vs GPL static build); either way it is a separately executed binary, and the choice will be recorded here **[required-by-CI]**.
 - RAR extraction-only constraint (bonus v1.1 tool, if built): RARLAB's `unrar` is freely redistributable for extraction only; creating `.rar` archives is license-restricted and will never be supported. Recorded now as forward constraint **[required-by-CI when built]**.
@@ -671,8 +678,14 @@ model file itself).
   `piper_windows_amd64.zip` on the dev host (repo-local `piper-2023.11.14-2/`,
   gitignored like yt-dlp, SHA-256 of the zip verified at install:
   f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea — the
-  release carries NO upstream checksums, so our own pinned digest is the
-  verification, recorded here), Linux `piper_linux_x86_64.tar.gz` extracted in
+  the release carries NO upstream checksums, so our own pinned digest is the
+  verification, recorded here) — **external review N3 scope note: this
+  self-computed pin protects against tampering/corruption AFTER the
+  digest was recorded, not against a compromised upstream AT pin time
+  (a hostile release could publish matching malicious bytes + digest).
+  Full protection against pin-time compromise would require a second
+  independent source for the digest; out of scope for v1, recorded
+  honestly.** Linux `piper_linux_x86_64.tar.gz` extracted in
   the Docker engine image. Resolution order mirrors yt-dlp:
   `LOCALTOOLS_PIPER_PATH` env → repo-local `piper-<tag>/` → Docker path
   `/opt/piper/piper` → PATH; ENOENT → honest 503 tool-unavailable.
@@ -1074,3 +1087,59 @@ high` rides on the verify matrix (fail on any high/critical advisory
    `if: false` until Phase 15's signing decision (D-037) — publishing
    unsigned artifacts from a tag early would be worse than not having
    the pipeline. The comment block documents the exact enable step.
+
+## Phase 13 — external pre-release review (Claude) response
+
+### D-044 — Review-response hardening: CONNECT IPv6 parse, mock-seam production gate, ffmpeg.wasm CUT
+
+An adversarial pre-release review of PROJECT_REVIEW/SPEC/DECISIONS/TESTS
+(Claude) produced findings ranked Critical/High/Medium/Nit. Verdicts on
+the two [NEEDS-CODE-CHECK] criticals, and the changes landed in response:
+
+1. **C1 (SSRF DNS-rebinding pinning) — VERIFIED CLEAN, no change
+   needed.** `ssrf-guard.ts` already resolves once, validates EVERY
+   returned A/AAAA record (any non-public record → `blocked-host`),
+   and opens the socket to the pinned validated IP literal on both
+   proxy paths (HTTP: `http.request({hostname: rv.ip, ...})`; CONNECT:
+   `net.connect({host: rv.ip, family})`). No second DNS lookup exists
+   between validate and connect; per-hop re-validation holds because
+   every yt-dlp connection is a new proxy request. Classic rebinding
+   is structurally dead.
+
+2. **C1 companion bug found during verification — FIXED.** The
+   CONNECT path split `req.url` on ':' to parse authority-form
+   targets, mangling bracketed IPv6 literals
+   (`[2606:4700::1111]:443` → host "[2606", port 4700): legitimate
+   IPv6 HTTPS sites failed through the proxy. Hostile literals failed
+   closed (connect error — never a bypass), so this was functional
+   breakage, not a security hole. Fixed via `parseConnectTarget()` —
+   WHATWG URL parsing handles both `[v6]:port` and `host:port`,
+   bracket-free hostname, default port 443, malformed → invalid-option
+   (fail closed). Unit-tested in `apps/engine/test/review-hardening.test.ts`.
+
+3. **C2 (mock-exemption backdoor) — HARDENED (gate added).** The
+   `LOCALTOOLS_DOWNLOADER_MOCK_TARGET` test seam previously engaged
+   from runtime env vars alone (TEST_MODE + MOCK_TARGET); a hostile
+   .env or compromised sibling container could open the one-target
+   loopback exemption. Now triple-gated: the seam engages ONLY when
+   `NODE_ENV=test` is ALSO set. Production posture per artifact:
+   Docker pins `ENV NODE_ENV=production` (engine.Dockerfile);
+   the desktop sidecar `env_clear()`s — NODE_ENV never reaches the
+   child; bare `node dist/server.js` has it unset or production.
+   Pinned by tests: production/unset NODE_ENV → seam dead → mock
+   target surfaces `blocked-host` exactly like any other loopback
+   URL; NODE_ENV=test + both vars → seam opens (the gate is the
+   gate). Static artifact tests assert docker-compose.yml never
+   forwards the seam vars (explicit allowlist), the Dockerfile pins
+   NODE_ENV=production, and sidecar.rs never passes NODE_ENV or the
+   seam vars. `.env.example` documents the triple gate.
+
+4. **ffmpeg.wasm — CUT by owner decision (supersedes D-021/D-032).**
+   The in-browser small-clip (<50MB) trim/convert path is dropped
+   from v1.0.0 scope entirely — moved to the README roadmap as a
+   post-1.0 "maybe." Rationale: never load-bearing (Group B ffmpeg
+   covers every Media tool engine-side), deferred twice already, and
+   Safari/WebKit memory quirks make it a liability for a v1.0.0 tag.
+   M2 resolved: no TBD rides into the tag. No client code changes —
+   the path was never built; the tool registry/routes all point at
+   the engine Group B endpoints.

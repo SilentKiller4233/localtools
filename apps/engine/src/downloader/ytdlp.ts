@@ -217,7 +217,11 @@ function killTree(child: ChildProcess, signal: 'SIGTERM' | 'SIGKILL'): void {
  * The sandbox flag set applied to EVERY invocation (Section 5.8
  * yt-dlp sandboxing + 5.3 subprocess discipline).
  *
- * Verified flags (yt-dlp 2026.08.19):
+ * Verified flags (yt-dlp 2026.08.19 — the pinned version in BOTH the
+ * desktop manifest and the Docker image; the flag-presence assertion in
+ * test/ytdlp-flags.test.ts re-proves them against the INSTALLED binary
+ * so a future release that renames a flag fails the suite instead of
+ * silently un-sandboxing the downloader):
  *  --no-config-locations  don't load any user config files
  *  --no-plugin-dirs       clear plugin search dirs incl. defaults
  *  --no-remote-components disallow fetching any remote components

@@ -808,6 +808,11 @@ function RedactPage({ tool }: ToolPageSpec) {
               placeholder="all"
             />
           </Field>
+          <p className="lt-tool-hint">
+            Text is permanently removed from the file. Images under a redaction box are only covered
+            visually — not pixel-removed; if the file has sensitive content inside images (scans,
+            signatures, photos), remove those pages or replace the images first.
+          </p>
         </>
       }
       validate={() => (search.trim() === '' ? 'Enter the text to redact' : undefined)}

@@ -386,6 +386,11 @@ static QPDF_TOOL_ARTIFACTS: [ToolArtifact; 1] = [ToolArtifact {
     per_os: &QPDF_ARTIFACTS,
 }];
 
+// RESERVED, NOT WIRED (D-035 / external review N1): the engine's qpdf
+// fallback resolution does not yet consume LOCALTOOLS_QPDF_PATH
+// (tool-paths.ts has no qpdf entry). The binding ships so the artifact
+// is downloaded + cached for when the fallback lands; setting it today
+// has no effect. See DECISIONS.md D-035.
 static QPDF_ENV: [EnvBinding; 1] = [EnvBinding {
     var: "LOCALTOOLS_QPDF_PATH",
     windows: "qpdf-12.4.1-mingw64/bin/qpdf.exe",

@@ -52,7 +52,7 @@ RUN apt-get update \
     ca-certificates \
     python3 \
     python3-pip \
-  && pip3 install --no-cache-dir --break-system-packages weasyprint yt-dlp \
+  && pip3 install --no-cache-dir --break-system-packages weasyprint 'yt-dlp==2026.08.19' \
   && mkdir -p /opt/piper \
   && curl -fsSL -o /tmp/piper.tar.gz \
     'https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz' \
