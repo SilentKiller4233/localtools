@@ -1,70 +1,66 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-12 (evening), end of session 16. Phase 13 (Testing & CI finalization) is CODE-COMPLETE and locally verified on branch `phase-13-ci-finalization` @ `9e2af40` (+ this docs commit), PR #1 open. **BLOCKED ON OWNER: GitHub Actions billing died mid-acceptance** — run 34710264986: all 7 jobs "not started because recent account payments have failed or your spending limit needs to be increased". Fix Billing & plans, then re-run CI on the PR head; the merge IS the acceptance. Full local verify is green including both browser checks with the final anti-wedge discipline._
+_Last updated: 2026-09-13, end of session 17. The external Claude pre-release review was fully triaged and responded to; all code/doc fixes landed on `phase-13-ci-finalization` @ `1fec940` (pushed), local `pnpm verify` fully green (600 tests). **PR #1 remains blocked on the owner's GitHub Actions billing** — runs 34710264986, 34710597715, and 34723093833 ALL died with the same annotation ("recent account payments have failed or your spending limit needs to be increased"). The owner says the account should be completely free — the resolution is EITHER fix billing at Settings → Billing & plans OR flip the repo public (public repos get free unlimited Actions minutes; the D-010 public flip was already planned for Phase 15) OR wait for the monthly minute-reset. Owner decision pending on which route._
 
 ## Where things stand right now
 
-**Phases 0–13 complete (13 of 15).** Phase 13 shipped this session (D-043), branch `phase-13-ci-finalization`, PR #1 (the repo's FIRST PR — retires the "workflows untested against PRs" known-issue):
+**Phases 0–13 complete. External review response complete (D-044).** Claude's adversarial review of the four docs produced C1–C3 / H1–H5 / M1–M7 / N1–N4. Everything code-fixable is fixed, tested, committed, and pushed:
 
-- **14.5 bundle-size gate**: `apps/client/scripts/bundle-size-check.mjs` as the client `postbuild` — walks the Vite manifest's entry static-import graph (manifest now emitted, `build.manifest: true`), gzip-9 per chunk. Initial = 121.60KB gzipped vs 250KB budget (BUNDLE_SIZE_PASS locally + in CI run 34641228513's verify jobs).
-- **Self-contained worker-offload + offline checks** in `pnpm verify` AND the CI accessibility job. These needed THREE hardening rounds on ubuntu runners (see gotchas) — final form: watchdog armed BEFORE any async work, `withTimeout()` races on browser launch/close, 127.0.0.1-only binding + `AbortSignal.timeout`-bounded readiness probes, explicit `process.exit` on both paths, CI step-level `timeout-minutes: 6`.
-- **14.8 licensing gate**: `tools/licensing-check.mjs` in `pnpm verify` + dedicated CI `licensing` job (passed in every CI run that started).
-- **14.4 shell-string canary — acceptance DONE and evidenced**: `shell:false`→`true` flipped live; security tests still passed 15/15 (layered defense) but `apps/engine/test/shell-canary.test.ts` failed with `SHELL_CANARY_FAIL: subprocess.ts: shell:true`; reverted; canary committed as a permanent import-aware guard (2/2 green).
-- **Supply chain**: `pnpm audit --audit-level high` on the verify CI matrix (js-yaml 4.3.2 + adm-zip 0.6.1 override fixed — audit clean); CI `supply-chain` job = Trivy HIGH/CRITICAL on the engine image (`--ignore-unfixed`) + `cargo audit` (vulns fail, unmaintained warnings don't — see D-043) — **passed in runs 34637640479/34641228513/34644521693**. Trivy's first scan found 1 CRITICAL + 10 HIGH — all in the base image's bundled npm CLI tree → npm stripped from the runtime image (~80MB smaller, scan clean). `.github/dependabot.yml` (inert until the D-010 public flip).
-- **release-desktop.yml**: real three-OS tauri-action matrix written, `if: false` until the Phase 15 D-037 signing decision.
+- **C1 (SSRF DNS-rebinding pinning): VERIFIED CLEAN by reading code** — resolve-once, validate EVERY A/AAAA record, connect to the pinned IP literal on both proxy paths. No change needed.
+- **C1 companion bug (found during verification): FIXED** — the CONNECT path's `':'`-split mangled IPv6 authority-form targets. New `parseConnectTarget()` in ssrf-guard.ts (WHATWG URL parse, bracket-strip, default 443, malformed → invalid-option); 4 unit tests.
+- **C2 (mock seam backdoor): HARDENED** — `LOCALTOOLS_DOWNLOADER_MOCK_TARGET` seam is now triple-gated: engages ONLY when `NODE_ENV=test` + `LOCALTOOLS_DOWNLOADER_TEST_MODE=true` + MOCK_TARGET all set. Docker pins NODE_ENV=production; desktop sidecar `env_clear()`s NODE_ENV away; production `node dist/server.js` has it unset/production. Tests prove: hostile .env with both vars under production/unset NODE_ENV → seam dead → `blocked-host`. Static artifact tests: compose forwards neither var, Dockerfile pins production, sidecar.rs never passes them.
+- **C3 (CI green): still blocked on billing** (see header) — no code involved.
+- **H1** AGPL network-clause note added to DECISIONS.md D-001. **H2** redact tool now shows the user-facing warning at the point of use (images covered, not pixel-removed). **H3** four "manual (code review)" Phase-11 rows converted to real tests (`apps/client/test/engine-surfaces.test.tsx`, 9 tests, happy-dom + createRoot/act; react-test-renderer is deprecated — don't reintroduce). **H4** stays an owner manual item (one monitored real-URL downloader run pre-v1). **H5** Docker yt-dlp pinned to 2026.08.19 (matches desktop) + `ytdlp-flags.test.ts` asserts every sandbox flag exists in the installed binary's --help.
+- **M2** ffmpeg.wasm **CUT by owner decision** (D-044 supersedes D-021/D-032). **M5** SUMMARY counts resynced. **M1/M4/M6/M7/N1/N2/N3** all landed as doc fixes (Trivy footnote, desktop no-auto-update note, spec PDF→Excel amendment, Dependabot gap note, manifest.rs QPDF reserved-comment, licensing-gate comment, Piper pin-time scope note). **N4** = Phase 14's re-baseline bar.
 
 ## Last thing done
 
-1. CI-proven greens before billing died (run 34644521693): compose-stack, licensing, supply-chain (Trivy+cargo audit), verify(windows), desktop-build — 5/7.
-2. Root-caused the two ubuntu wedges (worker-offload step 26min; verify(ubuntu) 6h — the SAME wedge inside `pnpm verify`'s tail) and landed the final anti-wedge discipline (`9e2af40`); both scripts verified green locally after the rewrite.
-3. **Discovered the acceptance blocker**: run 34710264986 — all jobs not started, GitHub Actions billing/spending limit. The 6-hour hung job + ~8 fix-forward restarts plausibly drained it.
-4. Docs: D-043 (with the CI-hardening addendum), TESTS.md Phase 13 section, SUMMARY.md at 13/15, this HANDOFF.
+1. Full external-review triage → fixes → tests → docs (D-044 in DECISIONS.md, TESTS.md review-response section, PROJECT_REVIEW.md tech-debt register updated, SUMMARY.md synced).
+2. `pnpm verify` green end-to-end: **600 tests** (engine 131→144: +10 review-hardening, +1 ytdlp-flags; client 28→37: +9 engine-surfaces) + build + bundle gate + licensing + worker-offload + offline.
+3. Commit `1fec940` pushed to `phase-13-ci-finalization`; the triggered CI run 34723093833 queued ~5min then died with the SAME billing annotation — confirming it's account-level, not code.
 
 ## In-progress / uncommitted work
 
-This docs commit. Everything else is pushed on the branch. **OPEN LOOP: PR #1 needs one green CI run on `9e2af40`-or-later, then merge** — blocked on the owner's GitHub Actions billing, not on code.
+None — tree is clean at `1fec940`, all pushed. (PROJECT_REVIEW.md is now committed as part of the review-response commit.)
 
 ## Next immediate steps (in order — do these first)
 
-1. **OWNER ACTION: fix GitHub Actions billing** (Settings → Billing & plans: failed payment or spending limit). Then `gh pr checks 1` / re-run the failed run — nothing about the branch needs to change. If a wedge somehow recurs despite the anti-wedge discipline, the step now fails loudly within 6 minutes with diagnostics — read the step log.
-2. When the PR's 7 checks are green → `gh pr merge 1 --merge` → confirm main's own CI run green (fix-forward if not). That completes the Phase 13 acceptance ("CI green on a clean PR").
-3. **Consider CI-minutes hygiene before Phase 14** (recommendation, not yet implemented — the browser checks currently run TWICE per push: inside `pnpm verify` on the verify matrix AND as accessibility-job steps; a `LOCALTOOLS_SKIP_BROWSER_CHECKS=1` env on the verify matrix would halve that burn. Decide + record in DECISIONS if adopted.)
-4. **Phase 14 — Performance & size pass** (spec 14.5 into README): re-measure Lighthouse on the current build (Phase 2 baseline: perf 82 / a11y 100 / BP 100 / SEO 91); Docker image size note (Section 11; the npm strip shrank it — measure via CI or state the estimate honestly); bundle numbers already gated.
-5. Phase 15 — docs & v1.0.0 release (README/LEGAL/CONTRIBUTING, TESTS fully logged, DECISIONS finalized, D-010 public flip — activates Dependabot — D-037 signing decision → un-gate release-desktop.yml, tag v1.0.0).
-6. Owner manual items before v1.0.0 (TESTS.md): desktop click-through (clean machine/VM), screen-reader spot-check ×4, true macOS Safari.
+1. **OWNER ACTION (still): GitHub Actions billing** — one of: fix payment/spending limit at Settings → Billing & plans; OR flip the repo public early (public = free unlimited Actions minutes; also activates Dependabot early); OR wait for the monthly minute reset. The owner stated the account should be "completely free" — if billing still refuses after checking, the public flip is the zero-cost unblock.
+2. Once CI can start: re-run PR #1's checks (`gh run rerun 34723093833 --failed` or push any commit), watch all 7 jobs, merge when green, confirm main's own run green. That completes the Phase 13 acceptance ("CI green on a clean PR").
+3. Also exercise `release-desktop.yml` once via `workflow_dispatch` or a throwaway tag before the real v1.0.0 tag (review C3 recommendation).
+4. **Phase 14 — Performance & size pass**: re-measure Lighthouse (regression from Phase 2's perf 82 is the bar — review N4), record bundle/Docker-image numbers in README.
+5. Phase 15 — docs, public flip (D-010), signing decision (D-037) → un-gate release-desktop.yml, tag v1.0.0.
+6. Owner manual items before v1.0.0: desktop click-through, screen-reader spot-check ×4, true macOS Safari, the H4 monitored real-URL downloader run.
 
 ## Blockers / open decisions needing human input
 
-- **GitHub Actions billing (BLOCKING the Phase 13 acceptance merge)** — owner must fix payment/spending limit; then re-run PR #1's CI.
-- Owner manual items (TESTS.md): click-through, screen-reader spot-check, macOS Safari.
-- Signing/updater = Phase 15 (D-037). Public flip = Phase 15 (D-010).
-- Unilateral defaults this session (all in D-043): bundle gate counts entry JS+CSS (vs JS-only); offline check browser-level (vs kill-the-server); canary committed permanently (vs revert-only); Trivy `--ignore-unfixed`; audit gate covers dev deps; adm-zip root override 0.6.1; npm stripped from the engine runtime image; cargo audit without `--deny warnings`; browser checks double-run in verify+a11y (see step 3 — decide whether to keep).
+- **GitHub Actions billing (BLOCKING the Phase 13 acceptance merge)** — owner to pick: fix billing / flip public / wait for reset.
+- Owner manual items (TESTS.md): desktop click-through, screen-reader ×4, macOS Safari, H4 real-URL downloader run.
+- Signing/updater = Phase 15 (D-037). Public flip = Phase 15 (D-010) — could be pulled earlier to unblock CI free minutes.
+- Unilateral defaults this session (all recorded in D-044): C2 gate via NODE_ENV=test; IPv6 fix via WHATWG URL parse (not a hand-rolled parser); H3 tests via happy-dom+createRoot (not react-test-renderer — deprecated); ytdlp Docker pin matches desktop 2026.08.19; ffmpeg.wasm cut (owner's explicit call).
 
 ## Environment / local state notes
 
-- Rust toolchain on the dev host: rustup 1.29.1, stable 1.98.1 (x86_64-pc-windows-msvc). `cargo` at `C:\Users\mshah\.cargo\bin` — bash needs `export PATH="/c/Users/mshah/.cargo/bin:$PATH"`.
+- Rust toolchain: rustup 1.29.1, stable 1.98.1 — bash needs `export PATH="/c/Users/mshah/.cargo/bin:$PATH"`.
 - Repo-local native toolchain (gitignored, do not delete): ffmpeg-n9.0…/, yt-dlp-2026.08.19/, gs10.07.1/, GTK3-Runtime/, piper-2023.11.14-2/.
 - Model caches (do not delete): `%LOCALAPPDATA%/Temp/localtools-models/` — u2netp, whisper ggml-tiny.en, piper-voices lessac.
-- `apps/desktop/src-tauri/engine-dist/` is a BUILD PRODUCT (119MB, gitignored) — rebuild with `pnpm --filter @localtools/desktop desktop:engine-dist`.
+- `apps/desktop/src-tauri/engine-dist/` is a build product (gitignored) — rebuild via `pnpm --filter @localtools/desktop desktop:engine-dist`.
 - Dev host has NO Docker (D-015) — compose/Trivy only in CI.
-- `pnpm verify` takes ~10–12 min now — ALWAYS background with notify.
-- Playwright WebKit 26.6 + Chromium installed in `%LOCALAPPDATA%/ms-playwright/`; system Chrome present for find-chrome.
-- Browser-check ports: 4181 (worker-offload), 4182 (offline); a11y job's Phase 12 scripts still use 4173.
+- `pnpm verify` ~10–12 min — ALWAYS background with notify.
+- Playwright WebKit 26.6 + Chromium in `%LOCALAPPDATA%/ms-playwright/`; browser-check ports 4181/4182 (a11y job 4173).
+- Client now has `happy-dom` devDep (for engine-surfaces tests only — per-file `@vitest-environment` annotation; the rest of the client suite stays node-env).
 
 ## Useful context / gotchas discovered this session
 
-- **Ubuntu-runner browser-check wedges are real and cost ~2 CI-hours + plausibly the billing limit.** Two silent hangs: worker-offload (26 min, run 34641228513) and verify(ubuntu) tail (6 HOURS, run 34644521693 — the default job timeout, not my 30/40-min caps, is what finally killed it). Root causes NOT deterministic code bugs: puppeteer launch/close and unbounded awaits can stall forever on hosted runners. Discipline that finally worked: watchdog armed BEFORE any async work (my first fix armed it after server-start — the gap), `withTimeout()` Promise.race on every unbounded puppeteer call, `--host 127.0.0.1` + `AbortSignal.timeout(2000)` on readiness probes, explicit `process.exit(0/1)` on both paths, and step-level `timeout-minutes: 6` in CI as the outer belt.
-- **A 6-hour default-timeout job is a spending-limit grenade.** For any job with flaky potential, set `timeout-minutes` explicitly (the a11y job has 40; verify jobs DON'T — consider adding one at the root workflow level next session).
-- **GitHub billing-death signature**: all jobs fail in 2–3s, log blobs 404 (never flushed), and the run view's ANNOTATIONS carry the billing message. Don't debug the workflow when you see this.
-- **`docker compose config --images` lists ALL services** — grep for 'engine' picked localtools-client first (run 34635101666). Filter by service arg (`--images engine`) or parse the JSON config.
-- **Trivy on node:\*-slim images flags the bundled npm CLI's own tree** (tar/pacote/sigstore/ip-address/brace-expansion/picomatch — 1 CRITICAL + 10 HIGH, none in app deps). Runtime images that only need `node` should strip `npm`/`npx`.
-- **cargo audit `--deny warnings` is wrong for Tauri apps**: Tauri's tree carries unmaintained/unsound advisories (proc-macro-error, unic-*, glib) you can't remove. Spec wording ("fail on high/critical") is the correct setting — plain `cargo audit`.
-- **Windows `spawn('npx.cmd', …)` needs `shell: true`** (EINVAL otherwise); `fileURLToPath` must be imported explicitly in .mjs.
-- **Vite manifest entry**: html entry's `file` is its JS chunk; detect via `isEntry:true` + `src` ending `.html`; `build.manifest` must be enabled explicitly.
-- **The engine's functional security tests cannot catch a shell-string regression** (hostile input never reaches argv) — that's exactly why the 14.4 static canary exists. Proven live.
-- **Inline python-in-bash heredocs break on backticks** — write edit scripts to a temp .py file and run it.
-- **Logs 404 mid-run** — Azure blobs flush only at completion; use the jobs API's step state (`--jq '.steps[] | select(.conclusion == null)')` to see where a running job is.
-- Prior-session gotchas (Vite stale-workspace-dep builds, UNC paths, taskkill-tree, axe+hash-router, prettier formats markdown) — still true; see git HANDOFF history.
+- **GitHub Actions billing-death signature v2**: jobs can QUEUE for ~5 minutes before the billing annotation kills them (run 34723093833) — the older signature (2-3s instant fail, logs 404) isn't the only shape. If a run's jobs all fail at exactly ~5m with zero log content, check ANNOTATIONS for the billing message before debugging the workflow.
+- **react-test-renderer is deprecated** (React types + eslint `no-deprecated` fire on `create`/`act` imports): use happy-dom + `createRoot` + `act` from 'react' for component tests in this repo. react-test-renderer was installed then removed this session — don't reintroduce.
+- **renderToStaticMarkup does NOT run useEffect** — server rendering skips effects; hook-state tests must mount with createRoot and assert via the rendered DOM (closure-captured hook values go stale by construction).
+- **Stubbing the desktop bridge in node tests**: `desktop-bridge.ts` reads `window.__LOCALTOOLS__` (typed via `declare global`); in happy-dom, assign it with a structural cast — the internal `DesktopBridge` interface is NOT exported.
+- **Fake-Worker harness pattern**: the worker client registers BOTH 'message' and 'error' listeners — a stub storing one handler silently drops one. Store handlers per event type in a Map.
+- **esbuild (vite transform in vitest) can choke on `→` inside test names** in .tsx files under some conditions — prefer ASCII-safe test names (`->` not `→`) in this repo's client tests.
+- **Prettier reflows long lines between write and patch** — after `prettier --write`, re-read the exact region before patching (two of my patches missed because signatures were reflowed).
+- **no-dynamic-delete fires on `delete process.env[key]`** in test cleanup — use `Reflect.deleteProperty(process.env, key)`.
+- Prior-session gotchas (billing signature v1, wedge discipline, UNC paths, taskkill-tree, axe+hash-router, prettier-formats-markdown, Vite stale-workspace-deps) — still true; see git HANDOFF history.
 
 ## 0. Binding owner directives (unchanged — do not violate)
 
