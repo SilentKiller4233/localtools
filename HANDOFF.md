@@ -1,6 +1,6 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-13, end of session 18. **Phase 15 (docs & release) local work complete and pushed @ `36f47a0`** — README rebuilt with committed per-suite screenshots + verified 97-tool list + Mermaid diagram; LEGAL.md written (Section 6 three-location rule now fully satisfied); SECURITY.md accuracy debt cleared; D-046. Local `pnpm verify` fully green (600 tests + all gates). **All 15 phases are now BUILT. The only remaining v1.0.0 items are owner-gated**: (1) CI billing — STILL BLOCKED, 4th failed probe this session (rerun of run 34749561006 died in 5s with the same billing annotation); (2) PR #1 merge + green CI proof; (3) release-desktop.yml smoke; (4) D-037 signing; (5) public flip D-010; (6) owner manual items; then the v1.0.0 tag._
+_Last updated: 2026-09-13, mid session 19. **Phase 15 complete @ `36f47a0`; H4 (monitored real-URL downloader run) PASSED @ `f68c130`** — the last agent-runnable pre-release item. Local `pnpm verify` fully green (600 tests + all gates). **All 15 phases BUILT. Remaining v1.0.0 items are owner-gated**: (1) CI billing — STILL BLOCKED (5th failed probe: run 34760464159 on the Phase 15 push, same annotation); (2) PR #1 merge; (3) release-desktop.yml smoke; (4) D-037 signing; (5) public flip D-010; (6) manual items; then the v1.0.0 tag._ — README rebuilt with committed per-suite screenshots + verified 97-tool list + Mermaid diagram; LEGAL.md written (Section 6 three-location rule now fully satisfied); SECURITY.md accuracy debt cleared; D-046. Local `pnpm verify` fully green (600 tests + all gates). **All 15 phases are now BUILT. The only remaining v1.0.0 items are owner-gated**: (1) CI billing — STILL BLOCKED, 4th failed probe this session (rerun of run 34749561006 died in 5s with the same billing annotation); (2) PR #1 merge + green CI proof; (3) release-desktop.yml smoke; (4) D-037 signing; (5) public flip D-010; (6) owner manual items; then the v1.0.0 tag._
 
 ## Where things stand right now
 
@@ -17,7 +17,7 @@ Phase 15 deliverables just landed (`36f47a0`, all verified):
 
 ## Last thing done
 
-1. CI billing probe (4th): `gh run rerun 34749561006 --failed` → died in 5s, same billing annotation. Account-level, still not fixed.
+1. **H4 PASSED (live-verified)**: production-posture engine (dist build, no seams) + real YouTube "Me at the zoo" — metadata round trip (live title/uploader/duration/formats) + audio download verified genuine (ID3 magic, ffprobe: mp3, 19.006s, ~51kbps, sanitized filename). Bonus: `unsupported-site` live-verified (archive.org raw URL rejected — no-open-proxy holds), `blocked-host` live-verified (loopback target rejected). Logged in TESTS.md Phase 15; artifacts deleted; engine shut down. Commit `f68c130`.
 2. Wrote `apps/client/scripts/capture-screenshots.mjs` (CDP-driven Chrome headless over raw WebSocket; ws@8.21.3 resolved from the pnpm store via file:// URL — no new dependency) and captured 9 screenshots of the production build into `docs/screenshots/`.
 3. Rebuilt README (screenshots, verified tool list, Mermaid diagram, legal section), wrote LEGAL.md, fixed SECURITY.md, updated TESTS/SUMMARY/DECISIONS.
 4. `pnpm format:check` clean; **`pnpm verify` fully green** (600 tests + bundle 121.60KB/250KB + licensing + worker-offload 0 long tasks + offline).
@@ -34,12 +34,12 @@ None — tree is clean at `36f47a0`, all pushed.
 3. Exercise `release-desktop.yml` once via `workflow_dispatch` or a throwaway tag before the real v1.0.0 (review C3 recommendation).
 4. **D-037 signing decision** → un-gate release-desktop.yml's `if: false`.
 5. Public flip (D-010) if not already done in step 1 → Dependabot activates.
-6. Owner manual items (TESTS.md): desktop click-through on a clean machine, screen-reader spot-check ×4, true macOS Safari, H4 monitored real-URL downloader run.
+6. Owner manual items (TESTS.md): desktop click-through on a clean machine, screen-reader spot-check ×4, true macOS Safari. (H4 real-URL downloader run: DONE 2026-09-13, agent-run — TESTS.md Phase 15.)
 7. **Tag `v1.0.0`** — triggers release-desktop (three-OS installers, draft release). Then final HANDOFF/SUMMARY truth-up per the DoD ("current as of the v1.0.0 tag").
 
 ## Blockers / open decisions needing human input
 
-- **GitHub Actions billing (BLOCKING everything CI)** — owner to pick: fix billing / flip public / wait for reset. 4 failed probes across two sessions (runs 34710264986, 34710597715, 34723093833, 34749561006).
+- **GitHub Actions billing (BLOCKING everything CI)** — owner to pick: fix billing / flip public / wait for reset. 5 failed probes across sessions (runs 34710264986, 34710597715, 34723093833, 34749561006, 34760464159).
 - D-037 signing decision (Phase 15 tail): sign installers (needs certs) or ship unsigned with the documented per-OS bypass steps.
 - Owner manual items list (above).
 - Unilateral defaults this session (recorded in D-046): screenshots committed (not gitignored) because README references them; capture script uses ws from the pnpm store via file:// URL (no new dep); README status phrased "15 of 15 built, tag pending" rather than claiming the release; LEGAL.md mirrors in-app notice substance.

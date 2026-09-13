@@ -113,7 +113,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - ~~Phase 12 — Accessibility & responsiveness~~ (complete — see the Phase 12 section below)
 - ~~Phase 14 — performance/size~~ (complete) · ~~Phase 15 — documentation~~ (complete — D-046)
 - Pre-v1.0.0 owner gates: CI billing decision (public flip / Oct 1 reset / settings fix) → PR #1 merge + green CI proof; one release-desktop.yml smoke run (review C3); D-037 signing decision → un-gate release-desktop.yml; public flip (D-010) → activates Dependabot; THEN tag v1.0.0
-- Owner manual items (TESTS.md): desktop click-through on a clean machine, screen-reader spot-check x4, true macOS Safari, H4 monitored real-URL downloader run
+- Owner manual items (TESTS.md): desktop click-through on a clean machine, screen-reader spot-check x4, true macOS Safari (H4 real-URL downloader run DONE 2026-09-13 — live YouTube round trip in production posture, TESTS.md Phase 15)
 
 **Phase 11 — Integration polish (health gating, progress, error states, batch)**
 
@@ -170,7 +170,7 @@ D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as 
 
 ## Known issues / tech debt
 
-- SSRF guard adversarial re-review: DONE (external Claude review — C1 verified clean: resolve-once + validate-every-record + connect-to-pinned-IP on both proxy paths; C2 hardened: mock seam now triple-gated NODE_ENV=test+TEST_MODE+MOCK_TARGET, unreachable in shipped artifacts; IPv6 CONNECT parse bug found + fixed). Remaining before v1.0.0: one monitored manual run of the real downloader against real public URLs (H4).
+- SSRF guard adversarial re-review: DONE (external Claude review — C1 verified clean: resolve-once + validate-every-record + connect-to-pinned-IP on both proxy paths; C2 hardened: mock seam now triple-gated NODE_ENV=test+TEST_MODE+MOCK_TARGET, unreachable in shipped artifacts; IPv6 CONNECT parse bug found + fixed). H4 DONE (2026-09-13): live YouTube round trip in production posture — metadata + genuine mp3 (ffprobe-verified), plus live `unsupported-site` and `blocked-host` rejections.
 - The external review's remaining owner-blocking item: GitHub Actions billing (PR #1's acceptance run cannot start until fixed — runs 34710264986/34710597715 died with the billing annotation).
 - `apps/desktop` ships the full Tauri shell (Phase 10); its manual click-through checklist (TESTS.md) is pending the owner's run on a clean machine.
 - CI is green on `main`; PR #1 (the first PR) still needs its green acceptance run (blocked on billing, not code); workflows remain untested against tags until Phase 15 exercises release-desktop.yml.
