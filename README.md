@@ -5,7 +5,7 @@ Self-hosted, open-source, privacy-first alternative to the paywalled/rate-limite
 JSON formatters, and their whole category. Every tool those sites gate is free
 and unlimited here.
 
-**Status:** early scaffold (Phase 0 of 15 — see [`SUMMARY.md`](SUMMARY.md)).
+**Status:** 14 of 15 phases complete — pre-release, actively built (see [`SUMMARY.md`](SUMMARY.md)).
 
 ## Why this exists
 
@@ -83,8 +83,43 @@ If you skip or lose a download, just run the tool again — the prompt comes
 back. In Docker deployments the same helpers ship inside the engine image
 instead.
 
+## Performance & size (Section 14.5 — Phase 14 record)
+
+Measured on the production client build (`vite preview`, Lighthouse 13.4.1,
+system Chrome headless; three consecutive runs, identical scores):
+
+| Metric                                 | Phase 2 baseline | Phase 14 (current, 97 tools) | Budget / rule                                                         |
+| -------------------------------------- | ---------------- | ---------------------------- | --------------------------------------------------------------------- |
+| Lighthouse Performance                 | 82               | **79**                       | no >10-point regression (spec 14.5) — 3-point delta, within tolerance |
+| Lighthouse Accessibility               | 100              | 100                          | —                                                                     |
+| Lighthouse Best Practices              | 100              | 100                          | —                                                                     |
+| Lighthouse SEO                         | 91               | 91                           | —                                                                     |
+| Initial JS+CSS (gzipped)               | 63.9KB           | **121.60KB**                 | 250KB budget (CI-gated, fails the build)                              |
+| Main-thread long tasks, 50MB PDF merge | —                | **0 tasks / 0ms**            | worker-offload check (CI-gated)                                       |
+
+Notes on the 3-point performance delta: with 90+ more tools and the full
+worker/bridge plumbing landed since Phase 2, the initial bundle roughly
+doubled (still less than half the budget) and TBT stayed at 0ms / CLS 0.
+The measured LCP (~3.9s) is dominated by headless-Chrome font-render
+overhead on the dev host (server-response 0ms, network RTT 0ms,
+main-thread 0.7s) — not app work. The number is recorded honestly; the
+gate that matters (bundle size + worker offload) is automated in CI.
+
+**Docker engine image size (Section 11):** the image is intentionally
+heavy — it bundles Node 22 slim plus Ghostscript, Tesseract (+eng data),
+LibreOffice, ffmpeg, WeasyPrint, pinned yt-dlp 2026.08.19, and Piper
+(with SHA-verified voices fetched lazily at runtime). Stripping the npm
+CLI from the runtime image (the Trivy-driven fix) cut it by ~80MB and
+removed 1 CRITICAL + 10 HIGH CVEs from npm's own tree. The exact final
+size is printed by the CI compose-stack job (`docker images` step) —
+record it here from the next green CI run. A `docker-compose.slim.yml`
+variant without the Media suite's native tools is a v1.1 nice-to-have
+per the spec.
+
 ## Roadmap
 
 15 phases per PROJECT_SPEC Section 15, from scaffold through v1.0.0 release.
 Current status lives in SUMMARY.md. Noted as possible **v2 ideas**: PDF→EPUB,
-vocal/stem separation (both deliberately out of scope for v1 per Section 7).
+vocal/stem separation (both deliberately out of scope for v1 per Section 7);
+ffmpeg.wasm in-browser small-clip processing (cut from v1.0.0 scope — see
+DECISIONS.md D-044).

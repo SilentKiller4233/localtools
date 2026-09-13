@@ -1143,3 +1143,12 @@ the two [NEEDS-CODE-CHECK] criticals, and the changes landed in response:
    M2 resolved: no TBD rides into the tag. No client code changes —
    the path was never built; the tool registry/routes all point at
    the engine Group B endpoints.
+
+## Phase 14 — Performance & size pass
+
+### D-045 — Phase 14 measurement decisions (Lighthouse re-baseline; Docker size record; measurement script)
+
+1. **Lighthouse 13.4.1 re-measurement vs the Phase 2 (Lighthouse 12) baseline.** Score comparability across LH majors is approximate — both runs measure the same production build via `vite preview` + system Chrome, and the recorded deltas are: perf 82→79 (3 points, within the spec 14.5 rule of "no >10-point Performance regression" on a build that added 90+ tools), a11y 100→100, BP 100→100, SEO 91→91. TBT 0ms / CLS 0 unchanged. The LCP ~3.9s is dominated by headless-Chrome font-render overhead on the dev host (server-response 0ms, network RTT 0ms, main-thread 0.7s) — recorded with that caveat rather than tuned for; the automated gates that matter (bundle ≤250KB, worker-offload 0 long tasks) are CI-enforced.
+2. **perf-measure.mjs invokes lighthouse via `node cli/index.js` directly**, never the `.bin` shim: the repo path contains a space ("random projects vibecoded"), and Windows .cmd shims through shell:true split it ('D:\random' is not recognized). Direct-node with an argv array is immune. The script reuses find-chrome + the anti-wedge server discipline (AbortSignal-bounded readiness probes, explicit kill) and is repeatable for future re-baselines.
+3. **Docker image size (Section 11) is recorded via CI, not guessed**: a new compose-stack step (`Engine image size (Section 11 record)`) prints ENGINE_IMAGE_SIZE from `docker image inspect` on every run — the dev host has no Docker (D-015), so the CI log is the honest source of the exact number. README cites it; the ~80MB npm-strip reduction (534212a) and the v1.1 slim-variant idea are stated there too.
+4. **Lighthouse stays a measurement, not a gate** (per D-012's precedent): the spec's >10-point regression rule is a judgment bar re-checked at each re-baseline, not an automated threshold — automating a noisy score into CI would produce flaky reds with no actionable signal. The gates remain bundle-size + worker-offload, which are deterministic.

@@ -11,3 +11,4 @@ fixtures/devtext/malformed.json
 fixtures/devtext/malformed.yaml
 fixtures/devtext/malformed.csv
 fixtures/devtext/malformed.xml
+apps/client/.perf-measure-out/

@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-12, after Phase 13 — Testing & CI finalization complete_
+_Last updated: 2026-09-13, after Phase 14 — Performance & size pass complete_
 
 ## What this project is
 
@@ -8,7 +8,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 13 of 15 (Section 15)
+- Phases complete: 14 of 15 (Section 15)
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
 - Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); speech & audio complete — transcribe-media + auto-captions client-side via whisper.cpp WASM (fugood 1.1.3, D-029 dual-environment contract) and text-to-speech + pdf-to-audiobook engine-side via Piper 2023.11.14-2 (D-030/D-031), 18 engine + 17 media-core tests; ffmpeg.wasm small-clip path CUT from v1.0.0 by owner decision (D-044 supersedes D-021/D-032)**
 - Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
@@ -147,6 +147,12 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - **14.4 shell-string canary** (acceptance: verified once manually then reverted): flipped `shell:false`→`true` in subprocess.ts live — security.test.ts still passed 15/15 (hostile input never reaches argv; layered defense) but the new `apps/engine/test/shell-canary.test.ts` failed with `SHELL_CANARY_FAIL: subprocess.ts: shell:true`; reverted, all green. The canary is committed permanently: bans `shell:true`, `exec/execSync`, and spawn-without-explicit-`shell:false` in any child_process-importing engine source file (import-aware — RegExp.exec / comment "spawn" don't false-positive).
 - **Supply chain (5.4/5.5 + DoD)**: `pnpm audit --audit-level high` rides the verify CI matrix; new `supply-chain` CI job = Trivy scan of the built engine image (`--severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed`) + `cargo audit --deny warnings`; `.github/dependabot.yml` (weekly npm/cargo/actions groups — inert until the D-010 public flip). Two real advisories found & fixed while wiring the gate: **js-yaml 4.3.1 → 4.3.2** (GHSA-2883-xcg3-v3hh, high — merge-key CPU DoS in devtext-core's YAML path) and **adm-zip 0.6.0 → 0.6.1** via root pnpm override (GHSA-vwc7-r8mq-g2x9, moderate — transitive of onnxruntime-node). `pnpm audit` now clean.
 - **release-desktop.yml**: real three-OS tauri-action matrix (windows/macos/ubuntu, engine-dist step, draft release) written; stays `if: false` until the Phase 15 D-037 signing decision — the CI desktop-build job already exercises every piece of the same pipeline.
+
+**Phase 14 — Performance & size pass (Section 14.5 into README, complete)**
+
+- **Lighthouse re-measure**: `apps/client/scripts/perf-measure.mjs` (repeatable — own `vite preview`, find-chrome, lighthouse invoked via node directly so the space-in-repo-path can't break it). Result vs the Phase 2 baseline: **perf 79 (was 82 — within the ≤10-point rule) / a11y 100 / BP 100 / SEO 91**, three identical consecutive runs; TBT 0ms, CLS 0; LCP caveat (headless font-render overhead, not app work) recorded in README.
+- **README Section 14.5 record**: full metrics table (bundle 121.60KB vs 250KB budget, worker-offload 0 long tasks) + the Docker engine image size note (Section 11): intentionally heavy image, ~80MB npm-strip reduction, exact size printed by the new CI compose-stack step (`Engine image size (Section 11 record)` → ENGINE_IMAGE_SIZE) from the next green run; slim-variant noted as v1.1.
+- **README status line** finally corrected: "14 of 15 phases complete" (had said Phase 0 since the scaffold).
 
 ## Key architectural decisions made so far
 
