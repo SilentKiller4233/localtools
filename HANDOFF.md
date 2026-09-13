@@ -1,6 +1,6 @@
 # HANDOFF — read this first in any new session
 
-_Last updated: 2026-09-13, mid session 19. **Phase 15 complete @ `36f47a0`; H4 (monitored real-URL downloader run) PASSED @ `f68c130`** — the last agent-runnable pre-release item. Local `pnpm verify` fully green (600 tests + all gates). **All 15 phases BUILT. Remaining v1.0.0 items are owner-gated**: (1) CI billing — STILL BLOCKED (5th failed probe: run 34760464159 on the Phase 15 push, same annotation); (2) PR #1 merge; (3) release-desktop.yml smoke; (4) D-037 signing; (5) public flip D-010; (6) manual items; then the v1.0.0 tag._ — README rebuilt with committed per-suite screenshots + verified 97-tool list + Mermaid diagram; LEGAL.md written (Section 6 three-location rule now fully satisfied); SECURITY.md accuracy debt cleared; D-046. Local `pnpm verify` fully green (600 tests + all gates). **All 15 phases are now BUILT. The only remaining v1.0.0 items are owner-gated**: (1) CI billing — STILL BLOCKED, 4th failed probe this session (rerun of run 34749561006 died in 5s with the same billing annotation); (2) PR #1 merge + green CI proof; (3) release-desktop.yml smoke; (4) D-037 signing; (5) public flip D-010; (6) owner manual items; then the v1.0.0 tag._
+_Last updated: 2026-09-13, end of session 19. **Phase 15 complete @ `36f47a0`; H4 (monitored real-URL downloader run) PASSED @ `f68c130`** — the last agent-runnable pre-release item. Local `pnpm verify` fully green (600 tests + all gates). **All 15 phases BUILT. Remaining v1.0.0 items are owner-gated**: (1) CI billing — STILL BLOCKED (6th failed probe: run 34770777964; every push since 086ea8b has died the same way); (2) PR #1 merge; (3) release-desktop.yml smoke; (4) D-037 signing; (5) public flip D-010; (6) manual items; then the v1.0.0 tag._ — README rebuilt with committed per-suite screenshots + verified 97-tool list + Mermaid diagram; LEGAL.md written (Section 6 three-location rule now fully satisfied); SECURITY.md accuracy debt cleared; D-046. Local `pnpm verify` fully green (600 tests + all gates). **All 15 phases are now BUILT. The only remaining v1.0.0 items are owner-gated**: (1) CI billing — STILL BLOCKED, 4th failed probe this session (rerun of run 34749561006 died in 5s with the same billing annotation); (2) PR #1 merge + green CI proof; (3) release-desktop.yml smoke; (4) D-037 signing; (5) public flip D-010; (6) owner manual items; then the v1.0.0 tag._
 
 ## Where things stand right now
 
@@ -18,10 +18,11 @@ Phase 15 deliverables just landed (`36f47a0`, all verified):
 ## Last thing done
 
 1. **H4 PASSED (live-verified)**: production-posture engine (dist build, no seams) + real YouTube "Me at the zoo" — metadata round trip (live title/uploader/duration/formats) + audio download verified genuine (ID3 magic, ffprobe: mp3, 19.006s, ~51kbps, sanitized filename). Bonus: `unsupported-site` live-verified (archive.org raw URL rejected — no-open-proxy holds), `blocked-host` live-verified (loopback target rejected). Logged in TESTS.md Phase 15; artifacts deleted; engine shut down. Commit `f68c130`.
-2. Wrote `apps/client/scripts/capture-screenshots.mjs` (CDP-driven Chrome headless over raw WebSocket; ws@8.21.3 resolved from the pnpm store via file:// URL — no new dependency) and captured 9 screenshots of the production build into `docs/screenshots/`.
-3. Rebuilt README (screenshots, verified tool list, Mermaid diagram, legal section), wrote LEGAL.md, fixed SECURITY.md, updated TESTS/SUMMARY/DECISIONS.
-4. `pnpm format:check` clean; **`pnpm verify` fully green** (600 tests + bundle 121.60KB/250KB + licensing + worker-offload 0 long tasks + offline).
-5. Commit `36f47a0` pushed to `phase-13-ci-finalization`.
+2. **Desktop shell verified at HEAD** (CI gap: cargo tests hadn't run since before 1fec940): 5/5 + `--ignored` sidecar smoke against a freshly rebuilt engine-dist (old bundle was stale — Sep 10, pre-IPv6/C2 fixes; rebuilt via `pnpm --filter @localtools/desktop desktop:engine-dist`). `pnpm audit --audit-level high` clean; doc relative-links LINKS_OK. All recorded in TESTS.md Phase 15 as CI-gap local proofs.
+3. Wrote `apps/client/scripts/capture-screenshots.mjs` (CDP-driven Chrome headless over raw WebSocket; ws@8.21.3 resolved from the pnpm store via file:// URL — no new dependency) and captured 9 screenshots of the production build into `docs/screenshots/`.
+4. Rebuilt README (screenshots, verified tool list, Mermaid diagram, legal section), wrote LEGAL.md, fixed SECURITY.md, updated TESTS/SUMMARY/DECISIONS.
+5. `pnpm format:check` clean; **`pnpm verify` fully green** (600 tests + bundle 121.60KB/250KB + licensing + worker-offload 0 long tasks + offline).
+6. Commit `36f47a0` pushed to `phase-13-ci-finalization`.
 
 ## In-progress / uncommitted work
 
@@ -49,7 +50,7 @@ None — tree is clean at `36f47a0`, all pushed.
 - Rust toolchain: rustup 1.29.1, stable 1.98.1 — bash needs `export PATH="/c/Users/mshah/.cargo/bin:$PATH"`.
 - Repo-local native toolchain (gitignored, do not delete): ffmpeg-n9.0…/, yt-dlp-2026.08.19/, gs10.07.1/, GTK3-Runtime/, piper-2023.11.14-2/.
 - Model caches (do not delete): `%LOCALAPPDATA%/Temp/localtools-models/` — u2netp, whisper ggml-tiny.en, piper-voices lessac.
-- `apps/desktop/src-tauri/engine-dist/` is a build product (gitignored) — rebuild via `pnpm --filter @localtools/desktop desktop:engine-dist`.
+- `apps/desktop/src-tauri/engine-dist/` is a build product (gitignored) — REBUILT FRESH from HEAD 2026-09-13 (was stale since Sep 10, pre-review-response). Rebuild via `pnpm --filter @localtools/desktop desktop:engine-dist`.
 - Dev host has NO Docker (D-015) — compose/Trivy only in CI.
 - `pnpm verify` ~10–12 min — ALWAYS background with notify.
 - Playwright WebKit 26.6 + Chromium in `%LOCALAPPDATA%/ms-playwright/`; browser-check ports 4181/4182 (a11y job 4173); screenshot script uses preview :4189 + CDP :9223.
