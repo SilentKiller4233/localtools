@@ -111,7 +111,9 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - ~~Phase 10 — Tauri desktop shell + sidecar + lazy downloads~~ (complete — see above; manual click-through checklist pending owner run, TESTS.md)
 - ~~Phase 11 — Integration polish~~ (complete — unified error copy + health gating + consistent progress + batch polish, D-039/D-040; first client test suite added)
 - ~~Phase 12 — Accessibility & responsiveness~~ (complete — see the Phase 12 section below)
-- Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010 — which also activates Dependabot — enabling the desktop release matrix + updater decision per D-037)
+- ~~Phase 14 — performance/size~~ (complete) · ~~Phase 15 — documentation~~ (complete — D-046)
+- Pre-v1.0.0 owner gates: CI billing decision (public flip / Oct 1 reset / settings fix) → PR #1 merge + green CI proof; one release-desktop.yml smoke run (review C3); D-037 signing decision → un-gate release-desktop.yml; public flip (D-010) → activates Dependabot; THEN tag v1.0.0
+- Owner manual items (TESTS.md): desktop click-through on a clean machine, screen-reader spot-check x4, true macOS Safari, H4 monitored real-URL downloader run
 
 **Phase 11 — Integration polish (health gating, progress, error states, batch)**
 
@@ -153,6 +155,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - **Lighthouse re-measure**: `apps/client/scripts/perf-measure.mjs` (repeatable — own `vite preview`, find-chrome, lighthouse invoked via node directly so the space-in-repo-path can't break it). Result vs the Phase 2 baseline: **perf 79 (was 82 — within the ≤10-point rule) / a11y 100 / BP 100 / SEO 91**, three identical consecutive runs; TBT 0ms, CLS 0; LCP caveat (headless font-render overhead, not app work) recorded in README.
 - **README Section 14.5 record**: full metrics table (bundle 121.60KB vs 250KB budget, worker-offload 0 long tasks) + the Docker engine image size note (Section 11): intentionally heavy image, ~80MB npm-strip reduction, exact size printed by the new CI compose-stack step (`Engine image size (Section 11 record)` → ENGINE_IMAGE_SIZE) from the next green run; slim-variant noted as v1.1.
 - **README status line** finally corrected: "14 of 15 phases complete" (had said Phase 0 since the scaffold).
+
+**Phase 15 — Documentation & release (docs complete; tag owner-gated — D-046)**
+
+- **README rebuilt for release**: what/why, screenshots per suite (9 committed PNGs in `docs/screenshots/` — home + 4 suite grids + 4 representative tool pages, captured from the production build by the new repeatable `apps/client/scripts/capture-screenshots.mjs`), the two quick-starts (dev + Docker), the full 97-tool list by suite and group (programmatically verified against tool-registry + i18n — all 97 names present, 73 A / 23 B / 1 C), a Mermaid three-layer architecture diagram with Group A/B/C data flows, a legal-use summary section linking LEGAL.md, and the Phase 14 performance record retained. Status line says what's true: 15 of 15 phases built, v1.0.0 tag pending the CI unblock.
+- **LEGAL.md written** (repo root): all five spec Section 6 points, substance mirrored to the Phase 8 in-app dismissible notice — the Section 6 three-location rule is now fully satisfied (README summary + LEGAL.md + in-app notice).
+- **Doc-accuracy debt cleared** (DoD: "accurate to shipped code"): SECURITY.md's stale "Phase 0 stub engine" paragraph replaced with the shipped-controls description; CONTRIBUTING.md re-checked (complete since Phase 0, no change needed); TESTS.md gained the Phase 15 section; DECISIONS.md D-046 records the session's calls.
+- **14.8 licensing gate re-verified**: `tools/licensing-check.mjs` PASS (all five required notes present) — DECISIONS.md is finalized per Phase 15.
+- **Owner-gated tail of v1.0.0** (not blocked on code): CI billing decision → PR #1 merge + green proof, release-desktop.yml smoke run, D-037 signing, public flip (D-010), manual items, then the v1.0.0 tag which triggers the release workflow.
 
 ## Key architectural decisions made so far
 
