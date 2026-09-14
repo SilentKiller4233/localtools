@@ -56,3 +56,6 @@ piper-*/
 
 # Phase 14 lighthouse measurement output (local artifact)
 apps/client/.perf-measure-out/
+
+# Screenshot capture runtime artifacts (capture-screenshots.mjs)
+apps/client/.screenshot-profile/
