@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-11, after Phase 12 — Accessibility & responsiveness complete_
+_Last updated: 2026-09-30, after the first green CI run (session 20) — v1.0.0 tag is the only step left_
 
 ## What this project is
 
@@ -8,14 +8,14 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 12 of 15 (Section 15)
+- Phases complete: 14 of 15 (Section 15)
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
-- Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); speech & audio complete — transcribe-media + auto-captions client-side via whisper.cpp WASM (fugood 1.1.3, D-029 dual-environment contract) and text-to-speech + pdf-to-audiobook engine-side via Piper 2023.11.14-2 (D-030/D-031), 18 engine + 17 media-core tests; ffmpeg.wasm small-clip path deferred (D-021/D-032)**
+- Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); speech & audio complete — transcribe-media + auto-captions client-side via whisper.cpp WASM (fugood 1.1.3, D-029 dual-environment contract) and text-to-speech + pdf-to-audiobook engine-side via Piper 2023.11.14-2 (D-030/D-031), 18 engine + 17 media-core tests; ffmpeg.wasm small-clip path CUT from v1.0.0 by owner decision (D-044 supersedes D-021/D-032)**
 - Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
 - Text & Dev suite: **complete — all 30 Group A tools + zip/unzip (Section 3.5) implemented in `@localtools/devtext-core` (172/172 tests), worker-offloaded client pages wired**
 - Desktop app (Tauri): **complete — Rust/Tauri 2.11 shell in `apps/desktop` (D-033): window + injected `window.__LOCALTOOLS__` invoke bridge (client never imports @tauri-apps/api), engine as a restricted child process (minimal env, scoped temp, loopback-only, taskkill-tree shutdown), pinned+SHA-verified lazy downloads for every native tool (D-034: yt-dlp, ffmpeg, piper, ghostscript, tesseract+eng data, libreoffice, qpdf-fallback plumbing D-035), engine bundle via pnpm deploy + node runtime (D-038); client download prompts on tool-unavailable (EngineRunnerPage/DownloaderPage + ToolDownloadPrompt); Linux CI smoke green (desktop-build job: build + cargo tests + real sidecar healthz); updater OFF until signing (D-037), unsigned-app bypass steps in README; manual click-through checklist in TESTS.md**
 - Docker Compose target: engine Dockerfile real (multi-stage bookworm-slim + ghostscript/tesseract/libreoffice/ffmpeg/pip-weasyprint, non-root, healthcheck); stack acceptance runs as the CI `compose-stack` job incl. a media round-trip (dev host has no Docker — D-015)
-- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 130 engine [82 Group B + 30 downloader + 18 speech] + 65 image-core + 172 devtext-core + 17 media-core + 28 client [Phase 11: taxonomy copy-completeness, raw-error guarantee, health probe, liveness ticker, dispatch coverage; Phase 12: WCAG token-contrast, both themes]) + build — all green; desktop shell tests run via cargo in the CI desktop-build job (5 rust tests incl. the ignored sidecar smoke). CI also runs the Phase 12 `accessibility` job: axe-core on every route in both themes, 390px responsive check, keyboard sweep, WebKit WASM smoke — all fail the build on regression
+- Test suite (`pnpm verify`): format + lint + typecheck + tests (165 pdf-core + 144 engine [82 Group B + 30 downloader + 18 speech + 13 review-hardening/ytdlp-flags/shell-canary] + 65 image-core + 172 devtext-core + 17 media-core + 37 client [Phase 11: taxonomy copy-completeness, raw-error guarantee, health probe, liveness ticker, dispatch coverage; Phase 12: WCAG token-contrast; review H3: engine-surfaces component tests]) + build — all green; desktop shell tests run via cargo in the CI desktop-build job (5 rust tests incl. the ignored sidecar smoke). CI also runs the Phase 12 `accessibility` job: axe-core on every route in both themes, 390px responsive check, keyboard sweep, WebKit WASM smoke — all fail the build on regression
 
 ## What has been built so far
 
@@ -111,7 +111,9 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - ~~Phase 10 — Tauri desktop shell + sidecar + lazy downloads~~ (complete — see above; manual click-through checklist pending owner run, TESTS.md)
 - ~~Phase 11 — Integration polish~~ (complete — unified error copy + health gating + consistent progress + batch polish, D-039/D-040; first client test suite added)
 - ~~Phase 12 — Accessibility & responsiveness~~ (complete — see the Phase 12 section below)
-- Phase 13 — test/CI finalization (incl. wiring PWA/offline + worker-offload checks into `pnpm verify`) · Phase 14 — performance/size · Phase 15 — docs & v1.0.0 release (incl. flipping the repo back to public per D-010, enabling the desktop release matrix + updater decision per D-037)
+- ~~Phase 14 — performance/size~~ (complete) · ~~Phase 15 — documentation~~ (complete — D-046)
+- Pre-v1.0.0 owner gates: **ALL CLEARED except the tag itself.** CI billing was resolved by the D-010 public flip (the blocker was stale — a fresh rerun started all 7 jobs immediately); D-037 signing resolved as SHIP UNSIGNED with `release-desktop.yml` un-gated (D-047). Run **36764811728 is 7/7 green, conclusion `success`** — the Phase 13 acceptance run. Remaining: owner's manual click-through items, then tag `v1.0.0` (publishes a draft release)
+- Owner manual items (TESTS.md): desktop click-through on a clean machine, screen-reader spot-check x4, true macOS Safari (H4 real-URL downloader run DONE 2026-09-13 — live YouTube round trip in production posture, TESTS.md Phase 15)
 
 **Phase 11 — Integration polish (health gating, progress, error states, batch)**
 
@@ -139,18 +141,43 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - **WebKit/Safari (Section 13)**: `webkit-wasm-smoke.mjs` (Playwright WebKit — Safari's engine) proves the app boots, qpdf-wasm runs a real protect-pdf end-to-end, `crossOriginIsolated === false` (the D-029 no-COOP/COEP contract holds), and the devtext worker is healthy. True macOS Safari hardware remains the owner's manual item (TESTS.md).
 - **Major pre-existing bug fixed (D-042)**: EVERY Text & Dev tool was broken in browsers since Phase 6 — the devtext worker's import of devtext-core threw at module-evaluation (ulid's detectPrng sees no window in a Worker; clean-css/terser read `process.platform` at init). The keyboard sweep surfaced it; fixes: in-house ULID (Crockford base32 over crypto bytes; ulid demoted to devDep for the test cross-check), minimal browser `process` shim at the worker entry, prettier switched to `prettier/standalone` + explicit parser plugins (its browser bundle can't resolve parsers from the Node registry). Verified empirically: 36/36 devtext tool variants run through the real production Worker in Chromium + json-formatter in WebKit. Lesson: Node-only test suites can't catch module-eval environment assumptions — Worker-imported packages must be exercised in a Worker.
 
+**Phase 13 — Testing & CI finalization (Section 14 wired into verify + both workflows, complete)**
+
+- **14.5 bundle-size gate**: `apps/client/scripts/bundle-size-check.mjs` (client `postbuild`, so every build gates it) walks the now-emitted Vite manifest's entry static-import graph and gzip-9s each chunk — initial = entry JS + entry CSS = **121.70KB gzipped vs the 250KB budget** (BUNDLE_SIZE_PASS; fails the build on regression; a near-budget 10% warning tier is recorded, not fatal).
+- **Self-contained acceptance checks**: the PWA offline check (Section 8) was rewritten from the kill-the-server two-phase design to browser-level `setOfflineMode(true)` with its own ephemeral-port `vite preview` (OFFLINE_RELOAD_PASS, 18 cards from cache); the 50MB worker-offload check (14.5) got the same treatment (own server, 0 long tasks / 0ms, WORKER_OFFLOAD_PASS). Both share `lib/find-chrome.mjs`, run at the end of `pnpm verify`, and again as explicit steps in the CI accessibility job.
+- **14.8 licensing gate**: `tools/licensing-check.mjs` — zero-dep grep of DECISIONS.md for the five required notes (Ghostscript AGPL+subprocess, ffmpeg variant, @imgly fallback, RAR extraction-only, D-026 mock-downloader); in `pnpm verify` AND a dedicated CI `licensing` job.
+- **14.4 shell-string canary** (acceptance: verified once manually then reverted): flipped `shell:false`→`true` in subprocess.ts live — security.test.ts still passed 15/15 (hostile input never reaches argv; layered defense) but the new `apps/engine/test/shell-canary.test.ts` failed with `SHELL_CANARY_FAIL: subprocess.ts: shell:true`; reverted, all green. The canary is committed permanently: bans `shell:true`, `exec/execSync`, and spawn-without-explicit-`shell:false` in any child_process-importing engine source file (import-aware — RegExp.exec / comment "spawn" don't false-positive).
+- **Supply chain (5.4/5.5 + DoD)**: `pnpm audit --audit-level high` rides the verify CI matrix; new `supply-chain` CI job = Trivy scan of the built engine image (`--severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed`) + `cargo audit --deny warnings`; `.github/dependabot.yml` (weekly npm/cargo/actions groups — inert until the D-010 public flip). Two real advisories found & fixed while wiring the gate: **js-yaml 4.3.1 → 4.3.2** (GHSA-2883-xcg3-v3hh, high — merge-key CPU DoS in devtext-core's YAML path) and **adm-zip 0.6.0 → 0.6.1** via root pnpm override (GHSA-vwc7-r8mq-g2x9, moderate — transitive of onnxruntime-node). `pnpm audit` now clean.
+- **release-desktop.yml**: real three-OS tauri-action matrix (windows/macos/ubuntu, engine-dist step, draft release) written; stays `if: false` until the Phase 15 D-037 signing decision — the CI desktop-build job already exercises every piece of the same pipeline.
+
+**Phase 14 — Performance & size pass (Section 14.5 into README, complete)**
+
+- **Lighthouse re-measure**: `apps/client/scripts/perf-measure.mjs` (repeatable — own `vite preview`, find-chrome, lighthouse invoked via node directly so the space-in-repo-path can't break it). Result vs the Phase 2 baseline: **perf 79 (was 82 — within the ≤10-point rule) / a11y 100 / BP 100 / SEO 91**, three identical consecutive runs; TBT 0ms, CLS 0; LCP caveat (headless font-render overhead, not app work) recorded in README.
+- **README Section 14.5 record**: full metrics table (bundle 121.70KB vs 250KB budget, worker-offload 0 long tasks) + the Docker engine image size note (Section 11): intentionally heavy image, ~80MB npm-strip reduction, exact size printed by the new CI compose-stack step (`Engine image size (Section 11 record)` → ENGINE_IMAGE_SIZE) from the next green run; slim-variant noted as v1.1.
+- **README status line** finally corrected: "14 of 15 phases complete" (had said Phase 0 since the scaffold).
+
+**Phase 15 — Documentation & release (docs complete; tag owner-gated — D-046)**
+
+- **README rebuilt for release**: what/why, screenshots per suite (9 committed PNGs in `docs/screenshots/` — home + 4 suite grids + 4 representative tool pages, captured from the production build by the new repeatable `apps/client/scripts/capture-screenshots.mjs`), the two quick-starts (dev + Docker), the full 97-tool list by suite and group (programmatically verified against tool-registry + i18n — all 97 names present, 73 A / 23 B / 1 C), a Mermaid three-layer architecture diagram with Group A/B/C data flows, a legal-use summary section linking LEGAL.md, and the Phase 14 performance record retained. Status line says what's true: 15 of 15 phases built, v1.0.0 tag pending the CI unblock.
+- **LEGAL.md written** (repo root): all five spec Section 6 points, substance mirrored to the Phase 8 in-app dismissible notice — the Section 6 three-location rule is now fully satisfied (README summary + LEGAL.md + in-app notice).
+- **Doc-accuracy debt cleared** (DoD: "accurate to shipped code"): SECURITY.md's stale "Phase 0 stub engine" paragraph replaced with the shipped-controls description; CONTRIBUTING.md re-checked (complete since Phase 0, no change needed); TESTS.md gained the Phase 15 section; DECISIONS.md D-046 records the session's calls.
+- **14.8 licensing gate re-verified**: `tools/licensing-check.mjs` PASS (all five required notes present) — DECISIONS.md is finalized per Phase 15.
+- **Owner-gated tail of v1.0.0** (not blocked on code): CI billing decision → PR #1 merge + green proof, release-desktop.yml smoke run, D-037 signing, public flip (D-010), manual items, then the v1.0.0 tag which triggers the release workflow.
+
 ## Key architectural decisions made so far
 
 D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as Ghostscript), D-021 (ffmpeg.wasm small-clip path deferred, not dropped — routing design recorded for its implementing phase), D-022 (media fixtures self-generated → license-clear by construction), D-023 (merge re-encodes; trim lossless-by-default), plus D-039/D-040 (Phase 11: unified error copy + engine health gating; real worker progress via additive message contract + unified liveness ticker), D-018/D-019 (devtext serializer + QR PNG encoder), D-016 (background-removal: onnxruntime + Apache-2.0 u2netp), D-017 (@jsquash Node init), D-015 and earlier calls, all detailed in [DECISIONS.md](DECISIONS.md): MIT license with subprocess-boundary reasoning for AGPL/GPL deps (D-001); loopback-only stub engine until security phases land (D-002); Node 22 LTS + pnpm 10 pinned (D-003); repo private during build, public flip in Phase 15 (D-010); Stitch-derived token system (D-011); Lighthouse-PWA reinterpretation + TTS→Phase 9 (D-012); vitest harness + committed fixtures + maxBytes seam (D-013); D-014 canvas strategy — pdfjs auto-factory + `@napi-rs/canvas` as pdfjs's own optionalDependency (zero new direct deps), OffscreenCanvasFactory for browser Workers, fs-path asset URLs in Node.
 
 ## Known issues / tech debt
 
-- Engine's Section 5 control set covers PDF/media Group B (Phase 4/7) and the Group C downloader's Section 5.8 SSRF set (Phase 8). The SSRF guards are proven against the local mock; before Phase 13, consider one adversarial re-review pass (bounty-style) of ssrf-guard.ts.
+- SSRF guard adversarial re-review: DONE (external Claude review — C1 verified clean: resolve-once + validate-every-record + connect-to-pinned-IP on both proxy paths; C2 hardened: mock seam now triple-gated NODE_ENV=test+TEST_MODE+MOCK_TARGET, unreachable in shipped artifacts; IPv6 CONNECT parse bug found + fixed). H4 DONE (2026-09-13): live YouTube round trip in production posture — metadata + genuine mp3 (ffprobe-verified), plus live `unsupported-site` and `blocked-host` rejections.
+- The external review's remaining owner-blocking item — GitHub Actions billing — is **RESOLVED** (2026-09-30, D-047). The repo was already public, so a fresh rerun started all 7 jobs; the resulting failures were real defects (a latent `{{div}}` template bug in the compose-stack size step, 8 new high npm advisories, and two cargo advisories), all fixed. Run 36764811728: 7/7 green.
 - `apps/desktop` ships the full Tauri shell (Phase 10); its manual click-through checklist (TESTS.md) is pending the owner's run on a clean machine.
-- CI is green on `main`; workflow remains untested against PRs/tags until later phases exercise them.
-- PWA/offline + worker-offload checks are not yet part of `pnpm verify` (manual scripts today); wiring them in is scheduled for Phase 13.
+- PR #1's acceptance run is **GREEN** (36764811728, 7/7, conclusion `success`); the PR is ready to merge. Workflows remain untested against a real tag until `v1.0.0` (or a throwaway tag) exercises release-desktop.yml — the desktop-build job has proven every piece of that pipeline, but not the tag trigger itself.
 - Safari/WebKit WASM: Playwright WebKit smoke green (qpdf-wasm end-to-end, no COOP/COEP needed per D-029, devtext worker healthy — Phase 12, runs in CI); the remaining piece is true macOS Safari hardware (owner manual item in TESTS.md) — OffscreenCanvas limits on the pdf render path are the specific thing to watch there.
-- Redaction's v1 contract: text removal is genuine; image XObjects inside a box are covered visually but not pixel-removed (true image redaction needs the render pipeline — noted in-code as a future enhancement, consistent with the spec's algorithm).
+- Redaction's v1 contract: text removal is genuine; image XObjects inside a box are covered visually but not pixel-removed (true image redaction needs the render pipeline — noted in-code as a future enhancement, consistent with the spec's algorithm). USER-FACING WARNING now ships at the point of use (external review H2, D-044).
+- Repo-private-during-build (D-010): Dependabot/dependency-graph alerts had zero continuous coverage during the build; point-in-time CI Trivy/audit runs per push were the only supply-chain coverage. Resolves at the Phase 15 public flip.
+- Trivy `--ignore-unfixed`: real, currently-necessary blind spot (unfixed base-layer HIGH/CRITICAL CVEs invisible to the gate — D-043/D-044); re-check per release.
 
 ## How to run the project right now
 
@@ -158,7 +185,7 @@ D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as 
 pnpm install          # pnpm-lock.yaml is committed
 pnpm dev              # client → http://localhost:5173 ; engine health → http://127.0.0.1:8787/healthz
 pnpm build            # all workspaces (client build also copies /pdfjs/* and /wasm/qpdf.wasm assets)
-pnpm verify           # format + lint + typecheck + 578 tests (165 pdf + 131 engine + 65 image + 172 devtext + 17 media-core + 28 client) + build gate
+pnpm verify           # format + lint + typecheck + 600 tests (165 pdf + 144 engine + 65 image + 172 devtext + 17 media-core + 37 client) + build gate
 
 # Phase 7 surface: every Media Group B tool card is live at #/tool/<id> —
 # video/audio convert, compress, trim, merge, extract-audio, GIF, subtitles,

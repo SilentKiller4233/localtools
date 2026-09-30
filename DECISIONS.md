@@ -17,6 +17,13 @@ strictly as subprocesses (never linked) so their licenses do not propagate into
 this work:
 
 - Ghostscript (AGPL-3.0/commercial dual) — deep compress/PDF-A/deep repair, subprocess only. Same boundary reasoning used by Stirling-PDF and OCRmyPDF's dependency chain.
+  AGPL network-clause note (external review H1): when a deployer offers
+  LocalTools with `LOCALTOOLS_EXPOSE=true`, remote users interact with
+  Ghostscript's functionality over a network. AGPL §13's corresponding-source
+  obligation is satisfied for the Ghostscript component by linking to the
+  UNMODIFIED upstream project (https://www.ghostscript.com/) — LocalTools
+  never modifies it; no local corresponding-source offer is required beyond
+  that link. The MIT engine never links AGPL code; the boundary is subprocess-only.
 - `@imgly/background-removal` (AGPL-3.0/commercial dual) — **decision deferred to Phase 5** per spec Section 4.3: license terms to be re-confirmed at implementation time, with the documented fallback being ONNX Runtime Web + a permissively licensed U2Net/MODNet model. If AGPL proves unacceptable for a browser-bundled asset, the fallback is used.
 - ffmpeg — build variant decided in Phase 7 (LGPL-only build vs GPL static build); either way it is a separately executed binary, and the choice will be recorded here **[required-by-CI]**.
 - RAR extraction-only constraint (bonus v1.1 tool, if built): RARLAB's `unrar` is freely redistributable for extraction only; creating `.rar` archives is license-restricted and will never be supported. Recorded now as forward constraint **[required-by-CI when built]**.
@@ -671,8 +678,14 @@ model file itself).
   `piper_windows_amd64.zip` on the dev host (repo-local `piper-2023.11.14-2/`,
   gitignored like yt-dlp, SHA-256 of the zip verified at install:
   f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea — the
-  release carries NO upstream checksums, so our own pinned digest is the
-  verification, recorded here), Linux `piper_linux_x86_64.tar.gz` extracted in
+  the release carries NO upstream checksums, so our own pinned digest is the
+  verification, recorded here) — **external review N3 scope note: this
+  self-computed pin protects against tampering/corruption AFTER the
+  digest was recorded, not against a compromised upstream AT pin time
+  (a hostile release could publish matching malicious bytes + digest).
+  Full protection against pin-time compromise would require a second
+  independent source for the digest; out of scope for v1, recorded
+  honestly.** Linux `piper_linux_x86_64.tar.gz` extracted in
   the Docker engine image. Resolution order mirrors yt-dlp:
   `LOCALTOOLS_PIPER_PATH` env → repo-local `piper-<tag>/` → Docker path
   `/opt/piper/piper` → PATH; ENOENT → honest 503 tool-unavailable.
@@ -988,3 +1001,171 @@ WebKit): app boots, qpdf-wasm runs a real protect-pdf end-to-end, the
 D-029 contract holds (no COOP/COEP needed — not crossOriginIsolated),
 devtext worker healthy. True macOS Safari remains an owner manual item
 (TESTS.md) — no macOS host in CI yet.
+
+## Phase 13 — Testing & CI finalization
+
+### D-043 — Phase 13 wiring decisions (Section 14 suite into verify + CI; supply chain)
+
+The spec's Phase 13 acceptance: "CI green on a clean PR; the
+shell-string-subprocess canary test (14.4) verified once manually then
+reverted." What shipped, and the calls inside it:
+
+1. **Bundle-size gate is manifest-walked, not listed by hand.**
+   `apps/client/scripts/bundle-size-check.mjs` walks the Vite manifest's
+   entry static-import graph (entry + imports, recursive; dynamic imports
+   excluded by design — those are the per-tool lazy chunks) and gzips each
+   chunk at level 9. Vite's manifest is now emitted
+   (`build.manifest: true`) for this. Initial = 121.60KB gzipped vs the
+   250KB budget (BUNDLE_SIZE_PASS; the hand-quoted "120.75KB entry JS"
+   figure in earlier docs was entry-JS-only — the gate counts entry JS +
+   entry CSS, the honest "what loads before any interaction" number).
+   Runs as the client `postbuild` script → part of every `pnpm build`,
+   hence `pnpm verify` and every CI job that builds.
+
+2. **The offline check became browser-level self-contained.** The
+   original Phase 2 script needed a caller to kill the server between
+   warmup/verify phases — unwirable into one verify step. Rewritten
+   (`apps/client/scripts/offline-test.mjs`): starts its own
+   `vite preview` on an ephemeral port, then simulates network-gone via
+   puppeteer's `setOfflineMode(true)` (SW cache hits never reach the
+   intercepted network layer, so the "server is gone" condition is
+   faithfully reproduced), reloads, asserts the Media suite renders.
+   OFFLINE_RELOAD_PASS locally with 18 tool cards from cache. The old
+   two-phase design lives in git history.
+
+3. **Worker-offload check is also self-contained** (own preview server
+   on :4181, always-torn-down) and both browser checks share the Phase 12
+   `lib/find-chrome.mjs` discovery (system Chrome → Playwright registry).
+   Both are wired at the END of root `pnpm verify` (after build) AND as
+   explicit steps in the CI accessibility job (redundant by design —
+   the a11y job already has the browser installed; verify keeps them
+   because the dev host has Chrome).
+
+4. **14.8 licensing gate = `tools/licensing-check.mjs`**, a zero-dependency
+   grep of DECISIONS.md for the five required notes (Ghostscript
+   AGPL+subprocess, ffmpeg variant, @imgly status/fallback, RAR
+   extraction-only constraint, D-026 mock-downloader). In root
+   `pnpm verify` AND a dedicated CI `licensing` job (the spec asks for
+   "a CI job grepping" — both belt and suspenders).
+
+5. **Shell-string canary (14.4 acceptance) — both readings satisfied.**
+   The spec sentence says "verified once manually then reverted", but a
+   reverted-only canary guards nothing tomorrow. So: (a) the live
+   verification happened — `shell:false` flipped to `shell:true` in
+   subprocess.ts, security.test.ts STILL PASSED (15/15) because hostile
+   input never reaches argv (fresh internal names, zod enums — the
+   layered defense holds), then the new canary
+   `apps/engine/test/shell-canary.test.ts` FAILED with
+   `SHELL_CANARY_FAIL: subprocess.ts: shell:true`, then the patch was
+   reverted and everything went green. This proves the canary catches
+   exactly the class the functional tests cannot. (b) The canary is
+   COMMITTED as a permanent regression guard — import-aware
+   (child_process only; RegExp.exec and comment "spawn" mentions don't
+   false-positive), banning `shell:true`, `exec/execSync`, and
+   spawn-without-explicit-`shell:false` in any engine source file.
+
+6. **Supply-chain job (Section 5.5 / DoD):** `pnpm audit --audit-level
+high` rides on the verify matrix (fail on any high/critical advisory
+   in the committed lockfile); a dedicated `supply-chain` CI job builds
+   the engine image and Trivy-scans it (`--severity HIGH,CRITICAL
+--exit-code 1 --ignore-unfixed`) plus `cargo audit --deny warnings`
+   on the Rust shell. Two real advisories were found and FIXED before
+   wiring the gate: js-yaml 4.3.1 → 4.3.2 (GHSA-2883-xcg3-v3hh, high,
+   devtext-core's YAML merge-key CPU DoS) and adm-zip 0.6.0 → 0.6.1 via
+   root pnpm override (GHSA-vwc7-r8mq-g2x9, moderate, transitive of
+   onnxruntime-node). `--ignore-unfixed` on Trivy because bookworm-slim
+   base-layer CVEs without an available fix would otherwise permanently
+   red the job (recorded here; revisit per-release).
+
+7. **Dependabot** (`.github/dependabot.yml`): weekly npm + cargo +
+   github-actions groups. Inert while the repo is private without
+   dependency-graph enabled (D-010 public flip in Phase 15 activates it
+   for real); committed now so the flip needs no further change.
+
+8. **release-desktop.yml got its real three-OS tauri-action matrix**
+   (windows/macos/ubuntu, engine-dist step, draft release) but stays
+   `if: false` until Phase 15's signing decision (D-037) — publishing
+   unsigned artifacts from a tag early would be worse than not having
+   the pipeline. The comment block documents the exact enable step.
+
+## Phase 13 — external pre-release review (Claude) response
+
+### D-044 — Review-response hardening: CONNECT IPv6 parse, mock-seam production gate, ffmpeg.wasm CUT
+
+An adversarial pre-release review of PROJECT_REVIEW/SPEC/DECISIONS/TESTS
+(Claude) produced findings ranked Critical/High/Medium/Nit. Verdicts on
+the two [NEEDS-CODE-CHECK] criticals, and the changes landed in response:
+
+1. **C1 (SSRF DNS-rebinding pinning) — VERIFIED CLEAN, no change
+   needed.** `ssrf-guard.ts` already resolves once, validates EVERY
+   returned A/AAAA record (any non-public record → `blocked-host`),
+   and opens the socket to the pinned validated IP literal on both
+   proxy paths (HTTP: `http.request({hostname: rv.ip, ...})`; CONNECT:
+   `net.connect({host: rv.ip, family})`). No second DNS lookup exists
+   between validate and connect; per-hop re-validation holds because
+   every yt-dlp connection is a new proxy request. Classic rebinding
+   is structurally dead.
+
+2. **C1 companion bug found during verification — FIXED.** The
+   CONNECT path split `req.url` on ':' to parse authority-form
+   targets, mangling bracketed IPv6 literals
+   (`[2606:4700::1111]:443` → host "[2606", port 4700): legitimate
+   IPv6 HTTPS sites failed through the proxy. Hostile literals failed
+   closed (connect error — never a bypass), so this was functional
+   breakage, not a security hole. Fixed via `parseConnectTarget()` —
+   WHATWG URL parsing handles both `[v6]:port` and `host:port`,
+   bracket-free hostname, default port 443, malformed → invalid-option
+   (fail closed). Unit-tested in `apps/engine/test/review-hardening.test.ts`.
+
+3. **C2 (mock-exemption backdoor) — HARDENED (gate added).** The
+   `LOCALTOOLS_DOWNLOADER_MOCK_TARGET` test seam previously engaged
+   from runtime env vars alone (TEST_MODE + MOCK_TARGET); a hostile
+   .env or compromised sibling container could open the one-target
+   loopback exemption. Now triple-gated: the seam engages ONLY when
+   `NODE_ENV=test` is ALSO set. Production posture per artifact:
+   Docker pins `ENV NODE_ENV=production` (engine.Dockerfile);
+   the desktop sidecar `env_clear()`s — NODE_ENV never reaches the
+   child; bare `node dist/server.js` has it unset or production.
+   Pinned by tests: production/unset NODE_ENV → seam dead → mock
+   target surfaces `blocked-host` exactly like any other loopback
+   URL; NODE_ENV=test + both vars → seam opens (the gate is the
+   gate). Static artifact tests assert docker-compose.yml never
+   forwards the seam vars (explicit allowlist), the Dockerfile pins
+   NODE_ENV=production, and sidecar.rs never passes NODE_ENV or the
+   seam vars. `.env.example` documents the triple gate.
+
+4. **ffmpeg.wasm — CUT by owner decision (supersedes D-021/D-032).**
+   The in-browser small-clip (<50MB) trim/convert path is dropped
+   from v1.0.0 scope entirely — moved to the README roadmap as a
+   post-1.0 "maybe." Rationale: never load-bearing (Group B ffmpeg
+   covers every Media tool engine-side), deferred twice already, and
+   Safari/WebKit memory quirks make it a liability for a v1.0.0 tag.
+   M2 resolved: no TBD rides into the tag. No client code changes —
+   the path was never built; the tool registry/routes all point at
+   the engine Group B endpoints.
+
+## Phase 14 — Performance & size pass
+
+### D-045 — Phase 14 measurement decisions (Lighthouse re-baseline; Docker size record; measurement script)
+
+1. **Lighthouse 13.4.1 re-measurement vs the Phase 2 (Lighthouse 12) baseline.** Score comparability across LH majors is approximate — both runs measure the same production build via `vite preview` + system Chrome, and the recorded deltas are: perf 82→79 (3 points, within the spec 14.5 rule of "no >10-point Performance regression" on a build that added 90+ tools), a11y 100→100, BP 100→100, SEO 91→91. TBT 0ms / CLS 0 unchanged. The LCP ~3.9s is dominated by headless-Chrome font-render overhead on the dev host (server-response 0ms, network RTT 0ms, main-thread 0.7s) — recorded with that caveat rather than tuned for; the automated gates that matter (bundle ≤250KB, worker-offload 0 long tasks) are CI-enforced.
+2. **perf-measure.mjs invokes lighthouse via `node cli/index.js` directly**, never the `.bin` shim: the repo path contains a space ("random projects vibecoded"), and Windows .cmd shims through shell:true split it ('D:\random' is not recognized). Direct-node with an argv array is immune. The script reuses find-chrome + the anti-wedge server discipline (AbortSignal-bounded readiness probes, explicit kill) and is repeatable for future re-baselines.
+3. **Docker image size (Section 11) is recorded via CI, not guessed**: a new compose-stack step (`Engine image size (Section 11 record)`) prints ENGINE_IMAGE_SIZE from `docker image inspect` on every run — the dev host has no Docker (D-015), so the CI log is the honest source of the exact number. README cites it; the ~80MB npm-strip reduction (534212a) and the v1.1 slim-variant idea are stated there too.
+4. **Lighthouse stays a measurement, not a gate** (per D-012's precedent): the spec's >10-point regression rule is a judgment bar re-checked at each re-baseline, not an automated threshold — automating a noisy score into CI would produce flaky reds with no actionable signal. The gates remain bundle-size + worker-offload, which are deterministic.
+
+## Phase 15 — Documentation & release
+
+### D-046 — Phase 15 documentation decisions (screenshots, LEGAL.md, doc accuracy)
+
+1. **Screenshots are captured by a committed, repeatable script** (`apps/client/scripts/capture-screenshots.mjs`), not one-off manual grabs: production build via own `vite preview` (:4189), Chrome headless driven over raw CDP WebSocket (ws resolved from the pnpm store via file:// URL — Windows absolute paths are rejected by the ESM loader and the repo path contains a space), home + all four suite grids + one representative tool page per suite = 9 PNGs at 1280x800 committed under `docs/screenshots/`. README references them, so they must survive a clone. Regenerate after any UI change: `pnpm build && node apps/client/scripts/capture-screenshots.mjs`.
+2. **ws stays a transitive dep (no new direct dependency)**: the CDP driver needs a WebSocket client; Node 22's global WebSocket is available natively BUT the script pins `ws@8.21.3` from the store for determinism — no package.json change, no new supply-chain surface. (If the store path ever breaks, `CHROME_PATH`-style env override is the escape hatch — same pattern as find-chrome.)
+3. **README tool list is verified programmatically, not by eye**: all 97 tool display names extracted from tool-registry.ts + i18n/en.json and asserted present in README (two initially missed by line-wrap — 'Bookmarks / TOC Editor', 'CSS/JS/HTML Minify & Beautify' — caught and fixed by the check, demonstrating why it exists). Group counts in the README (73 A / 23 B / 1 C) match the registry.
+4. **LEGAL.md mirrors the in-app notice substance** (Section 6 three-location rule: README summary + LEGAL.md + in-app dismissible notice — the third location shipped in Phase 8). All five Section 6 points covered; "not legal advice" framing; no-DRM/no-paywall/no-bulk-redistribution commitment stated as a forward-looking "none will be added" clause.
+5. **Doc accuracy debt cleared under the DoD bar**: SECURITY.md still described the "Phase 0 stub engine" (D-002 mid-build state) — replaced with the shipped-controls description; README status line and Roadmap updated to "15 of 15 built, v1.0.0 tag pending CI unblock" (the tag is owner-gated, not auto-executed by this session — CI billing + D-037 signing + the review-C3 release-desktop smoke all precede it).
+
+### D-047 — v1.0.0 release gates closed: CI billing resolved by the public flip; v1.0.0 ships UNSIGNED
+
+1. **The CI billing blocker was a closed issue, not a live one.** The handoff carried "9th failed probe pending" as the top blocker, but the repo was already PUBLIC (`gh repo view` → `visibility: PUBLIC`, D-010 landed) and the last billing-annotated run was 16 days old. A fresh `gh run rerun` started immediately and all 7 jobs actually launched — the public flip's free-Actions-minutes effect had already taken effect, and no billing fix was ever needed. **Lesson recorded because it nearly caused a wrong "still blocked" report: a blocker copied forward in a handoff must be re-probed before it is treated as live.**
+2. **D-037 resolved as SHIP UNSIGNED (owner decision, 2026-09-30).** The owner chose unsigned installers over provisioning signing certs. Consequence: `release-desktop.yml`'s `if: false` gate is removed, so a `v*` tag now builds the real three-OS tauri-action matrix and publishes a **draft** release. The README's per-OS bypass steps (SmartScreen → More info → Run anyway; macOS right-click → Open → Open; Linux `chmod +x`) already shipped in Phase 10 and are the user-facing mitigation, so no doc gap had to be closed first.
+3. **The updater stays OFF, and that is now a deliberate v1.0.0 position rather than a deferral.** Shipping unsigned _and_ self-updating would train users to click through OS warnings for any future binary — the exact downgrade D-037 originally reasoned about. Enabling the updater later requires BOTH cert secrets and a `TAURI_SIGNING_PRIVATE_KEY` keypair; the workflow's env block is annotated with the full list so the later change is mechanical.
+4. **Draft release is retained on purpose**: the tag is cut before the owner's manual click-through items (clean-machine desktop run, screen-reader spot-check, true macOS Safari) are done, so the release must not auto-publish as final on the strength of a green tag alone. Publishing the draft is a separate, explicit human step after those checks.

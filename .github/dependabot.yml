@@ -1,0 +1,35 @@
+# Section 5.5 dependency & supply-chain: weekly update PRs for the JS
+# workspace and the Rust shell. Security updates arrive faster ( Dependabot
+# opens them as soon as the advisory publishes). Note: the repo is private
+# during the build (D-010) — Dependabot requires the public flip OR
+# "Dependency graph" + "Dependabot alerts/updates" enabled by the owner on
+# the private repo (Settings → Code security). This file is inert until
+# then, which is why it lands in Phase 13 without turning anything on
+# prematurely.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # pnpm workspace — Dependabot understands pnpm-lock.yaml at the root.
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: cargo
+    directory: /apps/desktop/src-tauri
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      actions-minor:
+        update-types: ['minor', 'patch']

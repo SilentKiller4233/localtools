@@ -1,11 +1,16 @@
-# Desktop release pipeline — PLACEHOLDER, intentionally disabled.
+# Desktop release pipeline — three-OS Tauri build matrix.
 #
-# The real three-OS Tauri build/sign matrix lands with Phase 10
-# (PROJECT_SPEC Section 15). Guarded with `if: false` so an early tag cannot
-# produce a red run or a broken artifact; see DECISIONS.md D-005.
+# UN-GATED (D-037 decision, 2026-09-30): v1.0.0 ships UNSIGNED. The owner
+# elected the unsigned path over provisioning signing certs, so the updater
+# stays OFF (unsigned binaries that self-update train users to click through
+# warnings for anything) and this workflow publishes a DRAFT release with
+# per-OS bypass steps in the README. Enabling signing later means adding the
+# cert secrets below AND an updater keypair — see DECISIONS.md D-037.
 #
-# To enable in Phase 10: remove the job-level `if`, wire tauri-action with
-# signing secrets, and target windows-latest / macos-latest / ubuntu-latest.
+# The pipeline itself was already exercised piecewise by the CI
+# desktop-build job (same cargo build/test pipeline on ubuntu) before this
+# gate was lifted. See DECISIONS.md D-005 (placeholder rationale) and
+# D-037 (updater/signing).
 
 name: Release (desktop)
 
@@ -15,8 +20,63 @@ on:
       - 'v*'
 
 jobs:
-  placeholder:
-    if: false
-    runs-on: ubuntu-latest
+  build-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            args: ''
+          - os: windows-latest
+            args: ''
+          - os: macos-latest
+            args: ''
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     steps:
-      - run: echo "Desktop release pipeline arrives with Phase 10."
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Linux desktop build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libssl-dev
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace (client embeds into tauri context)
+        run: pnpm build
+
+      - name: Build the engine bundle (server + prod deps + node runtime)
+        run: |
+          set -euo pipefail
+          export LOCALTOOLS_DESKTOP_NODE="$(which node)"
+          node apps/desktop/scripts/build-engine-dist.mjs
+
+      - name: Build the desktop installer (tauri-action)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signing secrets arrive with the Phase 15 decision (D-037):
+          # APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD / APPLE_SIGNING_IDENTITY
+          # APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID,
+          # TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD (updater)
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'LocalTools ${{ github.ref_name }}'
+          releaseBody: 'See the assets to download the installer for your platform. These installers are not code-signed (D-037) — the exact one-time per-OS bypass steps are in the README under "First launch after install".'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

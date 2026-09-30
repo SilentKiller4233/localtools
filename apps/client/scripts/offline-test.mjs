@@ -1,59 +1,172 @@
-/* Offline-reload acceptance test (PROJECT_SPEC Phase 2 / Section 8).
- * 1. Load the app online, wait for the service worker to activate.
- * 2. Assert SW controls the page.
- * 3. Kill nothing here — the caller stops the server between phases via exit code.
- * Run:  node scripts/offline-test.mjs <phase: warmup|verify>
+/**
+ * Offline-reload acceptance test (PROJECT_SPEC Phase 2 / Section 8) —
+ * self-contained (Phase 13): starts its own `vite preview` on an
+ * ephemeral port, loads the app, waits for the service worker, goes
+ * browser-offline via CDP network emulation, reloads, and asserts the
+ * page still renders fully from the service-worker cache.
+ *
+ * (The original two-phase warmup/verify design needed the caller to kill
+ * the server between phases — fine interactively, impossible to wire
+ * into verify/CI as one step. Browser-level offline is the same
+ * network-gone condition and fits one process. History of CI hardening:
+ * setOfflineMode wedged reload silently (run 34637640479) → CDP
+ * Network.emulateNetworkConditions; ubuntu wedges can happen at ANY
+ * unbounded await (runs 34641228513/34644521693, the sibling script) →
+ * this file carries the same full discipline: watchdog armed before any
+ * async work, 127.0.0.1-only binding + AbortSignal-bounded probes,
+ * withTimeout() races on launch/close, explicit process.exit on both
+ * paths. The original bytes/history are in git.)
+ *
+ * Usage:  node scripts/offline-test.mjs
+ * Output: OFFLINE_RELOAD_PASS on success.
  */
 import puppeteer from 'puppeteer-core';
 import { existsSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { findChrome } from './lib/find-chrome.mjs';
 
-const CHROME_PATHS = [
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-  process.env.LOCALAPPDATA + '/Google/Chrome/Application/chrome.exe',
-];
-const phase = process.argv[2] ?? 'warmup';
-const URL_BASE = 'http://localhost:4173';
+const PORT = 4182;
+const BASE = `http://127.0.0.1:${PORT}`;
+/** Whatever wedges, the whole script must finish inside this. */
+const HARD_TIMEOUT_MS = 120_000;
 
-const browser = await puppeteer.launch({
-  executablePath: CHROME_PATHS.find((p) => existsSync(p)),
-  headless: 'new',
-  userDataDir: process.env.LOCALAPPDATA + '/Temp/localtools-pwa-profile',
-  args: ['--no-first-run'],
-});
-
-try {
-  const page = await browser.newPage();
-  await page.goto(`${URL_BASE}/suite/media`, { waitUntil: 'networkidle0', timeout: 30000 });
-
-  const swState = await page.evaluate(async () => {
-    if (!('serviceWorker' in navigator)) return { supported: false };
-    const reg = await navigator.serviceWorker.ready;
-    return {
-      supported: true,
-      controlling: navigator.serviceWorker.controller !== null,
-      scope: reg.scope,
-    };
+/** Reject with `label` if `promise` doesn't settle within `ms`. */
+function withTimeout(ms, promise, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} exceeded ${ms}ms`)), ms);
   });
-  console.log(`[${phase}] service worker:`, JSON.stringify(swState));
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
-  if (phase === 'warmup') {
+/** Start vite preview on 127.0.0.1; resolve with a killer once it answers. */
+async function startPreviewServer() {
+  const cwd = fileURLToPath(new URL('..', import.meta.url));
+  const child = spawn(
+    process.platform === 'win32' ? 'npx.cmd' : 'npx',
+    ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'],
+    { cwd, stdio: 'pipe', shell: process.platform === 'win32' },
+  );
+  let killed = false;
+  const kill = () => {
+    if (killed) return;
+    killed = true;
+    if (process.platform === 'win32') {
+      spawn('cmd', ['/c', `taskkill /PID ${child.pid ?? 0} /T /F`], { stdio: 'ignore' });
+    } else {
+      child.kill('SIGKILL');
+    }
+  };
+  const ready = (async () => {
+    for (let i = 0; i < 60; i++) {
+      try {
+        const res = await fetch(`${BASE}/`, { signal: AbortSignal.timeout(2000) });
+        if (res.ok) return kill;
+      } catch {
+        /* not up yet */
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    kill();
+    throw new Error(`vite preview did not come up on 127.0.0.1:${PORT}`);
+  })();
+  return withTimeout(60_000, ready, 'vite preview readiness');
+}
+
+const fail = (msg) => {
+  console.error(`OFFLINE_RELOAD_FAIL: ${msg}`);
+  process.exit(1);
+};
+
+async function main() {
+  if (!existsSync(new URL('../dist/index.html', import.meta.url))) {
+    throw new Error('dist/ missing — run `pnpm build` first.');
+  }
+
+  // Watchdog FIRST — armed before any async work exists that could wedge.
+  let finished = false;
+  let killServer = () => {};
+  const watchdog = setTimeout(() => {
+    if (finished) return;
+    console.error(
+      `OFFLINE_RELOAD_FAIL: hard watchdog timeout (${HARD_TIMEOUT_MS}ms) — run wedged.`,
+    );
+    killServer();
+    process.exit(1);
+  }, HARD_TIMEOUT_MS);
+
+  killServer = await startPreviewServer();
+  console.log('preview server up');
+
+  let browser;
+  try {
+    console.log('launching browser…');
+    browser = await withTimeout(
+      60_000,
+      puppeteer.launch({
+        executablePath: findChrome(),
+        headless: 'new',
+        args: ['--no-first-run', '--no-sandbox', '--disable-dev-shm-usage'],
+      }),
+      'browser launch',
+    );
+    console.log('browser up');
+    const page = await browser.newPage();
+
+    await page.goto(`${BASE}/suite/media`, { waitUntil: 'networkidle0', timeout: 30_000 });
+    const swState = await page.evaluate(async () => {
+      if (!('serviceWorker' in navigator)) return { supported: false };
+      const reg = await navigator.serviceWorker.ready;
+      return {
+        supported: true,
+        controlling: navigator.serviceWorker.controller !== null,
+        scope: reg.scope,
+      };
+    });
+    console.log('service worker:', JSON.stringify(swState));
+    if (!swState.supported || swState.controlling !== true) {
+      fail('service worker is not controlling the page.');
+    }
+
     // Give the runtime cache a beat to populate hashed assets.
     await new Promise((r) => setTimeout(r, 1500));
-    console.log('WARMUP_OK');
-  } else {
-    // OFFLINE: reload with the network gone (server already killed by caller).
-    await page.reload({ waitUntil: 'load', timeout: 20000 });
+
+    // GO OFFLINE via CDP network emulation (setOfflineMode proved
+    // unreliable on the ubuntu runner — silent reload wedge).
+    const cdp = await page.createCDPSession();
+    await cdp.send('Network.enable');
+    await cdp.send('Network.emulateNetworkConditions', {
+      offline: true,
+      latency: 0,
+      downloadThroughput: 0,
+      uploadThroughput: 0,
+    });
+
+    await page.reload({ waitUntil: 'load', timeout: 30_000 });
     const h1 = await page.$eval('.lt-suite-header h1', (el) => el.textContent).catch(() => null);
     const cards = await page.$$eval('.lt-grid .lt-tool-card', (els) => els.length).catch(() => 0);
-    console.log(`[verify] offline render -> h1=${JSON.stringify(h1)} toolCards=${cards}`);
+    console.log(`offline render -> h1=${JSON.stringify(h1)} toolCards=${String(cards)}`);
     if (h1 === 'Media Tools' && cards > 0) {
       console.log('OFFLINE_RELOAD_PASS');
     } else {
-      console.log('OFFLINE_RELOAD_FAIL');
-      process.exitCode = 1;
+      fail('offline page did not render from the SW cache.');
     }
+  } finally {
+    finished = true;
+    clearTimeout(watchdog);
+    if (browser !== undefined) {
+      await withTimeout(30_000, browser.close(), 'browser.close').catch((e) =>
+        console.error(`note: ${e instanceof Error ? e.message : e}`),
+      );
+    }
+    killServer();
   }
-} finally {
-  await browser.close();
 }
+
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  });

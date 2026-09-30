@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postbuild": "node scripts/bundle-size-check.mjs",
+    "check:offline": "node scripts/offline-test.mjs",
+    "check:worker-offload": "node scripts/worker-offload-test.mjs"
   },
   "dependencies": {
     "@localtools/devtext-core": "workspace:*",
@@ -29,6 +32,7 @@
     "@vitejs/plugin-react": "^4.3.3",
     "axe-core": "^4.13.0",
     "eslint": "^9.15.0",
+    "happy-dom": "^20.14.5",
     "playwright": "~1.63.0",
     "puppeteer-core": "^25.9.0",
     "typescript": "^5.6.3",

@@ -49,9 +49,13 @@ export function registerDownloaderRoutes(
   // names the literal host:port of the local mock origin — exactly that
   // target bypasses the loopback block (nothing else does), and the
   // extractor set grows generic+html5 so the mock is "supported".
-  // CI/dev only; never set in production (.env.example documents it).
+  // NEVER reachable in a shipped artifact (external-review C2): requires
+  // NODE_ENV=test in addition to both env vars. The Docker image pins
+  // NODE_ENV=production; the desktop sidecar env_clear()s NODE_ENV away;
+  // a production `node dist/server.js` has NODE_ENV unset/production.
   const mockTargetEnv = process.env['LOCALTOOLS_DOWNLOADER_MOCK_TARGET'];
   const mockTarget =
+    process.env['NODE_ENV'] === 'test' &&
     process.env['LOCALTOOLS_DOWNLOADER_TEST_MODE'] === 'true' &&
     mockTargetEnv !== undefined &&
     mockTargetEnv !== ''

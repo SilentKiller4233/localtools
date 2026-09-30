@@ -105,6 +105,12 @@ _(Unchanged from the prior version of this spec — full detail retained for com
 
 **Group B:** PDF↔Word/Excel/PowerPoint (LibreOffice headless), OCR (OCRmyPDF/Tesseract), Deep Compress (Ghostscript), PDF→PDF/A (Ghostscript), Deep Repair (Ghostscript), HTML→PDF (WeasyPrint default, Playwright+Chromium opt-in for JS-heavy pages).
 
+_Implementation amendment (D-015, external review M6): PDF→Excel is not
+implementable with LibreOffice headless — Calc has no PDF import filter.
+The engine honestly rejects PDF→Excel requests with a clear
+unsupported-conversion error rather than emitting a broken file; the
+other Office↔PDF conversions are unaffected. Recorded in DECISIONS.md._
+
 ### 3.2 Media Tools Suite (new)
 
 **Group C — Universal downloader:**

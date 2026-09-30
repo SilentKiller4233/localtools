@@ -27,8 +27,94 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify (format + lint + typecheck + build)
+      - name: Verify (format + lint + typecheck + build + tests + 14.5 bundle-size + 14.8 licensing gates)
         run: pnpm verify
+
+      # Section 5.5 supply-chain: fail on high/critical known vulns in the
+      # committed lockfile (dev + prod both — a dev-dep vuln in a build
+      # pipeline is still a real vuln).
+      - name: pnpm audit (fail on high/critical)
+        run: pnpm audit --audit-level high
+
+  licensing:
+    # Section 14.8: the required licensing notes must exist in
+    # DECISIONS.md (Ghostscript AGPL/subprocess reasoning, ffmpeg variant,
+    # @imgly/background-removal status, RAR constraint, mock-downloader
+    # decision). Also the Section 14.8 CI job from the Definition of Done.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Required licensing notes present in DECISIONS.md
+        run: node tools/licensing-check.mjs
+
+  supply-chain:
+    # Section 5.5 + 14.7: Trivy scan of the built engine image failing on
+    # new HIGH/CRITICAL findings, plus cargo audit for the Rust shell.
+    # (Scanning the image requires building it — ubuntu only, same as the
+    # compose-stack job; the Windows dev host has no Docker, D-015.)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy --version
+
+      - name: Build the engine image
+        run: docker compose build engine
+
+      - name: Trivy scan — engine image (fail on HIGH/CRITICAL)
+        run: |
+          set -euo pipefail
+          # `docker compose config --images` lists every service's image —
+          # pick the ENGINE's exactly (line 2 is the client's; grep has
+          # already bitten us once by matching the wrong service).
+          IMAGE="$(docker compose config --images engine 2>/dev/null || true)"
+          if [ -z "$IMAGE" ]; then
+            # Older compose versions don't filter by service — fall back
+            # to the deterministic <project>-<service> naming.
+            IMAGE="$(docker compose config --format json | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{const cfg=JSON.parse(s);const svc=cfg.services.engine;console.log(svc.image ?? '')}")"
+          fi
+          if [ -z "$IMAGE" ]; then
+            IMAGE="$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -- '-engine' | head -n1)"
+          fi
+          echo "scanning: $IMAGE"
+          test -n "$IMAGE"
+          trivy image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed "$IMAGE"
+
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit
+
+      # Spec 5.5: "cargo audit in CI, fail on high/critical" — plain
+      # `cargo audit` exits non-zero on real vulnerabilities and prints
+      # unmaintained/unsound advisories as warnings. `--deny warnings`
+      # proved wrong on the first live run (run 34635985930): 7 denied
+      # warnings, ALL unmaintained/unsound advisories in Tauri's own
+      # transitive tree (proc-macro-error, unic-*, glib 0.18.5) — crates
+      # we cannot remove without patching Tauri. Recorded in D-043.
+      - name: cargo audit — Rust shell lockfile (vulnerabilities fail the build)
+        working-directory: apps/desktop/src-tauri
+        run: cargo audit
 
   compose-stack:
     # Phase 4 acceptance: the Docker stack test (Section 14.7 engine round
@@ -41,6 +127,29 @@ jobs:
 
       - name: Build the stack
         run: docker compose build
+
+      # Phase 14 (Section 11): record the built engine image size in the
+      # CI log — README's size note cites this step.
+      # The MB conversion is done in bash, not in the Go template: Docker's
+      # template function set has no `div`, so `{{div .Size 1048576}}` fails
+      # with "function div not defined". This step never ran while CI was
+      # billing-blocked, which is how the bug stayed hidden until the first
+      # real run. `ENGINE_IMAGE_SIZE` (bytes) is the value README cites.
+      - name: Engine image size (Section 11 record)
+        run: |
+          IMAGE="$(docker compose config --images engine 2>/dev/null || true)"
+          if [ -z "$IMAGE" ]; then
+            IMAGE="$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -- '-engine' | head -n1)"
+          fi
+          echo "engine image: $IMAGE"
+          BYTES="$(docker image inspect "$IMAGE" --format '{{.Size}}')"
+          # Guard: bash arithmetic treats an empty value as 0, so without this
+          # a missing/unreadable image would record a bogus "0MB" and pass.
+          if [ -z "$BYTES" ]; then
+            echo "::error::could not read the size of engine image '$IMAGE'"
+            exit 1
+          fi
+          echo "ENGINE_IMAGE_SIZE=${BYTES} bytes ($((BYTES / 1048576))MB)"
 
       - name: Bring the stack up
         run: docker compose up -d --wait
@@ -150,8 +259,10 @@ jobs:
     # both themes (zero critical/serious), 390px responsive check, keyboard
     # sweep — against the PRODUCTION build served by vite preview. Chrome
     # comes from the Playwright registry (npx playwright install chromium).
+    # Phase 13 adds the worker-offload + offline checks here; 40m because
+    # the sweep alone takes ~15m and the additions once wedged past 30m.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -196,6 +307,14 @@ jobs:
         run: |
           pnpm --filter @localtools/client exec playwright install webkit --with-deps
           cd apps/client && node scripts/webkit-wasm-smoke.mjs
+
+      - name: Section 14.5 — worker-offload check (50MB PDF, zero main-thread blocking)
+        timeout-minutes: 6
+        run: cd apps/client && node scripts/worker-offload-test.mjs
+
+      - name: Section 8 — PWA offline reload (service-worker cache)
+        timeout-minutes: 6
+        run: cd apps/client && node scripts/offline-test.mjs
 
   desktop-build:
     # Phase 10 acceptance (Section 14.7): build the Tauri shell on Linux,

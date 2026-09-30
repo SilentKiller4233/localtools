@@ -69,6 +69,12 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  build: {
+    // Emit .vite/manifest.json — the Section 14.5 bundle-size gate
+    // (scripts/bundle-size-check.mjs) walks the entry's static import
+    // graph from it to compute the INITIAL gzipped JS budget (250KB).
+    manifest: true,
+  },
   worker: {
     // ES-module workers: the pdf tool worker lazy-imports pdfjs/qpdf
     // (code-splitting), which IIFE workers cannot support. All targets
