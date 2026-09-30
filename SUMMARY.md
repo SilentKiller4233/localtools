@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-13, after Phase 14 — Performance & size pass complete_
+_Last updated: 2026-09-30, after the first green CI run (session 20) — v1.0.0 tag is the only step left_
 
 ## What this project is
 
@@ -112,7 +112,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - ~~Phase 11 — Integration polish~~ (complete — unified error copy + health gating + consistent progress + batch polish, D-039/D-040; first client test suite added)
 - ~~Phase 12 — Accessibility & responsiveness~~ (complete — see the Phase 12 section below)
 - ~~Phase 14 — performance/size~~ (complete) · ~~Phase 15 — documentation~~ (complete — D-046)
-- Pre-v1.0.0 owner gates: CI billing decision (public flip / Oct 1 reset / settings fix) → PR #1 merge + green CI proof; one release-desktop.yml smoke run (review C3); D-037 signing decision → un-gate release-desktop.yml; public flip (D-010) → activates Dependabot; THEN tag v1.0.0
+- Pre-v1.0.0 owner gates: **ALL CLEARED except the tag itself.** CI billing was resolved by the D-010 public flip (the blocker was stale — a fresh rerun started all 7 jobs immediately); D-037 signing resolved as SHIP UNSIGNED with `release-desktop.yml` un-gated (D-047). Run **36764811728 is 7/7 green, conclusion `success`** — the Phase 13 acceptance run. Remaining: owner's manual click-through items, then tag `v1.0.0` (publishes a draft release)
 - Owner manual items (TESTS.md): desktop click-through on a clean machine, screen-reader spot-check x4, true macOS Safari (H4 real-URL downloader run DONE 2026-09-13 — live YouTube round trip in production posture, TESTS.md Phase 15)
 
 **Phase 11 — Integration polish (health gating, progress, error states, batch)**
@@ -171,9 +171,9 @@ D-020 (ffmpeg: BtbN GPL static build, subprocess-boundary reasoning — same as 
 ## Known issues / tech debt
 
 - SSRF guard adversarial re-review: DONE (external Claude review — C1 verified clean: resolve-once + validate-every-record + connect-to-pinned-IP on both proxy paths; C2 hardened: mock seam now triple-gated NODE_ENV=test+TEST_MODE+MOCK_TARGET, unreachable in shipped artifacts; IPv6 CONNECT parse bug found + fixed). H4 DONE (2026-09-13): live YouTube round trip in production posture — metadata + genuine mp3 (ffprobe-verified), plus live `unsupported-site` and `blocked-host` rejections.
-- The external review's remaining owner-blocking item: GitHub Actions billing (PR #1's acceptance run cannot start until fixed — runs 34710264986/34710597715 died with the billing annotation).
+- The external review's remaining owner-blocking item — GitHub Actions billing — is **RESOLVED** (2026-09-30, D-047). The repo was already public, so a fresh rerun started all 7 jobs; the resulting failures were real defects (a latent `{{div}}` template bug in the compose-stack size step, 8 new high npm advisories, and two cargo advisories), all fixed. Run 36764811728: 7/7 green.
 - `apps/desktop` ships the full Tauri shell (Phase 10); its manual click-through checklist (TESTS.md) is pending the owner's run on a clean machine.
-- CI is green on `main`; PR #1 (the first PR) still needs its green acceptance run (blocked on billing, not code); workflows remain untested against tags until Phase 15 exercises release-desktop.yml.
+- PR #1's acceptance run is **GREEN** (36764811728, 7/7, conclusion `success`); the PR is ready to merge. Workflows remain untested against a real tag until `v1.0.0` (or a throwaway tag) exercises release-desktop.yml — the desktop-build job has proven every piece of that pipeline, but not the tag trigger itself.
 - Safari/WebKit WASM: Playwright WebKit smoke green (qpdf-wasm end-to-end, no COOP/COEP needed per D-029, devtext worker healthy — Phase 12, runs in CI); the remaining piece is true macOS Safari hardware (owner manual item in TESTS.md) — OffscreenCanvas limits on the pdf render path are the specific thing to watch there.
 - Redaction's v1 contract: text removal is genuine; image XObjects inside a box are covered visually but not pixel-removed (true image redaction needs the render pipeline — noted in-code as a future enhancement, consistent with the spec's algorithm). USER-FACING WARNING now ships at the point of use (external review H2, D-044).
 - Repo-private-during-build (D-010): Dependabot/dependency-graph alerts had zero continuous coverage during the build; point-in-time CI Trivy/audit runs per push were the only supply-chain coverage. Resolves at the Phase 15 public flip.
