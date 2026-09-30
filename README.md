@@ -5,7 +5,8 @@ Self-hosted, open-source, privacy-first alternative to the paywalled/rate-limite
 JSON formatters, and their whole category. Every tool those sites gate is free
 and unlimited here: **97 tools across four suites**, running on your machine.
 
-**Status:** 15 of 15 phases built; v1.0.0 tag pending CI unblock (see [`SUMMARY.md`](SUMMARY.md)).
+**Status:** 15 of 15 phases built. v1.0.0 release-ready — CI is running green on
+the release pipeline; the tag is the last step (see [`SUMMARY.md`](SUMMARY.md)).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 

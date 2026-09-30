@@ -130,6 +130,11 @@ jobs:
 
       # Phase 14 (Section 11): record the built engine image size in the
       # CI log — README's size note cites this step.
+      # The MB conversion is done in bash, not in the Go template: Docker's
+      # template function set has no `div`, so `{{div .Size 1048576}}` fails
+      # with "function div not defined". This step never ran while CI was
+      # billing-blocked, which is how the bug stayed hidden until the first
+      # real run. `ENGINE_IMAGE_SIZE` (bytes) is the value README cites.
       - name: Engine image size (Section 11 record)
         run: |
           IMAGE="$(docker compose config --images engine 2>/dev/null || true)"
@@ -137,7 +142,14 @@ jobs:
             IMAGE="$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -- '-engine' | head -n1)"
           fi
           echo "engine image: $IMAGE"
-          docker image inspect "$IMAGE" --format 'ENGINE_IMAGE_SIZE={{.Size}} bytes ({{div .Size 1048576}}MB)'
+          BYTES="$(docker image inspect "$IMAGE" --format '{{.Size}}')"
+          # Guard: bash arithmetic treats an empty value as 0, so without this
+          # a missing/unreadable image would record a bogus "0MB" and pass.
+          if [ -z "$BYTES" ]; then
+            echo "::error::could not read the size of engine image '$IMAGE'"
+            exit 1
+          fi
+          echo "ENGINE_IMAGE_SIZE=${BYTES} bytes ($((BYTES / 1048576))MB)"
 
       - name: Bring the stack up
         run: docker compose up -d --wait
