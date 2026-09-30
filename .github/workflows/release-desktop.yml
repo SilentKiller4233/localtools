@@ -59,13 +59,21 @@ jobs:
       - name: Build workspace (client embeds into tauri context)
         run: pnpm build
 
+      - name: Build the client bundle (tauri frontendDist)
+        # REQUIRED, and deliberately explicit. tauri-action runs `tauri build`
+        # from the WORKSPACE ROOT (projectPath: .), where tauri's
+        # beforeBuildCommand is not applied — so `../client/dist` was empty
+        # and every matrix leg died with "Unable to find your web assets".
+        # Found by the v0.0.0-release-dryrun dry run; this workflow had never
+        # executed before, being gated `if: false` until D-047.
+        run: pnpm --filter @localtools/client build
+
       - name: Build the engine bundle (server + prod deps + node runtime)
         # `shell: bash` is REQUIRED, not cosmetic. Without it this step runs
         # under PowerShell on windows-latest, where `set -euo pipefail` and
-        # `$(which node)` are not valid — the step would fail there. This
-        # workflow had never executed (gated `if: false` until D-047), so the
-        # shell mismatch was invisible; the equivalent ci.yml desktop-build
-        # step only ever runs on ubuntu, where bash is the default and hides it.
+        # `$(which node)` are not valid — the step would fail there. The
+        # identical step in ci.yml's desktop-build job only runs on ubuntu,
+        # where bash is the default and hides the mismatch.
         shell: bash
         run: |
           set -euo pipefail

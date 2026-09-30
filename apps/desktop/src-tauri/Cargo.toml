@@ -2,7 +2,7 @@
 
 [package]
 name = "localtools-desktop"
-version = "0.1.0"
+version = "1.0.0"
 description = "LocalTools desktop shell — wraps the client UI and manages the engine sidecar + lazy native-tool downloads"
 license = "MIT"
 edition = "2021"
