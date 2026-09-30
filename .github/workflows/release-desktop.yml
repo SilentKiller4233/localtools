@@ -60,6 +60,13 @@ jobs:
         run: pnpm build
 
       - name: Build the engine bundle (server + prod deps + node runtime)
+        # `shell: bash` is REQUIRED, not cosmetic. Without it this step runs
+        # under PowerShell on windows-latest, where `set -euo pipefail` and
+        # `$(which node)` are not valid — the step would fail there. This
+        # workflow had never executed (gated `if: false` until D-047), so the
+        # shell mismatch was invisible; the equivalent ci.yml desktop-build
+        # step only ever runs on ubuntu, where bash is the default and hides it.
+        shell: bash
         run: |
           set -euo pipefail
           export LOCALTOOLS_DESKTOP_NODE="$(which node)"
