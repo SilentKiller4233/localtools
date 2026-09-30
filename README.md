@@ -228,7 +228,7 @@ system Chrome headless; three consecutive runs, identical scores):
 | Lighthouse Accessibility               | 100              | 100                          | —                                                                     |
 | Lighthouse Best Practices              | 100              | 100                          | —                                                                     |
 | Lighthouse SEO                         | 91               | 91                           | —                                                                     |
-| Initial JS+CSS (gzipped)               | 63.9KB           | **121.60KB**                 | 250KB budget (CI-gated, fails the build)                              |
+| Initial JS+CSS (gzipped)               | 63.9KB           | **121.70KB**                 | 250KB budget (CI-gated, fails the build)                              |
 | Main-thread long tasks, 50MB PDF merge | —                | **0 tasks / 0ms**            | worker-offload check (CI-gated)                                       |
 
 Notes on the 3-point performance delta: with 90+ more tools and the full
