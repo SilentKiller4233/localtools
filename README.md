@@ -5,8 +5,8 @@ Self-hosted, open-source, privacy-first alternative to the paywalled/rate-limite
 JSON formatters, and their whole category. Every tool those sites gate is free
 and unlimited here: **97 tools across four suites**, running on your machine.
 
-**Status:** 15 of 15 phases built. v1.0.0 release-ready — CI is running green on
-the release pipeline; the tag is the last step (see [`SUMMARY.md`](SUMMARY.md)).
+**Status:** 15 of 15 phases built and the full CI matrix is green (7/7,
+2026-09-30). The `v1.0.0` tag is the last step (see [`SUMMARY.md`](SUMMARY.md)).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -244,11 +244,13 @@ heavy — it bundles Node 22 slim plus Ghostscript, Tesseract (+eng data),
 LibreOffice, ffmpeg, WeasyPrint, pinned yt-dlp 2026.08.19, and Piper
 (with SHA-verified voices fetched lazily at runtime). Stripping the npm
 CLI from the runtime image (the Trivy-driven fix) cut it by ~80MB and
-removed 1 CRITICAL + 10 HIGH CVEs from npm's own tree. The exact final
-size is printed by the CI compose-stack job (`docker images` step) —
-record it here from the next green CI run. A `docker-compose.slim.yml`
-variant without the Media suite's native tools is a v1.1 nice-to-have
-per the spec.
+removed 1 CRITICAL + 10 HIGH CVEs from npm's own tree. Measured on the first
+green CI run (2026-09-30): **1,464,260,273 bytes (~1.36 GiB / 1396 MB)**, printed
+by the compose-stack job's `Engine image size (Section 11 record)` step — the
+exact value quoted here comes from that step's log. It is large by design:
+Ghostscript, LibreOffice and Tesseract are the bulk of it, and they are what
+the Group B PDF endpoints need. A `docker-compose.slim.yml` variant without
+the Media suite's native tools is a v1.1 nice-to-have per the spec.
 
 ## Security
 
@@ -272,7 +274,9 @@ security is review-blocking, tests travel with features.
 ## Roadmap
 
 15 phases per PROJECT_SPEC Section 15, from scaffold through v1.0.0 release —
-built through Phase 15; the v1.0.0 tag is pending the CI unblock. Possible **v2 ideas**: PDF→EPUB, vocal/stem separation (both
+built through Phase 15. All 15 phases are built and the full CI matrix is
+green (7/7 on run 36764811728, 2026-09-30); the `v1.0.0` tag is the last
+remaining step. Possible **v2 ideas**: PDF→EPUB, vocal/stem separation (both
 deliberately out of scope for v1 per Section 7); `docker-compose.slim.yml`
 variant; ffmpeg.wasm in-browser small-clip processing (cut from v1.0.0
 scope — see DECISIONS.md D-044).
