@@ -172,9 +172,9 @@ needed for anything below.
 
 **First launch after install — per-OS "unsigned app" bypass (one time):**
 
-The installers are not yet code-signed (signing is a Phase 15 item), so each OS
-shows a one-time warning on first launch. These are the exact steps to get
-past each one:
+The installers are not code-signed (v1.0.0 ships unsigned by decision — see
+[D-047](DECISIONS.md)), so each OS shows a one-time warning on first launch.
+These are the exact steps to get past each one:
 
 - **Windows:** the installer or app may trigger Microsoft Defender
   SmartScreen — "Windows protected your PC". Click **More info**, then

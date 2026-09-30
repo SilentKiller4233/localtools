@@ -1,11 +1,16 @@
 # Desktop release pipeline — three-OS Tauri build matrix.
 #
-# STILL GATED (`if: false`): signing secrets + updater decision are Phase 15
-# work (D-037); enabling before then would publish unsigned artifacts from
-# a tag. The Phase 13 wiring below is complete and exercised piecewise by
-# the CI desktop-build job (same cargo build/test pipeline on ubuntu) —
-# flip `if: false` off in Phase 15 after the signing decision. See
-# DECISIONS.md D-005 (placeholder rationale) and D-037 (updater/signing).
+# UN-GATED (D-037 decision, 2026-09-30): v1.0.0 ships UNSIGNED. The owner
+# elected the unsigned path over provisioning signing certs, so the updater
+# stays OFF (unsigned binaries that self-update train users to click through
+# warnings for anything) and this workflow publishes a DRAFT release with
+# per-OS bypass steps in the README. Enabling signing later means adding the
+# cert secrets below AND an updater keypair — see DECISIONS.md D-037.
+#
+# The pipeline itself was already exercised piecewise by the CI
+# desktop-build job (same cargo build/test pipeline on ubuntu) before this
+# gate was lifted. See DECISIONS.md D-005 (placeholder rationale) and
+# D-037 (updater/signing).
 
 name: Release (desktop)
 
@@ -16,7 +21,6 @@ on:
 
 jobs:
   build-matrix:
-    if: false # enable in Phase 15 with signing (D-037)
     strategy:
       fail-fast: false
       matrix:
@@ -72,7 +76,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'LocalTools ${{ github.ref_name }}'
-          releaseBody: 'See the assets to download the installer for your platform. Unsigned until Phase 15 (D-037) — see README bypass steps.'
+          releaseBody: 'See the assets to download the installer for your platform. These installers are not code-signed (D-037) — the exact one-time per-OS bypass steps are in the README under "First launch after install".'
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
