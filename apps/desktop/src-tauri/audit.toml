@@ -1,0 +1,45 @@
+# cargo-audit configuration — scoped advisory exceptions.
+#
+# `cargo audit` in CI (the supply-chain job) exits non-zero on any
+# VULNERABILITY. Unmaintained/unsound advisories are warnings and do not
+# fail the build. This file therefore lists exactly ONE id, and it is an
+# `unsound` advisory, not a vulnerability.
+#
+# WHY THIS IS NOT JUST DELETED
+# D-043 removed `--deny warnings` after the first live run denied 7
+# unmaintained advisories, all inside Tauri's own transitive tree. That is
+# the right call for unmaintained crates, but it left one real `unsound`
+# advisory — RUSTSEC-2024-0429 (glib) — counted by cargo-audit as a
+# VULNERABILITY, which fails the build on its own. The distinction matters:
+# an `unsound` advisory is a soundness defect, not a remote-code-execution
+# CVE, and this one is unreachable from our code (below).
+#
+# RUSTSEC-2024-0429 — glib 0.18.5, `glib::VariantStrIter` iterator impls.
+#   * Patched only in glib >= 0.20.0. We are pinned to 0.18.x because
+#     `gtk 0.18.2` (pulled in by tauri 2.11.5) requires `glib = "^0.18"`.
+#     Verified: `cargo update -p glib --precise 0.20.0` fails with
+#     'failed to select a version for the requirement glib = "^0.18"'.
+#     Fixing this means a Tauri major that moves to gtk-rs 0.20+, i.e. a
+#     desktop-shell migration — not a lockfile bump.
+#   * Unreachable from LocalTools: the defect is in the `Iterator` /
+#     `DoubleEndedIterator` impls for `glib::VariantStrIter`. A repo-wide
+#     search of apps/desktop/src-tauri/src finds NO use of glib, Variant,
+#     or VariantStrIter — the crate is present only as a transitive
+#     dependency of the Tauri/GTK windowing stack.
+#   * Impact if ever reached: the advisory describes UB / NULL-pointer
+#     crashes, not memory corruption or code execution.
+#
+# REVISIT WHEN: Tauri ships a release on gtk-rs 0.20+ (then delete this
+# entry and let the gate enforce it), or if any LocalTools Rust code ever
+# starts using glib Variants directly (then this exception becomes wrong
+# and must be re-examined, not silently kept).
+#
+# Deliberately NOT ignored, and enforced by the gate:
+#   * RUSTSEC-2026-0285 (rustls 0.23.44 TLS 1.3 boundary confusion) — a
+#     real vulnerability with a patch. Fixed by bumping rustls to 0.23.45,
+#     not suppressed here.
+#   * Any future vulnerability-severity advisory. This file grants no
+#     blanket exemption: only the single id below is excepted.
+
+[advisories]
+ignore = ["RUSTSEC-2024-0429"]
