@@ -18,6 +18,7 @@ What this session did, in order:
 4. **Cut `v1.0.0`** at `6cdf3f0`, only after main was 7/7 green at that exact commit. Release run: `success`, 7 installers, all 1.0.0.
 5. **Verified the artifact independently** — downloaded the Windows installer via the API: 30,343,200 bytes, `MZ` header. A genuine PE executable, not a placeholder.
 6. Updated README/SUMMARY/TESTS to the tagged state (the DoD requires docs "current as of the `v1.0.0` tag").
+7. **Audited every completion-contract gate at the shipped state** rather than trusting the earlier session. All satisfied: `pnpm verify` exit 0; CI run 36768728300 `success` (7/7); release lists Windows + macOS + Linux. Tests reconciled per suite to exactly **600** (delta 0). SSRF/security suites 56/56. `shell:false` canary proven red-capable by injection and the file restored byte-identical. 0 secrets across 385 tracked files (scan proven able to detect). All 12 lazy-download URLs have SHA-256 companions. Precious dirs intact; main never force-pushed or amended (reflog shows only `update by push`). Two real defects found and fixed — see "Last thing done".
 
 ## Last thing done
 
@@ -26,6 +27,7 @@ What this session did, in order:
 3. Re-verified at the tag commit: `cargo test --lib` **5/5**, and the PWA offline reload check **OFFLINE_RELOAD_PASS** (18 cards from cache).
 4. Doc accuracy pass: killed three stale claims (README status line, Roadmap, SUMMARY's "stays `if: false`"), plus the bundle figure corrected earlier this session (121.60 → 121.70KB, verified stale rather than regressed).
 5. Gates re-run locally: `pnpm format:check` clean, `LICENSING_CHECK_PASS`, `LINKS_OK` (23 relative links).
+6. **Found and fixed a real security-reporting defect**: SECURITY.md told reporters to use the private advisory route "once this repo is published" — but the repo has been public since D-010 and `GET /private-vulnerability-reporting` returned `{"enabled": false}`, so the documented path led nowhere. Enabled it via the API (verified `{"enabled": true}`, advisories URL resolves) and rewrote the instruction to link the form directly. A security policy that routes reports into a void is worse than one that says "open an issue".
 
 ## In-progress / uncommitted work
 
@@ -41,7 +43,14 @@ None — the doc updates above are the only edits, committed with this handoff.
 
 ## Blockers / open decisions needing human input
 
-Four items, all owner-blocked for the same class of reason — they need hardware or human capability this environment lacks. Full register with exact reasons in TESTS.md.
+Four items, all owner-blocked for the same class of reason — they need hardware or human capability this environment lacks. Full register with exact reasons in TESTS.md; the post-release contract audit that re-verified every gate is recorded there too.
+
+**Repro steps the owner needs** (so none of these is a vague 'please test'):
+
+- _Click-through_: download `LocalTools_1.0.0_x64-setup.exe` from the v1.0.0 draft release, SmartScreen → More info → Run anyway, then walk TESTS.md steps 1–14 in order on a machine with no repo checkout.
+- _Screen reader_: run NVDA (Windows) or VoiceOver (macOS) against one tool per suite — merge-pdf, image-converter, json-formatter, text-to-speech.
+- _macOS Safari_: open the Docker-served client (`pnpm dev`, then :5173) in Safari on an actual Mac; watch OffscreenCanvas on the PDF render path and the TTS/worker pages.
+- _Publish_: GitHub → Releases → the v1.0.0 draft → Publish release. Do this only after the click-through, since the draft exists precisely to gate it.
 
 - **Clean-machine click-through** — this host is not clean: it carries the repo-local native toolchain (`ffmpeg-n9.0…/`, `yt-dlp-2026.08.19/`, `gs10.07.1/`, `piper-2023.11.14-2/`) and warm model caches, so "first launch downloads X" cannot be honestly reproduced — a run would resolve already-present tools and prove nothing.
 - **Screen-reader spot-check** — NVDA is not installed on this host (`C:\Program Files\NVDA` absent) and a screen reader cannot be driven programmatically. Structure is fully covered by axe-core (103 routes × 2 themes, zero violations), the Tab-order sweep, and token-level contrast tests; what is unverified is announcement _quality_.
