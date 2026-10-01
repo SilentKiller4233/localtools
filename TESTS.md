@@ -292,6 +292,21 @@ Every gate and constraint was re-verified at the shipped state rather than carri
 
 Also verified while auditing: SECURITY.md's control claims all check out against source (`ENGINE_HOST = '127.0.0.1'` at `index.ts:26`, `LOCALTOOLS_EXPOSE` gating in `auth.ts`/`config.ts`, magic-byte validation in `index.ts`, `downloader/ssrf-guard.ts` present).
 
+### Post-audit: fastify 5.12.1 → 5.12.5 (D-049) — the gate catching real drift
+
+The first CI run **after** the tag failed on a _docs-only_ commit: verify(ubuntu), verify(windows) and supply-chain all red. The documentation was not the cause — **four new high-severity Fastify advisories had been published after the tag** (CVE-2026-84428 header-validation bypass, CVE-2026-84469 request-validation bypass, CVE-2026-84504 unauthorized state change via request body replacement, plus GHSA-9q9j-q6p8-xq58 / GHSA-hwr6-493r-vm6h and one moderate DoS). `apps/engine` declared `fastify: ^5.1.0` and resolved to 5.12.1 — inside every affected range.
+
+Fixed forward (no amend, no tag move, no force-push): dep spec raised to `^5.12.5`, lockfile pins **5.12.5** with 5.12.1 absent from it. One root cause, three red jobs — `pnpm audit` at all severities is clean, and the same bump clears Trivy, which had found the identical CVEs in the built engine image.
+
+| Check                               | Result           | Evidence                                                                                                                                                                     |
+| ----------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| engine HTTP layer on fastify 5.12.5 | **PASS 144/144** | 9 test files, 144 tests — the same count as before the bump, so the patch-level security fix cost no coverage. `typecheck` + `lint` clean.                                   |
+| `pnpm audit` (all severities)       | **PASS**         | "No known vulnerabilities found".                                                                                                                                            |
+| Trivy / supply-chain job            | **PASS**         | Run 36922004069, conclusion `success` — all 7 main jobs green, including supply-chain, verify(ubuntu), verify(windows).                                                      |
+| release unaffected                  | **PASS**         | The v1.0.0 tag and its 7 installers are untouched; the fix lands on main only. `git merge-base --is-ancestor v1.0.0 origin/main` confirms the tag remains on main's history. |
+
+**The lesson worth keeping:** a docs-only commit cannot turn the audit gate red by itself, so when one does, the honest first move is to read the log rather than assume your change caused it — the mirror image of the stale-blocker lesson in D-047.
+
 ## Status: Phase 11 (Integration polish — health gating, progress, error states, batch)
 
 Section 15 Phase 11 acceptance: "no tool shows a raw/unstyled error anywhere in the app." Enforced by the first client test suite (`apps/client/test`, vitest — wired into `pnpm verify` via the workspace test task): taxonomy copy-completeness tests extract every code from each package's own error-union source and assert friendly copy exists; raw-error-guarantee tests assert known codes render copy (never technical text) and unknown codes render the friendly fallback. Health-gating + liveness-ticker behavior unit-tested with mocked fetch/bridge. Phase 11 rows:
