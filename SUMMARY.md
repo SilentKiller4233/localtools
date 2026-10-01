@@ -1,6 +1,6 @@
 # LocalTools — Project Summary
 
-_Last updated: 2026-09-30, after the first green CI run (session 20) — v1.0.0 tag is the only step left_
+_Last updated: 2026-09-30 — **v1.0.0 tagged and released**; 15 of 15 phases complete_
 
 ## What this project is
 
@@ -8,7 +8,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 ## Current status
 
-- Phases complete: 14 of 15 (Section 15)
+- Phases complete: **15 of 15** (Section 15) — and `v1.0.0` is tagged and released
 - PDF suite: **complete — Group A 21/21 (client worker) + Group B 6/6 engine endpoints (LibreOffice ↔Office, OCR, Ghostscript deep-compress/PDF-A/deep-repair, WeasyPrint/Playwright HTML→PDF) behind the full Section 5 control set, wired to client pages via engine-client.ts**
 - Media suite: **Group B conversion complete — all 14 ffmpeg tools as `/media/*` engine endpoints (43/43 tests incl. Section 14.5 ffprobe sanity checks); Group C downloader complete — yt-dlp behind the FULL Section 5.8 SSRF set (30/30 tests, mock-target only, D-024…D-027); speech & audio complete — transcribe-media + auto-captions client-side via whisper.cpp WASM (fugood 1.1.3, D-029 dual-environment contract) and text-to-speech + pdf-to-audiobook engine-side via Piper 2023.11.14-2 (D-030/D-031), 18 engine + 17 media-core tests; ffmpeg.wasm small-clip path CUT from v1.0.0 by owner decision (D-044 supersedes D-021/D-032)**
 - Image suite: **complete — all 14 Group A tools implemented in `@localtools/image-core` (65/65 tests), worker-offloaded client pages wired**
@@ -112,8 +112,8 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - ~~Phase 11 — Integration polish~~ (complete — unified error copy + health gating + consistent progress + batch polish, D-039/D-040; first client test suite added)
 - ~~Phase 12 — Accessibility & responsiveness~~ (complete — see the Phase 12 section below)
 - ~~Phase 14 — performance/size~~ (complete) · ~~Phase 15 — documentation~~ (complete — D-046)
-- Pre-v1.0.0 owner gates: **ALL CLEARED except the tag itself.** CI billing was resolved by the D-010 public flip (the blocker was stale — a fresh rerun started all 7 jobs immediately); D-037 signing resolved as SHIP UNSIGNED with `release-desktop.yml` un-gated (D-047). Run **36764811728 is 7/7 green, conclusion `success`** — the Phase 13 acceptance run. Remaining: owner's manual click-through items, then tag `v1.0.0` (publishes a draft release)
-- Owner manual items (TESTS.md): desktop click-through on a clean machine, screen-reader spot-check x4, true macOS Safari (H4 real-URL downloader run DONE 2026-09-13 — live YouTube round trip in production posture, TESTS.md Phase 15)
+- **v1.0.0 RELEASED (2026-09-30).** Tag cut at `6cdf3f0` (main 7/7 green at that commit); release run 36779677622 conclusion `success` with all three OS legs green, publishing 7 installers all stamped 1.0.0 (Windows .exe/.msi, macOS .dmg/.app.tar.gz, Linux .deb/.rpm/.AppImage). The release is a DRAFT pending the owner's manual items below — publishing is a human gate by design (D-047)
+- Owner manual items, **outstanding at the tag and recorded as owner-blocked with exact reasons in TESTS.md**: clean-machine desktop click-through (steps 1-14), screen-reader spot-check x4 (NVDA absent on this host), true macOS Safari (no macOS hardware), and publishing the draft release. H4 real-URL downloader run was DONE 2026-09-13 — live YouTube round trip in production posture
 
 **Phase 11 — Integration polish (health gating, progress, error states, batch)**
 
@@ -141,6 +141,8 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - **WebKit/Safari (Section 13)**: `webkit-wasm-smoke.mjs` (Playwright WebKit — Safari's engine) proves the app boots, qpdf-wasm runs a real protect-pdf end-to-end, `crossOriginIsolated === false` (the D-029 no-COOP/COEP contract holds), and the devtext worker is healthy. True macOS Safari hardware remains the owner's manual item (TESTS.md).
 - **Major pre-existing bug fixed (D-042)**: EVERY Text & Dev tool was broken in browsers since Phase 6 — the devtext worker's import of devtext-core threw at module-evaluation (ulid's detectPrng sees no window in a Worker; clean-css/terser read `process.platform` at init). The keyboard sweep surfaced it; fixes: in-house ULID (Crockford base32 over crypto bytes; ulid demoted to devDep for the test cross-check), minimal browser `process` shim at the worker entry, prettier switched to `prettier/standalone` + explicit parser plugins (its browser bundle can't resolve parsers from the Node registry). Verified empirically: 36/36 devtext tool variants run through the real production Worker in Chromium + json-formatter in WebKit. Lesson: Node-only test suites can't catch module-eval environment assumptions — Worker-imported packages must be exercised in a Worker.
 
+**Release status (2026-09-30).** PR #1 merged (`d010fe15`); main green 7/7; `v1.0.0` tagged at `6cdf3f0`; the tag-triggered release workflow published a draft release with 7 installers across Windows/macOS/Linux, all stamped 1.0.0 (run 36779677622, conclusion `success`). Reaching that point required five rounds of rehearsal on disposable tags, which surfaced five latent defects in code paths that had never executed — see D-048. Installers ship **unsigned** by owner decision (D-037/D-047) and the updater is deliberately off.
+
 **Phase 13 — Testing & CI finalization (Section 14 wired into verify + both workflows, complete)**
 
 - **14.5 bundle-size gate**: `apps/client/scripts/bundle-size-check.mjs` (client `postbuild`, so every build gates it) walks the now-emitted Vite manifest's entry static-import graph and gzip-9s each chunk — initial = entry JS + entry CSS = **121.70KB gzipped vs the 250KB budget** (BUNDLE_SIZE_PASS; fails the build on regression; a near-budget 10% warning tier is recorded, not fatal).
@@ -148,7 +150,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 - **14.8 licensing gate**: `tools/licensing-check.mjs` — zero-dep grep of DECISIONS.md for the five required notes (Ghostscript AGPL+subprocess, ffmpeg variant, @imgly fallback, RAR extraction-only, D-026 mock-downloader); in `pnpm verify` AND a dedicated CI `licensing` job.
 - **14.4 shell-string canary** (acceptance: verified once manually then reverted): flipped `shell:false`→`true` in subprocess.ts live — security.test.ts still passed 15/15 (hostile input never reaches argv; layered defense) but the new `apps/engine/test/shell-canary.test.ts` failed with `SHELL_CANARY_FAIL: subprocess.ts: shell:true`; reverted, all green. The canary is committed permanently: bans `shell:true`, `exec/execSync`, and spawn-without-explicit-`shell:false` in any child_process-importing engine source file (import-aware — RegExp.exec / comment "spawn" don't false-positive).
 - **Supply chain (5.4/5.5 + DoD)**: `pnpm audit --audit-level high` rides the verify CI matrix; new `supply-chain` CI job = Trivy scan of the built engine image (`--severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed`) + `cargo audit --deny warnings`; `.github/dependabot.yml` (weekly npm/cargo/actions groups — inert until the D-010 public flip). Two real advisories found & fixed while wiring the gate: **js-yaml 4.3.1 → 4.3.2** (GHSA-2883-xcg3-v3hh, high — merge-key CPU DoS in devtext-core's YAML path) and **adm-zip 0.6.0 → 0.6.1** via root pnpm override (GHSA-vwc7-r8mq-g2x9, moderate — transitive of onnxruntime-node). `pnpm audit` now clean.
-- **release-desktop.yml**: real three-OS tauri-action matrix (windows/macos/ubuntu, engine-dist step, draft release) written; stays `if: false` until the Phase 15 D-037 signing decision — the CI desktop-build job already exercises every piece of the same pipeline.
+- **release-desktop.yml**: real three-OS tauri-action matrix (windows/macos/ubuntu, engine-dist step, draft release) written; the `if: false` gate was lifted on 2026-09-30 when D-037 resolved to SHIP UNSIGNED (D-047), and the workflow is now proven end-to-end — a `v1.0.0` tag built and uploaded 7 installers across all three OSes (D-048).
 
 **Phase 14 — Performance & size pass (Section 14.5 into README, complete)**
 
@@ -158,7 +160,7 @@ LocalTools is an open-source, self-hosted, privacy-first alternative to the whol
 
 **Phase 15 — Documentation & release (docs complete; tag owner-gated — D-046)**
 
-- **README rebuilt for release**: what/why, screenshots per suite (9 committed PNGs in `docs/screenshots/` — home + 4 suite grids + 4 representative tool pages, captured from the production build by the new repeatable `apps/client/scripts/capture-screenshots.mjs`), the two quick-starts (dev + Docker), the full 97-tool list by suite and group (programmatically verified against tool-registry + i18n — all 97 names present, 73 A / 23 B / 1 C), a Mermaid three-layer architecture diagram with Group A/B/C data flows, a legal-use summary section linking LEGAL.md, and the Phase 14 performance record retained. Status line says what's true: 15 of 15 phases built, v1.0.0 tag pending the CI unblock.
+- **README rebuilt for release**: what/why, screenshots per suite (9 committed PNGs in `docs/screenshots/` — home + 4 suite grids + 4 representative tool pages, captured from the production build by the new repeatable `apps/client/scripts/capture-screenshots.mjs`), the two quick-starts (dev + Docker), the full 97-tool list by suite and group (programmatically verified against tool-registry + i18n — all 97 names present, 73 A / 23 B / 1 C), a Mermaid three-layer architecture diagram with Group A/B/C data flows, a legal-use summary section linking LEGAL.md, and the Phase 14 performance record retained. Status line says what's true (as of the tag: 15 of 15 phases built, v1.0.0 released).
 - **LEGAL.md written** (repo root): all five spec Section 6 points, substance mirrored to the Phase 8 in-app dismissible notice — the Section 6 three-location rule is now fully satisfied (README summary + LEGAL.md + in-app notice).
 - **Doc-accuracy debt cleared** (DoD: "accurate to shipped code"): SECURITY.md's stale "Phase 0 stub engine" paragraph replaced with the shipped-controls description; CONTRIBUTING.md re-checked (complete since Phase 0, no change needed); TESTS.md gained the Phase 15 section; DECISIONS.md D-046 records the session's calls.
 - **14.8 licensing gate re-verified**: `tools/licensing-check.mjs` PASS (all five required notes present) — DECISIONS.md is finalized per Phase 15.

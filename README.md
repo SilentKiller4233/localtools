@@ -5,8 +5,10 @@ Self-hosted, open-source, privacy-first alternative to the paywalled/rate-limite
 JSON formatters, and their whole category. Every tool those sites gate is free
 and unlimited here: **97 tools across four suites**, running on your machine.
 
-**Status:** 15 of 15 phases built and the full CI matrix is green (7/7,
-2026-09-30). The `v1.0.0` tag is the last step (see [`SUMMARY.md`](SUMMARY.md)).
+**Status:** 15 of 15 phases built. **v1.0.0 is tagged and released** (2026-09-30) —
+seven installers for Windows, macOS and Linux, built by the tag-triggered
+release workflow. See the [release page](https://github.com/SilentKiller4233/localtools/releases)
+and [`SUMMARY.md`](SUMMARY.md).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -274,12 +276,10 @@ security is review-blocking, tests travel with features.
 ## Roadmap
 
 15 phases per PROJECT_SPEC Section 15, from scaffold through v1.0.0 release —
-built through Phase 15. All 15 phases are built and the full CI matrix is
-green (7/7 on run 36764811728, 2026-09-30); the `v1.0.0` tag is the last
-remaining step. Possible **v2 ideas**: PDF→EPUB, vocal/stem separation (both
-deliberately out of scope for v1 per Section 7); `docker-compose.slim.yml`
-variant; ffmpeg.wasm in-browser small-clip processing (cut from v1.0.0
-scope — see DECISIONS.md D-044).
+all 15 built, and `v1.0.0` tagged and released (2026-09-30). Possible **v2 ideas**:
+PDF→EPUB, vocal/stem separation (both deliberately out of scope for v1 per
+Section 7); `docker-compose.slim.yml` variant; ffmpeg.wasm in-browser small-clip
+processing (cut from v1.0.0 scope — see DECISIONS.md D-044).
 
 ## License
 
